@@ -2,6 +2,8 @@
 # *   Copyright (c) 2015 Przemo Firszt <przemo@firszt.eu>                   *
 # *   Copyright (c) 2015 Bernd Hahnebach <bernd@bimstatik.org>              *
 # *                                                                         *
+# *   This file is part of the FreeCAD CAx development system.              *
+# *                                                                         *
 # *   This program is free software; you can redistribute it and/or modify  *
 # *   it under the terms of the GNU Lesser General Public License (LGPL)    *
 # *   as published by the Free Software Foundation; either version 2 of     *
@@ -27,15 +29,16 @@ __url__ = "http://www.freecadweb.org"
 ## \addtogroup FEM
 #  @{
 
+import codecs
 import os
+import six
 import sys
 import time
-import codecs
-import six
 
 import FreeCAD
-from femmesh import meshtools
+
 from .. import writerbase
+from femmesh import meshtools
 
 
 class FemInputWriterCcx(writerbase.FemInputWriter):
@@ -63,6 +66,9 @@ class FemInputWriterCcx(writerbase.FemInputWriter):
             self.dir_name,
             "{}_inout_nodes.txt".format(self.mesh_object.Name)
         )
+        from femtools import constants
+        from FreeCAD import Units
+        self.gravity = int(Units.Quantity(constants.gravity()).getValueAs("mm/s^2"))  # 9820 mm/s2
 
     def write_calculix_input_file(self):
         timestart = time.process_time()
@@ -234,7 +240,7 @@ class FemInputWriterCcx(writerbase.FemInputWriter):
         if self.contact_objects:
             inpfileContact = open(name + "_Surface_Contact.inp", "w")
         if self.tie_objects:
-            inpfileContact = open(name + "_Surface_Tie.inp", "w")
+            inpfileTie = open(name + "_Surface_Tie.inp", "w")
         if self.transform_objects:
             inpfileTransform = open(name + "_Node_Transform.inp", "w")
 
@@ -249,7 +255,7 @@ class FemInputWriterCcx(writerbase.FemInputWriter):
         if self.contact_objects:
             self.write_surfaces_constraints_contact(inpfileContact)
         if self.tie_objects:
-            self.write_surfaces_constraints_tie(inpfileContact)
+            self.write_surfaces_constraints_tie(inpfileTie)
         if self.transform_objects:
             self.write_node_sets_constraints_transform(inpfileTransform)
 
@@ -1095,12 +1101,14 @@ class FemInputWriterCcx(writerbase.FemInputWriter):
             f.write("** " + selwei_obj.Label + "\n")
             f.write("*DLOAD\n")
             f.write(
-                "{},GRAV,9810,{},{},{}\n"
+                # elset, GRAV, magnitude, direction x, dir y ,dir z
+                "{},GRAV,{},{},{},{}\n"
                 .format(
                     self.ccx_eall,
-                    selwei_obj.Gravity_x,
-                    selwei_obj.Gravity_y,
-                    selwei_obj.Gravity_z
+                    self.gravity,  # actual magnitude of gravity vector
+                    selwei_obj.Gravity_x,  # coordinate x of normalized gravity vector
+                    selwei_obj.Gravity_y,  # y
+                    selwei_obj.Gravity_z  # z
                 )
             )
             f.write("\n")
@@ -1152,7 +1160,7 @@ class FemInputWriterCcx(writerbase.FemInputWriter):
             f.write("*DLOAD\n")
             for ref_shape in femobj["PressureFaces"]:
                 # the loop is needed for compatibility reason
-                # in depretiated method get_pressure_obj_faces_depreciated
+                # in depreciated method get_pressure_obj_faces_depreciated
                 # the face ids where per ref_shape
                 f.write("** " + ref_shape[0] + "\n")
                 for face, fno in ref_shape[1]:

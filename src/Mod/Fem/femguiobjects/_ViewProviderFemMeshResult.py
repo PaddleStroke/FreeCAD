@@ -1,6 +1,7 @@
 # ***************************************************************************
-# *                                                                         *
 # *   Copyright (c) 2017 Bernd Hahnebach <bernd@bimstatik.org>              *
+# *                                                                         *
+# *   This file is part of the FreeCAD CAx development system.              *
 # *                                                                         *
 # *   This program is free software; you can redistribute it and/or modify  *
 # *   it under the terms of the GNU Lesser General Public License (LGPL)    *
@@ -28,27 +29,12 @@ __url__ = "http://www.freecadweb.org"
 #  \ingroup FEM
 #  \brief FreeCAD FEM _ViewProviderFemMeshResult
 
+from . import ViewProviderFemConstraint
 
-class _ViewProviderFemMeshResult:
-    "A View Provider for the FemMeshResult object"
-    def __init__(self, vobj):
-        vobj.Proxy = self
 
-    def getIcon(self):
-        return ":/icons/fem-femmesh-result.svg"
+class _ViewProviderFemMeshResult(ViewProviderFemConstraint.ViewProxy):
+    """
+    A View Provider for the FemMeshResult object
+    """
 
-    def attach(self, vobj):
-        self.ViewObject = vobj
-        self.Object = vobj.Object
-
-    def updateData(self, obj, prop):
-        return
-
-    def onChanged(self, vobj, prop):
-        return
-
-    def __getstate__(self):
-        return None
-
-    def __setstate__(self, state):
-        return None
+    pass

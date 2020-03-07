@@ -30,6 +30,7 @@
 #endif
 
 #include "Approximation.h"
+#include "Elements.h"
 #include "Utilities.h"
 
 #include <Base/BoundBox.h>
@@ -92,6 +93,12 @@ void Approximation::AddPoints(const std::set<Base::Vector3f> &points)
 }
 
 void Approximation::AddPoints(const std::list<Base::Vector3f> &points)
+{
+    std::copy(points.begin(), points.end(), std::back_inserter(_vPoints));
+    _bIsFitted = false;
+}
+
+void Approximation::AddPoints(const MeshPointArray &points)
 {
     std::copy(points.begin(), points.end(), std::back_inserter(_vPoints));
     _bIsFitted = false;
@@ -899,7 +906,7 @@ float CylinderFit::Fit()
         return FLOAT_MAX;
     _bIsFitted = true;
 
-#if 0
+#if 1
     std::vector<Wm4::Vector3d> input;
     std::transform(_vPoints.begin(), _vPoints.end(), std::back_inserter(input),
                    [](const Base::Vector3f& v) { return Wm4::Vector3d(v.x, v.y, v.z); });

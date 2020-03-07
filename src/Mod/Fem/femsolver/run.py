@@ -1,5 +1,8 @@
 # ***************************************************************************
 # *   Copyright (c) 2017 Markus Hovorka <m.hovorka@live.de>                 *
+# *   Copyright (c) 2017 Bernd Hahnebach <bernd@bimstatik.org>              *
+# *                                                                         *
+# *   This file is part of the FreeCAD CAx development system.              *
 # *                                                                         *
 # *   This program is free software; you can redistribute it and/or modify  *
 # *   it under the terms of the GNU Lesser General Public License (LGPL)    *
@@ -35,20 +38,23 @@ __url__ = "http://www.freecadweb.org"
 
 import os
 import os.path
-# import threading  # not used ATM
 import shutil
 import tempfile
+# import threading  # not used ATM
 
 import FreeCAD as App
-import femtools.femutils as femutils
-import femtools.membertools as membertools
+
 from . import settings
 from . import signal
 from . import task
+from femtools import femutils
+from femtools import membertools
+from femtools.errors import DirectoryDoesNotExistError
+from femtools.errors import MustSaveError
 
 if App.GuiUp:
-    import FreeCADGui
     from PySide import QtGui
+    import FreeCADGui
 
 
 CHECK = 0
@@ -118,7 +124,7 @@ def run_fem_solver(solver, working_dir=None):
                 machine = getMachine(solver, working_dir)
             else:
                 machine = getMachine(solver)
-        except femutils.MustSaveError:
+        except MustSaveError:
             error_message = (
                 "Please save the file before executing the solver. "
                 "This must be done because the location of the working "
@@ -132,7 +138,7 @@ def run_fem_solver(solver, working_dir=None):
                     error_message
                 )
             return
-        except femutils.DirectoryDoesNotExistError:
+        except DirectoryDoesNotExistError:
             error_message = "Selected working directory doesn't exist."
             App.Console.PrintError(error_message + "\n")
             if App.GuiUp:
@@ -251,7 +257,7 @@ def _getBesideBase(solver):
                 "Can't start Solver",
                 error_message
             )
-        raise femutils.MustSaveError()
+        raise MustSaveError()
     return path
 
 
@@ -276,7 +282,7 @@ def _getCustomBase(solver):
                 "Can't start Solver",
                 error_message
             )
-        raise femutils.DirectoryDoesNotExistError("Invalid path")
+        raise DirectoryDoesNotExistError("Invalid path")
     return path
 
 

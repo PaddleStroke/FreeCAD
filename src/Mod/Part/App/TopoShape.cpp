@@ -3224,8 +3224,14 @@ void TopoShape::getDomains(std::vector<Domain>& domains) const
 
         TopLoc_Location loc;
         Handle(Poly_Triangulation) theTriangulation = BRep_Tool::Triangulation(face, loc);
-        if (theTriangulation.IsNull())
+        if (theTriangulation.IsNull()) {
+            // For a face that cannot be meshed append an empty domain.
+            // It's important for some algorithms (e.g. color mapping) that the numbers of
+            // faces and domains match
+            Domain domain;
+            domains.push_back(domain);
             continue;
+        }
 
         Domain domain;
         // copy the points
@@ -3954,8 +3960,8 @@ TopoShape &TopoShape::makECompound(const std::vector<TopoShape> &shapes, const c
 TopoShape &TopoShape::makEFace(const TopoShape &shape, const char *op, const char *maker)
 {
     std::vector<TopoShape> shapes;
-    if(shape.getShape().ShapeType() == TopAbs_COMPOUND) {
-        for(TopoDS_Iterator it(_Shape);it.More();it.Next())
+    if(shape.shapeType() == TopAbs_COMPOUND) {
+        for(TopoDS_Iterator it(shape.getShape());it.More();it.Next())
             shapes.push_back(it.Value());
     } else
         shapes.push_back(shape);

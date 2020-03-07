@@ -1,7 +1,6 @@
 # ***************************************************************************
-# *   Copyright (c) 2015 - FreeCAD Developers                               *
-# *   Author: Przemo Firszt <przemo@firszt.eu>                              *
-# *   Author: Bernd Hahnebach <bernd@bimstatik.org>                         *
+# *   Copyright (c) 2015 Przemo Firszt <przemo@firszt.eu>                   *
+# *   Copyright (c) 2015 Bernd Hahnebach <bernd@bimstatik.org>              *
 # *                                                                         *
 # *   This file is part of the FreeCAD CAx development system.              *
 # *                                                                         *
@@ -130,6 +129,27 @@ class TestCcxTools(unittest.TestCase):
             analysis_dir=analysis_dir,
             fea=fea,
             res_obj_name=res_obj_name,
+        )
+
+    # ********************************************************************************************
+    def test_static_constraint_force_faceload_hexa20(
+        self
+    ):
+        # set up
+        from femexamples.ccx_cantilever_std import setup_cantileverhexa20faceload as setup
+        setup(self.active_doc, "ccxtools")
+        test_name = "canti ccx faceload hexa20"
+        base_name = "canti_ccx_faceload_hexa20"
+        analysis_dir = testtools.get_unit_test_tmp_dir(
+            self.temp_dir,
+            ("FEM_" + base_name),
+        )
+        fcc_print(self.active_doc.Objects)
+        # test input file writing
+        self.input_file_writing_test(
+            test_name=test_name,
+            base_name=base_name,
+            analysis_dir=analysis_dir,
         )
 
     # ********************************************************************************************

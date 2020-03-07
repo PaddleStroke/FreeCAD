@@ -1,6 +1,8 @@
 # ***************************************************************************
 # *   Copyright (c) 2017 Bernd Hahnebach <bernd@bimstatik.org>              *
 # *                                                                         *
+# *   This file is part of the FreeCAD CAx development system.              *
+# *                                                                         *
 # *   This program is free software; you can redistribute it and/or modify  *
 # *   it under the terms of the GNU Lesser General Public License (LGPL)    *
 # *   as published by the Free Software Foundation; either version 2 of     *
@@ -27,17 +29,17 @@ __url__ = "http://www.freecadweb.org"
 #  @{
 
 import os
-import subprocess
 import os.path
+import subprocess
 
 import FreeCAD
-import femtools.femutils as femutils
-import femtools.membertools as membertools
-import feminout.importZ88O2Results as importZ88O2Results
 
+from . import writer
 from .. import run
 from .. import settings
-from . import writer
+from feminout import importZ88O2Results
+from femtools import femutils
+from femtools import membertools
 
 
 class Check(run.Check):

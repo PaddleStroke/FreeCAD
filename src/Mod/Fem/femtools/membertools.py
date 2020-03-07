@@ -2,6 +2,8 @@
 # *   Copyright (c) 2017 Markus Hovorka <m.hovorka@live.de>                 *
 # *   Copyright (c) 2018 Bernd Hahnebach <bernd@bimstatik.org>              *
 # *                                                                         *
+# *   This file is part of the FreeCAD CAx development system.              *
+# *                                                                         *
 # *   This program is free software; you can redistribute it and/or modify  *
 # *   it under the terms of the GNU Lesser General Public License (LGPL)    *
 # *   as published by the Free Software Foundation; either version 2 of     *
@@ -251,16 +253,16 @@ class AnalysisMember():
 
         # geometries
         self.geos_beamsection = self.get_several_member(
-            "Fem::FemElementGeometry1D"
+            "Fem::ElementGeometry1D"
         )
         self.geos_beamrotation = self.get_several_member(
-            "Fem::FemElementRotation1D"
+            "Fem::ElementRotation1D"
         )
         self.geos_fluidsection = self.get_several_member(
-            "Fem::FemElementFluid1D"
+            "Fem::ElementFluid1D"
         )
         self.geos_shellthickness = self.get_several_member(
-            "Fem::FemElementGeometry2D"
+            "Fem::ElementGeometry2D"
         )
 
         # constraints

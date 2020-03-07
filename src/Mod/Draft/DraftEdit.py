@@ -2,6 +2,7 @@
 #***************************************************************************
 #*   Copyright (c) 2009, 2010 Yorik van Havre <yorik@uncreated.net>        *
 #*   Copyright (c) 2009, 2010 Ken Cline <cline@frii.com>                   *
+#*   Copyright (c) 2019, 2020 Carlo Pavan <carlopav@gmail.com>             *
 #*                                                                         *
 #*   This program is free software; you can redistribute it and/or modify  *
 #*   it under the terms of the GNU Lesser General Public License (LGPL)    *
@@ -74,7 +75,7 @@ class Edit():
         self._mouseMovedCB      -> self._mouseMovedCB
         if self._mousePressedCB -> self.mousePressed
         when trackers are displayed for selected objects,
-        theese callbacks capture user events and forward 
+        these callbacks capture user events and forward 
         them to related functions
 
 
@@ -132,7 +133,7 @@ class Edit():
         populates the menu with custom actions
     
     evaluate_menu_action
-        evaluate user choosen action and launch corresponding
+        evaluate user chosen action and launch corresponding
         function.
 
 
@@ -159,7 +160,7 @@ class Edit():
         self.pl, self.invpl.
         Due to multiple object editing, i'm planning to keep
         just self.trackers. Any other object will be identified
-        and processed starting from editTracker informations.
+        and processed starting from editTracker information.
     
     editing : Int
         Index of the editTracker that has been clicked by the 
@@ -362,7 +363,7 @@ class Edit():
 
     def unregister_selection_callback(self):
         """
-        remove selection callback if it exhists
+        remove selection callback if it exists
         """
         if self.selection_callback:
             self.view.removeEventCallback("SoEvent",self.selection_callback)
@@ -388,7 +389,7 @@ class Edit():
 
     def unregister_editing_callbacks(self):
         """
-        remove callbacks used during editing if they exhist
+        remove callbacks used during editing if they exist
         """
         view = Gui.ActiveDocument.ActiveView
         if self._keyPressedCB:
@@ -632,7 +633,7 @@ class Edit():
         return node
     
     def sendRay(self, mouse_pos):
-        "sends a ray trough the scene and return the nearest entity"
+        "sends a ray through the scene and return the nearest entity"
         ray_pick = coin.SoRayPickAction(self.render_manager.getViewportRegion())
         ray_pick.setPoint(coin.SbVec2s(*mouse_pos))
         ray_pick.setRadius(self.pick_radius)
@@ -1118,17 +1119,19 @@ class Edit():
             return
         if Draft.getType(obj) in ["BezCurve"]:
             pts = self.recomputePointsBezier(obj,pts,nodeIndex,v,obj.Degree,moveTrackers=False)
-        # check that the new point lies on the plane of the wire
-        import DraftGeomUtils, DraftVecUtils
+            
         if obj.Closed:
-            n = DraftGeomUtils.getNormal(obj.Shape)
-            dv = editPnt.sub(pts[nodeIndex])
-            rn = DraftVecUtils.project(dv,n)
-            if dv.Length:
-                editPnt = editPnt.add(rn.negative())
+            # check that the new point lies on the plane of the wire
+            if hasattr(obj.Shape,"normalAt"):
+                normal = obj.Shape.normalAt(0,0)
+                point_on_plane = obj.Shape.Vertexes[0].Point
+                print(v)
+                v.projectToPlane(point_on_plane, normal)
+                print(v)
+                editPnt = obj.getGlobalPlacement().inverse().multVec(v)
         pts[nodeIndex] = editPnt
         obj.Points = pts
-        #self.trackers[obj.Name][nodeIndex].set(v)
+        self.trackers[obj.Name][nodeIndex].set(v)
 
 
     def recomputePointsBezier(self,obj,pts,idx,v,degree,moveTrackers=True):

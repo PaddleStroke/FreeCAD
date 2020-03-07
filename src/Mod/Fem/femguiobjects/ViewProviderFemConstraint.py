@@ -1,7 +1,8 @@
 # ***************************************************************************
-# *                                                                         *
 # *   Copyright (c) 2017 Markus Hovorka <m.hovorka@live.de>                 *
 # *   Copyright (c) 2018 Bernd Hahnebach <bernd@bimstatik.org>              *
+# *                                                                         *
+# *   This file is part of the FreeCAD CAx development system.              *
 # *                                                                         *
 # *   This program is free software; you can redistribute it and/or modify  *
 # *   it under the terms of the GNU Lesser General Public License (LGPL)    *
@@ -44,9 +45,17 @@ class ViewProxy(object):
     def __init__(self, vobj):
         vobj.Proxy = self
 
+    # needs to be overwritten, if no standard icon name is used
+    def getIcon(self):
+        """after load from FCStd file, self.icon does not exist, return constant path instead"""
+        file_name = self.Object.Proxy.Type.replace("Fem::", "FEM_")
+        return ":/icons/{}.svg".format(file_name)
+
     def attach(self, vobj):
         default = coin.SoGroup()
         vobj.addDisplayMode(default, "Default")
+        self.Object = vobj.Object
+        self.ViewObject = vobj
 
     def getDisplayModes(self, obj):
         "Return a list of display modes."
@@ -59,11 +68,27 @@ class ViewProxy(object):
     def setDisplayMode(self, mode):
         return mode
 
-    def setEdit(self, vobj, mode=0):
-        # needs to be overwritten if task panel exists
-        # avoid edit mode by return False
-        # https://forum.freecadweb.org/viewtopic.php?t=12139&start=10#p161062
-        return False
+    def setEdit(self, vobj, mode=0, TaskPanel=None, hide_mesh=True):
+        if TaskPanel is None:
+            # avoid edit mode by return False
+            # https://forum.freecadweb.org/viewtopic.php?t=12139&start=10#p161062
+            return False
+        if hide_mesh is True:
+            # hide all FEM meshes and VTK FemPostPipeline objects
+            for o in vobj.Object.Document.Objects:
+                if (
+                    o.isDerivedFrom("Fem::FemMeshObject")
+                    or o.isDerivedFrom("Fem::FemPostPipeline")
+                ):
+                    o.ViewObject.hide()
+        # show task panel
+        task = TaskPanel(vobj.Object)
+        FreeCADGui.Control.showDialog(task)
+        return True
+
+    def unsetEdit(self, vobj, mode=0):
+        FreeCADGui.Control.closeDialog()
+        return True
 
     def doubleClicked(self, vobj):
         guidoc = FreeCADGui.getDocument(vobj.Object.Document)
@@ -77,3 +102,8 @@ class ViewProxy(object):
             QMessageBox.critical(None, "Error in tree view", message)
             FreeCAD.Console.PrintError(message + "\n")
         return True
+
+    # a few objects had this method in their class before the move to this base class
+    # these objects will give a setAttr failed error on document loading without this method
+    def __setstate__(self, state):
+        return None

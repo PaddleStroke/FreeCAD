@@ -1,7 +1,7 @@
 """Provides lists of commands for the Draft Workbench.
 
 This module returns lists of commands, so that the toolbars
-can be initilized by Draft, and by other workbenches.
+can be initialized by Draft, and by other workbenches.
 These commands should be defined in `DraftTools`, and in the individual
 modules in `draftguitools`.
 """
@@ -54,11 +54,7 @@ def get_draft_annotation_commands():
 
 def get_draft_array_commands():
     """Return the array commands list."""
-    # After the array commands are grouped, return this
-    # return ["Draft_ArrayTools"]
-    return ["Draft_Array", "Draft_LinkArray",
-            "Draft_PolarArray", "Draft_CircularArray",
-            "Draft_PathArray", "Draft_PathLinkArray", "Draft_PointArray"]
+    return ["Draft_ArrayTools"]
 
 
 def get_draft_modification_commands():

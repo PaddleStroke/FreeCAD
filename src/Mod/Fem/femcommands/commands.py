@@ -40,7 +40,7 @@ class _Analysis(CommandManager):
     def __init__(self):
         super(_Analysis, self).__init__()
         self.resources = {
-            "Pixmap": "fem-analysis",
+            "Pixmap": "FEM_Analysis",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_Analysis",
                 "Analysis container"
@@ -74,7 +74,7 @@ class _ClippingPlaneAdd(CommandManager):
     def __init__(self):
         super(_ClippingPlaneAdd, self).__init__()
         self.resources = {
-            "Pixmap": "fem-clipping-plane-add",
+            "Pixmap": "FEM_ClippingPlaneAdd",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ClippingPlaneAdd",
                 "Clipping plane on face"
@@ -127,7 +127,7 @@ class _ClippingPlaneRemoveAll(CommandManager):
     def __init__(self):
         super(_ClippingPlaneRemoveAll, self).__init__()
         self.resources = {
-            "Pixmap": "fem-clipping-plane-remove-all",
+            "Pixmap": "FEM_ClippingPlaneRemoveAll",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ClippingPlaneRemoveAll",
                 "Remove all clipping planes"
@@ -156,7 +156,7 @@ class _ConstraintBodyHeatSource(CommandManager):
     def __init__(self):
         super(_ConstraintBodyHeatSource, self).__init__()
         self.resources = {
-            "Pixmap": "fem-constraint-heatflux",  # the heatflux icon is used
+            "Pixmap": "FEM_ConstraintHeatflux",  # the heatflux icon is used
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ConstraintBodyHeatSource",
                 "Constraint body heat source"
@@ -176,7 +176,7 @@ class _ConstraintElectrostaticPotential(CommandManager):
     def __init__(self):
         super(_ConstraintElectrostaticPotential, self).__init__()
         self.resources = {
-            "Pixmap": "fem-constraint-electrostatic-potential",
+            "Pixmap": "FEM_ConstraintElectrostaticPotential",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ConstraintElectrostaticPotential",
                 "Constraint electrostatic potential"
@@ -196,7 +196,7 @@ class _ConstraintFlowVelocity(CommandManager):
     def __init__(self):
         super(_ConstraintFlowVelocity, self).__init__()
         self.resources = {
-            "Pixmap": "fem-constraint-flow-velocity",
+            "Pixmap": "FEM_ConstraintFlowVelocity",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ConstraintFlowVelocity",
                 "Constraint flow velocity"
@@ -216,7 +216,7 @@ class _ConstraintInitialFlowVelocity(CommandManager):
     def __init__(self):
         super(_ConstraintInitialFlowVelocity, self).__init__()
         self.resources = {
-            "Pixmap": "fem-constraint-initial-flow-velocity",
+            "Pixmap": "FEM_ConstraintInitialFlowVelocity",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ConstraintInitialFlowVelocity",
                 "Constraint initial flow velocity"
@@ -236,7 +236,7 @@ class _ConstraintSelfWeight(CommandManager):
     def __init__(self):
         super(_ConstraintSelfWeight, self).__init__()
         self.resources = {
-            "Pixmap": "fem-constraint-selfweight",
+            "Pixmap": "FEM_ConstraintSelfWeight",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ConstraintSelfWeight",
                 "Constraint self weight"
@@ -257,7 +257,7 @@ class _ConstraintTie(CommandManager):
     def __init__(self):
         super(_ConstraintTie, self).__init__()
         self.resources = {
-            "Pixmap": "fem-constraint-tie",
+            "Pixmap": "FEM_ConstraintTie",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ConstraintTie",
                 "Constraint tie"
@@ -278,7 +278,7 @@ class _ElementFluid1D(CommandManager):
     def __init__(self):
         super(_ElementFluid1D, self).__init__()
         self.resources = {
-            "Pixmap": "fem-element-fluid-1d",
+            "Pixmap": "FEM_ElementFluid1D",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ElementFluid1D",
                 "Fluid section for 1D flow"
@@ -299,7 +299,7 @@ class _ElementGeometry1D(CommandManager):
     def __init__(self):
         super(_ElementGeometry1D, self).__init__()
         self.resources = {
-            "Pixmap": "fem-element-geometry-1d",
+            "Pixmap": "FEM_ElementGeometry1D",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ElementGeometry1D",
                 "Beam cross section"
@@ -320,7 +320,7 @@ class _ElementGeometry2D(CommandManager):
     def __init__(self):
         super(_ElementGeometry2D, self).__init__()
         self.resources = {
-            "Pixmap": "fem-element-geometry-2d",
+            "Pixmap": "FEM_ElementGeometry2D",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ElementGeometry2D",
                 "Shell plate thickness"
@@ -341,7 +341,7 @@ class _ElementRotation1D(CommandManager):
     def __init__(self):
         super(_ElementRotation1D, self).__init__()
         self.resources = {
-            "Pixmap": "fem-element-rotation-1d",
+            "Pixmap": "FEM_ElementRotation1D",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ElementRotation1D",
                 "Beam rotation"
@@ -362,7 +362,7 @@ class _EquationElectrostatic(CommandManager):
     def __init__(self):
         super(_EquationElectrostatic, self).__init__()
         self.resources = {
-            "Pixmap": "fem-equation-electrostatic",
+            "Pixmap": "FEM_EquationElectrostatic",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_EquationElectrostatic",
                 "Electrostatic equation"
@@ -382,7 +382,7 @@ class _EquationElasticity(CommandManager):
     def __init__(self):
         super(_EquationElasticity, self).__init__()
         self.resources = {
-            "Pixmap": "fem-equation-elasticity",
+            "Pixmap": "FEM_EquationElasticity",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_EquationElasticity",
                 "Elasticity equation"
@@ -402,7 +402,7 @@ class _EquationFlow(CommandManager):
     def __init__(self):
         super(_EquationFlow, self).__init__()
         self.resources = {
-            "Pixmap": "fem-equation-flow",
+            "Pixmap": "FEM_EquationFlow",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_EquationFlow",
                 "Flow equation"
@@ -422,7 +422,7 @@ class _EquationFluxsolver(CommandManager):
     def __init__(self):
         super(_EquationFluxsolver, self).__init__()
         self.resources = {
-            "Pixmap": "fem-equation-fluxsolver",
+            "Pixmap": "FEM_EquationFluxsolver",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_EquationFluxsolver",
                 "Fluxsolver equation"
@@ -442,7 +442,7 @@ class _EquationHeat(CommandManager):
     def __init__(self):
         super(_EquationHeat, self).__init__()
         self.resources = {
-            "Pixmap": "fem-equation-heat",
+            "Pixmap": "FEM_EquationHeat",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_EquationHeat",
                 "Fluxsolver heat"
@@ -486,7 +486,7 @@ class _MaterialFluid(CommandManager):
     def __init__(self):
         super(_MaterialFluid, self).__init__()
         self.resources = {
-            "Pixmap": "fem-material-fluid",
+            "Pixmap": "FEM_MaterialFluid",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_MaterialFluid",
                 "Material for fluid"
@@ -507,7 +507,7 @@ class _MaterialMechanicalNonlinear(CommandManager):
     def __init__(self):
         super(_MaterialMechanicalNonlinear, self).__init__()
         self.resources = {
-            "Pixmap": "fem-material-nonlinear",
+            "Pixmap": "FEM_MaterialMechanicalNonlinear",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_MaterialMechanicalNonlinear",
                 "Nonlinear mechanical material"
@@ -586,7 +586,7 @@ class _MaterialReinforced(CommandManager):
     def __init__(self):
         super(_MaterialReinforced, self).__init__()
         self.resources = {
-            "Pixmap": "fem-material-reinforced",
+            "Pixmap": "FEM_MaterialReinforced",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_MaterialReinforced",
                 "Reinforced material (concrete)"
@@ -607,7 +607,7 @@ class _MaterialSolid(CommandManager):
     def __init__(self):
         super(_MaterialSolid, self).__init__()
         self.resources = {
-            "Pixmap": "fem-material",
+            "Pixmap": "FEM_MaterialSolid",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_MaterialSolid",
                 "Material for solid"
@@ -628,7 +628,7 @@ class _Mesh2Mesh(CommandManager):
     def __init__(self):
         super(_Mesh2Mesh, self).__init__()
         self.resources = {
-            "Pixmap": "fem-femmesh-to-mesh",
+            "Pixmap": "FEM_FEMMesh2Mesh",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_FEMMesh2Mesh",
                 "FEM mesh to mesh"
@@ -678,7 +678,7 @@ class _MeshBoundaryLayer(CommandManager):
     def __init__(self):
         super(_MeshBoundaryLayer, self).__init__()
         self.resources = {
-            "Pixmap": "fem-femmesh-boundary-layer",
+            "Pixmap": "FEM_MeshBoundaryLayer",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_MeshBoundaryLayer",
                 "FEM mesh boundary layer"
@@ -699,7 +699,7 @@ class _MeshClear(CommandManager):
     def __init__(self):
         super(_MeshClear, self).__init__()
         self.resources = {
-            "Pixmap": "fem-femmesh-clear-mesh",
+            "Pixmap": "FEM_MeshClear",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_MeshClear",
                 "Clear FEM mesh"
@@ -728,7 +728,7 @@ class _MeshDisplayInfo(CommandManager):
     def __init__(self):
         super(_MeshDisplayInfo, self).__init__()
         self.resources = {
-            "Pixmap": "fem-femmesh-print-info",
+            "Pixmap": "FEM_MeshDisplayInfo",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_MeshDisplayInfo",
                 "Display FEM mesh info"
@@ -761,7 +761,7 @@ class _MeshGmshFromShape(CommandManager):
     def __init__(self):
         super(_MeshGmshFromShape, self).__init__()
         self.resources = {
-            "Pixmap": "fem-femmesh-gmsh-from-shape",
+            "Pixmap": "FEM_MeshGmshFromShape",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_MeshGmshFromShape",
                 "FEM mesh from shape by Gmsh"
@@ -830,7 +830,7 @@ class _MeshNetgenFromShape(CommandManager):
     def __init__(self):
         super(_MeshNetgenFromShape, self).__init__()
         self.resources = {
-            "Pixmap": "fem-femmesh-netgen-from-shape",
+            "Pixmap": "FEM_MeshNetgenFromShape",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_MeshNetgenFromShape",
                 "FEM mesh from shape by Netgen"
@@ -878,7 +878,7 @@ class _MeshRegion(CommandManager):
     def __init__(self):
         super(_MeshRegion, self).__init__()
         self.resources = {
-            "Pixmap": "fem-femmesh-region",
+            "Pixmap": "FEM_MeshRegion",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_MeshRegion",
                 "FEM mesh region"
@@ -899,7 +899,7 @@ class _ResultShow(CommandManager):
     def __init__(self):
         super(_ResultShow, self).__init__()
         self.resources = {
-            "Pixmap": "fem-post-result-show",
+            "Pixmap": "FEM_ResultShow",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ResultShow",
                 "Show result"
@@ -922,7 +922,7 @@ class _ResultsPurge(CommandManager):
     def __init__(self):
         super(_ResultsPurge, self).__init__()
         self.resources = {
-            "Pixmap": "fem-post-results-purge",
+            "Pixmap": "FEM_ResultsPurge",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_ResultsPurge",
                 "Purge results"
@@ -946,7 +946,7 @@ class _SolverCxxtools(CommandManager):
     def __init__(self):
         super(_SolverCxxtools, self).__init__()
         self.resources = {
-            "Pixmap": "fem-solver-standard",
+            "Pixmap": "FEM_SolverStandard",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_SolverCalculix",
                 "Solver CalculiX Standard"
@@ -989,7 +989,7 @@ class _SolverCalculix(CommandManager):
     def __init__(self):
         super(_SolverCalculix, self).__init__()
         self.resources = {
-            "Pixmap": "fem-solver-standard",
+            "Pixmap": "FEM_SolverStandard",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_SolverCalculiX", "Solver CalculiX (experimental)"
             ),
@@ -1009,7 +1009,7 @@ class _SolverControl(CommandManager):
     def __init__(self):
         super(_SolverControl, self).__init__()
         self.resources = {
-            "Pixmap": "fem-solver-control",
+            "Pixmap": "FEM_SolverControl",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_SolverControl",
                 "Solver job control"
@@ -1032,7 +1032,7 @@ class _SolverElmer(CommandManager):
     def __init__(self):
         super(_SolverElmer, self).__init__()
         self.resources = {
-            "Pixmap": "fem-solver-elmer",
+            "Pixmap": "FEM_SolverElmer",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_SolverElmer",
                 "Solver Elmer"
@@ -1053,7 +1053,7 @@ class _SolverRun(CommandManager):
     def __init__(self):
         super(_SolverRun, self).__init__()
         self.resources = {
-            "Pixmap": "fem-solver-run",
+            "Pixmap": "FEM_SolverRun",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_SolverRun",
                 "Run solver calculations"
@@ -1079,7 +1079,7 @@ class _SolverZ88(CommandManager):
     def __init__(self):
         super(_SolverZ88, self).__init__()
         self.resources = {
-            "Pixmap": "fem-solver-standard",
+            "Pixmap": "FEM_SolverStandard",
             "MenuText": QtCore.QT_TRANSLATE_NOOP(
                 "FEM_SolverZ88",
                 "Solver Z88"

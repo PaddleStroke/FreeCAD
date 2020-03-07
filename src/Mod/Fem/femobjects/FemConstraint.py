@@ -1,6 +1,8 @@
 # ***************************************************************************
 # *   Copyright (c) 2017 Markus Hovorka <m.hovorka@live.de>                 *
 # *                                                                         *
+# *   This file is part of the FreeCAD CAx development system.              *
+# *                                                                         *
 # *   This program is free software; you can redistribute it and/or modify  *
 # *   it under the terms of the GNU Lesser General Public License (LGPL)    *
 # *   as published by the Free Software Foundation; either version 2 of     *
@@ -32,6 +34,13 @@ class Proxy(object):
     BaseType = "Fem::ConstraintPython"
 
     def __init__(self, obj):
-        obj.Proxy = self
+        self.Object = obj  # keep a ref to the DocObj for nonGui usage
+        obj.Proxy = self  # link between App::DocumentObject to this object
+
+    # a few objects had this method in their class before the move to this base class
+    # these objects will give a setAttr failed error on document loading without this method
+    def __setstate__(self, state):
+        if state:
+            self.Type = state
 
 ##  @}

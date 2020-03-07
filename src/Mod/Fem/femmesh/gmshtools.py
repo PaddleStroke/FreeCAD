@@ -27,15 +27,16 @@ __url__ = "http://www.freecadweb.org"
 ## \addtogroup FEM
 #  @{
 
-import sys
 import subprocess
+import sys
 
 import FreeCAD
 from FreeCAD import Console
-import Fem
 from FreeCAD import Units
+
+import Fem
 from . import meshtools
-import femtools.femutils as femutils
+from femtools import femutils
 
 
 class GmshTools():
@@ -846,7 +847,7 @@ class GmshTools():
         if not self.error:
             fem_mesh = Fem.read(self.temp_file_mesh)
             self.mesh_obj.FemMesh = fem_mesh
-            Console.PrintMessage("  New mesh was added to to the mesh object.\n")
+            Console.PrintMessage("  New mesh was added to the mesh object.\n")
         else:
             Console.PrintError("No mesh was created.\n")
 

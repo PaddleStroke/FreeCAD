@@ -173,6 +173,8 @@ inline void SketcherAddWorkspaceArcs<Gui::ToolBarItem>(Gui::ToolBarItem& geom){
             << "Sketcher_CompCreateConic"
             << "Sketcher_CompCreateBSpline";
 }
+    
+    
 template <typename T>
 void SketcherAddWorkspaceRegularPolygon(T& geom);
 template <>
@@ -189,6 +191,22 @@ template <>
 inline void SketcherAddWorkspaceRegularPolygon<Gui::ToolBarItem>(Gui::ToolBarItem& geom){
     geom    << "Sketcher_CompCreateRegularPolygon";
 }
+    
+        
+template <typename T>
+void SketcherAddWorkspaceCompCreateFillet(T& geom);
+template <>
+inline void SketcherAddWorkspaceCompCreateFillet<Gui::MenuItem>(Gui::MenuItem& geom){
+    geom    << "Sketcher_CreateFillet"
+            << "Sketcher_CreateChamfer"
+            << "Sketcher_CreatePolyChamfer"
+            << "Sketcher_CreatePolyChamferInward";
+}
+template <>
+inline void SketcherAddWorkspaceCompCreateFillet<Gui::ToolBarItem>(Gui::ToolBarItem& geom){
+    geom    << "Sketcher_CompCreateFillet";
+}
+    
 template <typename T>
 inline void SketcherAddWorkbenchGeometries(T& geom){
     geom    << "Sketcher_CreatePoint"
@@ -200,7 +218,7 @@ inline void SketcherAddWorkbenchGeometries(T& geom){
     SketcherAddWorkspaceRegularPolygon( geom );
     geom    << "Sketcher_CreateSlot"
             << "Separator"
-            << "Sketcher_CreateFillet"
+    SketcherAddWorkspaceCompCreateFillet( geom );
             << "Sketcher_Trimming"
             << "Sketcher_Extend"
             << "Sketcher_External"

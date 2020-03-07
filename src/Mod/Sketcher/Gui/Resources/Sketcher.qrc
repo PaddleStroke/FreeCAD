@@ -77,6 +77,7 @@
         <file>icons/Sketcher_CreateArc_Constr.svg</file>
         <file>icons/Sketcher_CreateBSpline.svg</file>
         <file>icons/Sketcher_CreateBSpline_Constr.svg</file>
+        <file>icons/Sketcher_CreateChamfer.svg</file>
         <file>icons/Sketcher_CreateCircle.svg</file>
         <file>icons/Sketcher_CreateCircle_Constr.svg</file>
         <file>icons/Sketcher_CreateEllipse.svg</file>
@@ -97,6 +98,7 @@
         <file>icons/Sketcher_Create_Periodic_BSpline.svg</file>
         <file>icons/Sketcher_Create_Periodic_BSpline_Constr.svg</file>
         <file>icons/Sketcher_CreatePoint.svg</file>
+        <file>icons/Sketcher_CreatePolyChamfer.svg</file>
         <file>icons/Sketcher_CreatePolyline.svg</file>
         <file>icons/Sketcher_CreatePolyline_Constr.svg</file>
         <file>icons/Sketcher_CreateRectangle.svg</file>

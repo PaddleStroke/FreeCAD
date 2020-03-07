@@ -209,10 +209,10 @@ public:
     int setConstruction(int GeoId, bool on);
 
     /// create a fillet
-    int fillet(int geoId, PointPos pos, double radius, bool trim=true);
+    int fillet(int geoId, PointPos pos, double radius, int nofAngles=1 , bool trim=true);
     int fillet(int geoId1, int geoId2,
                const Base::Vector3d& refPnt1, const Base::Vector3d& refPnt2,
-               double radius, bool trim=true);
+               double radius, int nofAngles=1, bool trim=true);
 
     /// trim a curve
     int trim(int geoId, const Base::Vector3d& point);

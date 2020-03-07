@@ -15,7 +15,7 @@
    id="svg2869"
    sodipodi:version="0.32"
    inkscape:version="0.92.4 (5da689c313, 2019-01-14)"
-   sodipodi:docname="Sketcher_CreateFillet.svg"
+   sodipodi:docname="Sketcher_CreatePolyChamfer.svg"
    inkscape:output_extension="org.inkscape.output.svg.inkscape"
    version="1.1">
   <defs
@@ -255,17 +255,17 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="4.0000002"
-     inkscape:cx="35.058628"
-     inkscape:cy="36.75926"
+     inkscape:zoom="5.6568543"
+     inkscape:cx="73.240262"
+     inkscape:cy="27.518923"
      inkscape:current-layer="g3389-6"
      showgrid="true"
      inkscape:document-units="px"
      inkscape:grid-bbox="true"
-     inkscape:window-width="498"
-     inkscape:window-height="424"
-     inkscape:window-x="218"
-     inkscape:window-y="152"
+     inkscape:window-width="1560"
+     inkscape:window-height="874"
+     inkscape:window-x="40"
+     inkscape:window-y="0"
      inkscape:window-maximized="1"
      inkscape:snap-bbox="true">
     <inkscape:grid
@@ -356,17 +356,17 @@
                transform="scale(-1,-1)" />
             <path
                style="fill:#d3d7cf;stroke:#2e3436;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-               d="m 61,55 v -6 l -9.999941,0.0205 C 23,49 15.000376,41 15.000119,15.040998 L 15,3.0000006 H 9.0000001 V 15.000001 C 9.0000001,44 20,55 51,55 v 0 z"
+               d="m 61,55 v -6 l -12,0 c -7.623031,-0.04769 -8,0 -26.593534,-7.000448 -0.109682,-0.0413 -0.359754,-0.314828 -0.367464,-0.337447 -1.807135,-5.301446 -7.038821,-20.32994 -7.038883,-26.621107 L 15,3.0000006 H 9.0000001 V 15.000001 c 0,6.986005 3.3289659,14.472271 8.4718029,31.108873 0.115319,0.373045 0.375544,0.501089 0.375544,0.501089 C 35,53 41,55 43,55 h 8 z"
                id="path3077"
                inkscape:connector-curvature="0"
-               transform="matrix(-6.8228185,4.776128e-8,-4.776128e-8,-6.8228185,-219.58206,922.14785)"
-               sodipodi:nodetypes="cccsccsccc" />
+               sodipodi:nodetypes="cccsssccsssccc"
+               transform="matrix(-6.8228185,4.776128e-8,-4.776128e-8,-6.8228185,-219.58206,922.14785)" />
             <path
                style="fill:none;stroke:#ffffff;stroke-width:13.64563656;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-               d="m -560.72297,574.18408 c 184.21608,2e-5 252.44427,61.40539 252.44428,238.79865"
+               d="m -561.0245,574.18408 c 27.29126,3e-5 68.22817,3e-5 197.62979,50.63577 4.32363,1.69187 3.32832,1.47364 4.13921,4.05744 35.61658,113.48648 50.97681,143.86575 50.97681,184.10544"
                id="path3892"
                inkscape:connector-curvature="0"
-               sodipodi:nodetypes="cc" />
+               sodipodi:nodetypes="cssc" />
             <path
                style="fill:none;stroke:#ffffff;stroke-width:1.99999999000000006;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
                d="m 11,4 0,12"
@@ -419,6 +419,32 @@
                x="-574.18408"
                y="-390.15253"
                transform="matrix(0,-1,1,0,0,0)" />
+            <g
+               transform="matrix(-6.8228185,4.776128e-8,-4.776128e-8,-6.8228185,-461.79212,903.3851)"
+               id="g894">
+              <text
+                 xml:space="preserve"
+                 style="font-style:normal;font-weight:normal;font-size:32px;line-height:125%;font-family:Sans;letter-spacing:0px;word-spacing:0px;fill:#bfbfbf;fill-opacity:1;stroke:#bfbfbf;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+                 x="-0.74706978"
+                 y="25.894707"
+                 id="text4553-3"><tspan
+                   sodipodi:role="line"
+                   id="tspan4551-6"
+                   x="-0.74706978"
+                   y="25.894707"
+                   style="font-size:32px;fill:#bfbfbf;stroke:#bfbfbf;stroke-opacity:1">N</tspan></text>
+              <text
+                 xml:space="preserve"
+                 style="font-style:normal;font-weight:normal;font-size:26.66666603px;line-height:125%;font-family:Sans;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+                 x="0.33403441"
+                 y="27.462246"
+                 id="text4553"><tspan
+                   sodipodi:role="line"
+                   id="tspan4551"
+                   x="0.33403441"
+                   y="27.462246"
+                   style="font-size:32px;fill:#cc0000;stroke:#000000;stroke-opacity:1">N</tspan></text>
+            </g>
           </g>
         </g>
         <g

@@ -258,7 +258,11 @@ template <>
 inline void SketcherAddWorkspaceFillets<Gui::MenuItem>(Gui::MenuItem& geom)
 {
     geom    << "Sketcher_CreateFillet"
-            << "Sketcher_CreatePointFillet";
+            << "Sketcher_CreatePointFillet"
+            << "Sketcher_CreateChamfer"
+            << "Sketcher_CreatePointChamfer"
+            << "Sketcher_CreatePolyChamfer"
+            << "Sketcher_CreatePolyChamferInward";
 }
 
 template <>

@@ -1743,7 +1743,7 @@ int SketchObject::transferConstraints(int fromGeoId, PointPos fromPosId, int toG
     return 0;
 }
 
-int SketchObject::fillet(int GeoId, PointPos PosId, double radius, bool trim, bool createCorner)
+int SketchObject::fillet(int GeoId, PointPos PosId, double radius, bool trim, bool createCorner, int nAngles)
 {
     if (GeoId < 0 || GeoId > getHighestCurveIndex())
         return -1;
@@ -1764,7 +1764,7 @@ int SketchObject::fillet(int GeoId, PointPos PosId, double radius, bool trim, bo
 
             Base::Vector3d midPnt1 = (lineSeg1->getStartPoint() + lineSeg1->getEndPoint()) / 2 ;
             Base::Vector3d midPnt2 = (lineSeg2->getStartPoint() + lineSeg2->getEndPoint()) / 2 ;
-            return fillet(GeoIdList[0], GeoIdList[1], midPnt1, midPnt2, radius, trim, createCorner);
+            return fillet(GeoIdList[0], GeoIdList[1], midPnt1, midPnt2, radius, nAngles, trim, createCorner);
         }
     }
 
@@ -1773,8 +1773,9 @@ int SketchObject::fillet(int GeoId, PointPos PosId, double radius, bool trim, bo
 
 int SketchObject::fillet(int GeoId1, int GeoId2,
                          const Base::Vector3d& refPnt1, const Base::Vector3d& refPnt2,
-                         double radius, bool trim, bool createCorner)
+                         double radius, bool trim, bool createCorner, int nAngles)
 {
+    Base::Console().Error("fillet(int GeoId1...\n");
     if (GeoId1 < 0 || GeoId1 > getHighestCurveIndex() ||
         GeoId2 < 0 || GeoId2 > getHighestCurveIndex())
         return -1;
@@ -1813,8 +1814,27 @@ int SketchObject::fillet(int GeoId1, int GeoId2,
 
         dist1.ProjectToLine(arc->getStartPoint(/*emulateCCW=*/true)-intersection, dir1);
         dist2.ProjectToLine(arc->getStartPoint(/*emulateCCW=*/true)-intersection, dir2);
-        Part::Geometry *newgeo = arc.get();
-        filletId = addGeometry(newgeo);
+
+        //std::vector<Part::Geometry*> newGeometries;
+        //newGeometries.push_back(arc.get());
+        Base::Console().Error("nofAngles is %d\n", nAngles);
+        if (nAngles == 2) {
+
+            Part::GeomLineSegment* chamferLine = new Part::GeomLineSegment();
+            chamferLine->setPoints(arc->getStartPoint(/*emulateCCW=*/true), arc->getEndPoint(/*emulateCCW=*/true));
+            Part::Geometry* newgeo = chamferLine;
+            int arcLineId = addGeometry(newgeo);
+
+            Part::Geometry* newgeoo = arc.get();
+            GeometryFacade::setConstruction(newgeoo, true);
+            filletId = addGeometry(newgeoo);
+
+        }
+        else {
+            Part::Geometry* newgeo = arc.get();
+            filletId = addGeometry(newgeo);
+        }
+        
 
         if (trim) {
             PointPos PosId1 = (filletCenter-intersection)*dir1 > 0 ? start : end;

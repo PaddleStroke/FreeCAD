@@ -66,6 +66,7 @@
 #include "GeometryCreationMode.h"
 
 #include "SketcherRegularPolygonDialog.h"
+#include "SketcherFilletDialog.h"
 
 using namespace std;
 using namespace SketcherGui;
@@ -5656,12 +5657,16 @@ namespace SketcherGui {
 class DrawSketchHandlerFillet: public DrawSketchHandler
 {
 public:
+
+    //nofAngles add support for chamfer and poly-chamfer and inward-poly-chamfer and inward-fillet. 1 is normal fillet
+    //-1 is inward fillet, 2 and -2 are chamfer, 3 is a two edge chamfer, -3 is two edge inward chamfer and so on.
+
     enum FilletType {
         SimpleFillet,
         ConstraintPreservingFillet
     };
 
-    DrawSketchHandlerFillet(FilletType filletType) : filletType(filletType), Mode(STATUS_SEEK_First), firstCurve(0) {}
+    DrawSketchHandlerFillet(int NofAngles, FilletType filletType) : nofAngles(NofAngles), filletType(filletType), Mode(STATUS_SEEK_First), firstCurve(0) {}
     virtual ~DrawSketchHandlerFillet()
     {
         Gui::Selection().rmvSelectionGate();
@@ -5693,6 +5698,8 @@ public:
     virtual bool releaseButton(Base::Vector2d onSketchPos)
     {
         bool construction=false;
+
+        //Case 1 : User selected a point. In this case the fillet will be made at this point (if there are two lines intersecting)
         int VtId = sketchgui->getPreselectPoint();
         if (Mode == STATUS_SEEK_First && VtId != -1) {
             int GeoId;
@@ -5735,8 +5742,8 @@ public:
                 try {
                     bool pointFillet = (filletType == 1);
                     Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Create fillet"));
-                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "fillet(%d,%d,%f,%s,%s)", GeoId, PosId, radius, "True",
-                        pointFillet ? "True":"False");
+                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "fillet(%d,%d,%f,%s,%s,%d)", GeoId, PosId, radius, "True",
+                        pointFillet ? "True":"False", nofAngles);
 
                     if (construction) {
                         Gui::cmdAppObjectArgs(sketchgui->getObject(), "toggleConstruction(%d) ", currentgeoid+1);
@@ -5754,6 +5761,7 @@ public:
             return true;
         }
 
+        //Case 2 : User selected a curve. Then the fillet will be made between this curve and next selected curve
         int GeoId = sketchgui->getPreselectCurve();
         if (GeoId > -1) {
             const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(GeoId);
@@ -5813,11 +5821,11 @@ public:
                     try {
                         bool pointFillet = (filletType == 1);
                         Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Create fillet"));
-                        Gui::cmdAppObjectArgs(sketchgui->getObject(), "fillet(%d,%d,App.Vector(%f,%f,0),App.Vector(%f,%f,0),%f,%s,%s)",
+                        Gui::cmdAppObjectArgs(sketchgui->getObject(), "fillet(%d,%d,App.Vector(%f,%f,0),App.Vector(%f,%f,0),%f,%s,%s,%d)",
                                   firstCurve, secondCurve,
                                   firstPos.x, firstPos.y,
                                   secondPos.x, secondPos.y, radius,
-                                  "True", pointFillet ? "True":"False");
+                                  "True", pointFillet ? "True":"False", nofAngles);
                         Gui::Command::commitCommand();
                     }
                     catch (const Base::CADKernelError& e) {
@@ -5839,6 +5847,7 @@ public:
 
                     tryAutoRecompute(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()));
 
+                    //Set the fillet as construction if the selected lines were construction lines.
                     if(construction) {
                         Gui::cmdAppObjectArgs(sketchgui->getObject(), "toggleConstruction(%d) ",
                             currentgeoid+1);
@@ -5858,6 +5867,7 @@ public:
     }
 
 protected:
+    int nofAngles;
     int filletType;
     SelectMode Mode;
     int firstCurve;
@@ -5883,7 +5893,7 @@ CmdSketcherCreateFillet::CmdSketcherCreateFillet()
 void CmdSketcherCreateFillet::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(DrawSketchHandlerFillet::SimpleFillet));
+    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(1, DrawSketchHandlerFillet::SimpleFillet));
 }
 
 bool CmdSketcherCreateFillet::isActive(void)
@@ -5912,13 +5922,132 @@ CmdSketcherCreatePointFillet::CmdSketcherCreatePointFillet()
 void CmdSketcherCreatePointFillet::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(DrawSketchHandlerFillet::ConstraintPreservingFillet));
+    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(1, DrawSketchHandlerFillet::ConstraintPreservingFillet));
 }
 
 bool CmdSketcherCreatePointFillet::isActive(void)
 {
     return isCreateGeoActive(getActiveGuiDocument());
 }
+
+// ======================================================================================
+
+DEF_STD_CMD_A(CmdSketcherCreatePointChamfer)
+
+CmdSketcherCreatePointChamfer::CmdSketcherCreatePointChamfer()
+    : Command("Sketcher_CreatePointChamfer")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Create corner-preserving chamfer");
+    sToolTipText = QT_TR_NOOP("Chamfer that preserves intersection point and most constraints");
+    sWhatsThis = "Sketcher_CreatePointChamfer";
+    sStatusTip = sToolTipText;
+    sPixmap = "Sketcher_CreateFillet";
+    sAccel = "G, F, P";
+    eType = ForEdit;
+}
+
+void CmdSketcherCreatePointChamfer::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(2, DrawSketchHandlerFillet::ConstraintPreservingFillet));
+}
+
+bool CmdSketcherCreatePointChamfer::isActive(void)
+{
+    return isCreateGeoActive(getActiveGuiDocument());
+}
+
+// ======================================================================================
+
+DEF_STD_CMD_A(CmdSketcherCreateChamfer)
+
+CmdSketcherCreateChamfer::CmdSketcherCreateChamfer()
+    : Command("Sketcher_CreateChamfer")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Create chamfer");
+    sToolTipText = QT_TR_NOOP("Create a chamfer between two lines or at a coincident point");
+    sWhatsThis = "Sketcher_CreateChamfer";
+    sStatusTip = sToolTipText;
+    sPixmap = "Sketcher_CreateChamfer";
+    sAccel = "";
+    eType = ForEdit;
+}
+
+void CmdSketcherCreateChamfer::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(2, DrawSketchHandlerFillet::SimpleFillet));
+}
+
+bool CmdSketcherCreateChamfer::isActive(void)
+{
+    return isCreateGeoActive(getActiveGuiDocument());
+}
+
+DEF_STD_CMD_A(CmdSketcherCreatePolyChamfer)
+
+CmdSketcherCreatePolyChamfer::CmdSketcherCreatePolyChamfer()
+    : Command("Sketcher_CreatePolyChamfer")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Create regular poly-chamfer");
+    sToolTipText = QT_TR_NOOP("Create a regular poly-chamfer between two lines or at a coincident point");
+    sWhatsThis = "Sketcher_CreatePolyChamfer";
+    sStatusTip = sToolTipText;
+    sPixmap = "Sketcher_CreatePolyChamfer";
+    sAccel = "";
+    eType = ForEdit;
+}
+
+void CmdSketcherCreatePolyChamfer::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    /*SketcherFilletDialog sfd; // Pop-up asking for number of corners
+    if (sfd.exec() == QDialog::Accepted)
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(sfd.sides, DrawSketchHandlerFillet::SimpleFillet));
+    */
+}
+
+bool CmdSketcherCreatePolyChamfer::isActive(void)
+{
+    return isCreateGeoActive(getActiveGuiDocument());
+}
+
+DEF_STD_CMD_A(CmdSketcherCreatePolyChamferInward)
+
+CmdSketcherCreatePolyChamferInward::CmdSketcherCreatePolyChamferInward()
+    : Command("Sketcher_CreatePolyChamferInward")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Create fillet or regular poly-chamfer inward");
+    sToolTipText = QT_TR_NOOP("Create a fillet or a regular poly-chamfer between two lines or at a coincident point");
+    sWhatsThis = "Sketcher_CreatePolyChamferInward";
+    sStatusTip = sToolTipText;
+    sPixmap = "Sketcher_CreatePolyChamferInward";
+    sAccel = "";
+    eType = ForEdit;
+}
+
+void CmdSketcherCreatePolyChamferInward::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    /*SketcherFilletDialog sfd; // Pop-up asking for number of corners
+    if (sfd.exec() == QDialog::Accepted)
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(-sfd.sides, DrawSketchHandlerFillet::SimpleFillet));
+    */
+}
+
+bool CmdSketcherCreatePolyChamferInward::isActive(void)
+{
+    return isCreateGeoActive(getActiveGuiDocument());
+}
+
 
 /// @brief Macro that declares a new sketcher command class 'CmdSketcherCompCreateFillets'
 DEF_STD_CMD_ACLU(CmdSketcherCompCreateFillets)
@@ -5944,11 +6073,28 @@ CmdSketcherCompCreateFillets::CmdSketcherCompCreateFillets()
  */
 void CmdSketcherCompCreateFillets::activated(int iMsg)
 {
-    if (iMsg == 0) {
-        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(DrawSketchHandlerFillet::SimpleFillet));
-    } else if (iMsg == 1) {
-        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(DrawSketchHandlerFillet::ConstraintPreservingFillet));
-    } else {
+    switch (iMsg) {
+    case 0: //fillet tool
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(1, DrawSketchHandlerFillet::SimpleFillet)); break;
+    case 1: //fillet with point tool
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(1, DrawSketchHandlerFillet::ConstraintPreservingFillet)); break;
+    case 2: //chamfer tool
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(2, DrawSketchHandlerFillet::SimpleFillet)); break;
+    case 3: //chamfer with point tool
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(2, DrawSketchHandlerFillet::ConstraintPreservingFillet)); break;
+    /*case 4: //poly chamfer
+    {
+        SketcherFilletDialog sfd; // Pop-up asking for number of angle
+        if (sfd.exec() == QDialog::Accepted)
+            ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(sfd.sides, DrawSketchHandlerFillet::SimpleFillet));
+    } break;
+    case 5: //poly chamfer inward
+    {
+        SketcherFilletDialog sfd; // Pop-up asking for number of angle
+        if (sfd.exec() == QDialog::Accepted)
+            ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerFillet(-sfd.sides, DrawSketchHandlerFillet::SimpleFillet));
+    } break;*/
+    default:
         return;
     }
 
@@ -5973,6 +6119,18 @@ Gui::Action * CmdSketcherCompCreateFillets::createAction(void)
     QAction* pointFillet = pcAction->addAction(QString());
     pointFillet->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePointFillet"));
 
+    QAction* chamfer = pcAction->addAction(QString());
+    chamfer->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateChamfer"));
+
+    QAction* pointChamfer = pcAction->addAction(QString());
+    pointChamfer->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePointChamfer"));
+    
+    QAction* polychamfer = pcAction->addAction(QString());
+    polychamfer->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePolyChamfer"));
+    
+    QAction* polychamferinward = pcAction->addAction(QString());
+    polychamferinward->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePolyChamferInward"));
+
     _pcAction = pcAction;
     languageChange();
 
@@ -5994,6 +6152,10 @@ void CmdSketcherCompCreateFillets::updateAction(int mode)
     int index = pcAction->property("defaultAction").toInt();
     a[0]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFillet"));
     a[1]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePointFillet"));
+    a[2]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateChamfer"));
+    a[3]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePointChamfer"));
+    a[4]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePolyChamfer"));
+    a[5]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePolyChamferInward"));
     getAction()->setIcon(a[index]->icon());
 }
 
@@ -6014,6 +6176,23 @@ void CmdSketcherCompCreateFillets::languageChange()
     pointFillet->setText(QApplication::translate("CmdSketcherCompCreateFillets","Constraint-preserving sketch fillet"));
     pointFillet->setToolTip(QApplication::translate("Sketcher_CreatePointFillet","Fillet that preserves constraints and intersection point"));
     pointFillet->setStatusTip(QApplication::translate("Sketcher_CreatePointFillet","Fillet that preserves constraints and intersection point"));
+    QAction* simpleChamfer = a[2];
+    simpleChamfer->setText(QApplication::translate("CmdSketcherCompCreateFillets", "Chamfer"));
+    simpleChamfer->setToolTip(QApplication::translate("Sketcher_CreateChamfer", "Create a chamfer between two lines"));
+    simpleChamfer->setStatusTip(QApplication::translate("Sketcher_CreateChamfer", "Create a chamfer between two lines"));
+    QAction* pointChamfer = a[3];
+    pointChamfer->setText(QApplication::translate("CmdSketcherCompCreateFillets", "Constraint-preserving sketch chamfer"));
+    pointChamfer->setToolTip(QApplication::translate("Sketcher_CreatePointChamfer", "Chamfer that preserves constraints and intersection point"));
+    pointChamfer->setStatusTip(QApplication::translate("Sketcher_CreatePointChamfer", "Chamfer that preserves constraints and intersection point"));
+    QAction* polyChamfer = a[4];
+    polyChamfer->setText(QApplication::translate("CmdSketcherCompCreateFillets", "PolyChamfer"));
+    polyChamfer->setToolTip(QApplication::translate("Sketcher_CreatePolyChamfer", "Create a poly-chamfer between two lines"));
+    polyChamfer->setStatusTip(QApplication::translate("Sketcher_CreatePentSketcher_CreatePolyChamferagon", "Create a poly-chamfer between two lines"));
+    QAction* polyInwardChamfer = a[5];
+    polyInwardChamfer->setText(QApplication::translate("CmdSketcherCompCreateFillets", "PolyChamferInward"));
+    polyInwardChamfer->setToolTip(QApplication::translate("Sketcher_CreatePolyChamferInward", "Create a inward fillet or poly-cchamfer between two lines"));
+    polyInwardChamfer->setStatusTip(QApplication::translate("Sketcher_CreatePolyChamferInward", "Create a inward fillet or poly-cchamfer between two lines"));
+
 }
 
 bool CmdSketcherCompCreateFillets::isActive(void)
@@ -7840,6 +8019,10 @@ void CreateSketcherCommandsCreateGeo(void)
     rcCmdMgr.addCommand(new CmdSketcherCompCreateFillets());
     rcCmdMgr.addCommand(new CmdSketcherCreateFillet());
     rcCmdMgr.addCommand(new CmdSketcherCreatePointFillet());
+    rcCmdMgr.addCommand(new CmdSketcherCreateChamfer());
+    rcCmdMgr.addCommand(new CmdSketcherCreatePointChamfer());
+    rcCmdMgr.addCommand(new CmdSketcherCreatePolyChamfer());
+    rcCmdMgr.addCommand(new CmdSketcherCreatePolyChamferInward());
     //rcCmdMgr.addCommand(new CmdSketcherCreateText());
     //rcCmdMgr.addCommand(new CmdSketcherCreateDraftLine());
     rcCmdMgr.addCommand(new CmdSketcherTrimming());

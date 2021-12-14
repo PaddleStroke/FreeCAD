@@ -196,17 +196,17 @@ void removeRedundantHorizontalVertical(Sketcher::SketchObject* psketch,
                         geoId1iterator = coincidents.find(-1);
 
                         if( geoId1iterator != coincidents.end()) {
-                            if( (*geoId1iterator).second == Sketcher::start )
+                            if( (*geoId1iterator).second == Sketcher::PointPos::start )
                                 orig = true;
                         }
                     }
                     else { // it may be that there is no constraint at all, but there is external geometry
                         ext = (*it).GeoId < 0;
-                        orig = ((*it).GeoId == -1 && (*it).PosId == Sketcher::start);
+                        orig = ((*it).GeoId == -1 && (*it).PosId == Sketcher::PointPos::start);
                     }
                 }
                 else if( (*it).Type == Sketcher::PointOnObject && axis == false) {
-                    axis = (((*it).GeoId == -1 && (*it).PosId == Sketcher::none) || ((*it).GeoId == -2 && (*it).PosId == Sketcher::none));
+                    axis = (((*it).GeoId == -1 && (*it).PosId == Sketcher::PointPos::none) || ((*it).GeoId == -2 && (*it).PosId == Sketcher::PointPos::none));
                 }
 
             }
@@ -341,13 +341,13 @@ public:
 
             // add auto constraints for the line segment start
             if (!sugConstr1.empty()) {
-                createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::start);
+                createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::PointPos::start);
                 sugConstr1.clear();
             }
 
             // add auto constraints for the line segment end
             if (!sugConstr2.empty()) {
-                createAutoConstraints(sugConstr2, getHighestCurveIndex(), Sketcher::end);
+                createAutoConstraints(sugConstr2, getHighestCurveIndex(), Sketcher::PointPos::end);
                 sugConstr2.clear();
             }
 
@@ -627,13 +627,13 @@ public:
             if(constructionMethod == Diagonal) {
                 // add auto constraints at the start of the first side
                 if (sugConstr1.size() > 0) {
-                    createAutoConstraints(sugConstr1, getHighestCurveIndex() - 3 , Sketcher::start);
+                    createAutoConstraints(sugConstr1, getHighestCurveIndex() - 3 , Sketcher::PointPos::start);
                     sugConstr1.clear();
                 }
 
                 // add auto constraints at the end of the second side
                 if (sugConstr2.size() > 0) {
-                    createAutoConstraints(sugConstr2, getHighestCurveIndex() - 2, Sketcher::end);
+                    createAutoConstraints(sugConstr2, getHighestCurveIndex() - 2, Sketcher::PointPos::end);
                     sugConstr2.clear();
                 }
 
@@ -641,13 +641,13 @@ public:
             else if (constructionMethod == CenterAndCorner) {
                 // add auto constraints at the start of the first side
                 if (sugConstr1.size() > 0) {
-                    createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::start);
+                    createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::PointPos::start);
                     sugConstr1.clear();
                 }
 
                 // add auto constraints at the end of the second side
                 if (sugConstr2.size() > 0) {
-                    createAutoConstraints(sugConstr2, getHighestCurveIndex() - 3, Sketcher::end);
+                    createAutoConstraints(sugConstr2, getHighestCurveIndex() - 3, Sketcher::PointPos::end);
                     sugConstr2.clear();
                 }
             }
@@ -1003,13 +1003,13 @@ public:
 
                 // add auto constraints at the StartPos auxiliary point
                 if (sugConstr1.size() > 0) {
-                    createAutoConstraints(sugConstr1, getHighestCurveIndex() - 1, Sketcher::start);
+                    createAutoConstraints(sugConstr1, getHighestCurveIndex() - 1, Sketcher::PointPos::start);
                     sugConstr1.clear();
                 }
 
                 // add auto constraints at the EndPos auxiliary point
                 if (sugConstr2.size() > 0) {
-                    createAutoConstraints(sugConstr2, getHighestCurveIndex(), Sketcher::start);
+                    createAutoConstraints(sugConstr2, getHighestCurveIndex(), Sketcher::PointPos::start);
                     sugConstr2.clear();
                 }
 
@@ -1216,8 +1216,8 @@ public:
       , EditCurve(2)
       , firstCurve(-1)
       , previousCurve(-1)
-      , firstPosId(Sketcher::none)
-      , previousPosId(Sketcher::none)
+      , firstPosId(Sketcher::PointPos::none)
+      , previousPosId(Sketcher::PointPos::none)
       , startAngle(0)
       , endAngle(0)
       , arcRadius(0)
@@ -1479,8 +1479,8 @@ public:
                     const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(sugConstr1[i].GeoId);
                     if ((geom->getTypeId() == Part::GeomLineSegment::getClassTypeId() ||
                          geom->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) &&
-                        (sugConstr1[i].PosId == Sketcher::start ||
-                         sugConstr1[i].PosId == Sketcher::end)) {
+                        (sugConstr1[i].PosId == Sketcher::PointPos::start ||
+                         sugConstr1[i].PosId == Sketcher::PointPos::end)) {
                         previousCurve = sugConstr1[i].GeoId;
                         previousPosId = sugConstr1[i].PosId;
                         updateTransitionData(previousCurve,previousPosId); // -> dirVec, EditCurve[0]
@@ -1495,7 +1495,7 @@ public:
 
             // remember our first point (even if we are doing a transition from a previous curve)
             firstCurve = getHighestCurveIndex() + 1;
-            firstPosId = Sketcher::start;
+            firstPosId = Sketcher::PointPos::start;
 
             if (SegmentMode == SEGMENT_MODE_Line)
                 EditCurve.resize(TransitionMode == TRANSITION_MODE_Free ? 2 : 3);
@@ -1523,8 +1523,8 @@ public:
                     suppressTransition=false;
                     firstCurve=-1;
                     previousCurve=-1;
-                    firstPosId=Sketcher::none;
-                    previousPosId=Sketcher::none;
+                    firstPosId=Sketcher::PointPos::none;
+                    previousPosId=Sketcher::PointPos::none;
                     EditCurve.clear();
                     sketchgui->drawEdit(EditCurve);
                     EditCurve.resize(2);
@@ -1542,16 +1542,17 @@ public:
             }
 
             Mode = STATUS_Do;
-            if (sketchgui->getPreselectPoint() != -1 && firstPosId != Sketcher::none) {
+
+            if (sketchgui->getPreselectPoint() != -1 && firstPosId != Sketcher::PointPos::none) {
                 int GeoId;
                 Sketcher::PointPos PosId;
                 sketchgui->getSketchObject()->getGeoVertexIndex(sketchgui->getPreselectPoint(),GeoId,PosId);
                 if (sketchgui->getSketchObject()->arePointsCoincident(GeoId,PosId,firstCurve,firstPosId))
                     Mode = STATUS_Close;
             }
-            else if (sketchgui->getPreselectCross() == 0 && firstPosId != Sketcher::none) {
+            else if (sketchgui->getPreselectCross() == 0 && firstPosId != Sketcher::PointPos::none) {
                 // close line started at root point
-                if (sketchgui->getSketchObject()->arePointsCoincident(-1,Sketcher::start,firstCurve,firstPosId))
+                if (sketchgui->getSketchObject()->arePointsCoincident(-1,Sketcher::PointPos::start,firstCurve,firstPosId))
                     Mode = STATUS_Close;
             }
         }
@@ -1604,11 +1605,11 @@ public:
 
             int lastCurve = getHighestCurveIndex();
             // issue the constraint
-            if (addedGeometry && (previousPosId != Sketcher::none)) {
+            if (addedGeometry && (previousPosId != Sketcher::PointPos::none)) {
                 Sketcher::PointPos lastStartPosId = (SegmentMode == SEGMENT_MODE_Arc && startAngle > endAngle) ?
-                                                    Sketcher::end : Sketcher::start;
+                                                    Sketcher::PointPos::end : Sketcher::PointPos::start;
                 Sketcher::PointPos lastEndPosId = (SegmentMode == SEGMENT_MODE_Arc && startAngle > endAngle) ?
-                                                  Sketcher::start : Sketcher::end;
+                                                  Sketcher::PointPos::start : Sketcher::PointPos::end;
                 // in case of a tangency constraint, the coincident constraint is redundant
                 std::string constrType = "Coincident";
                 if (!suppressTransition && previousCurve != -1) {
@@ -1619,7 +1620,7 @@ public:
                         constrType = "Perpendicular";
                 }
                 Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('%s',%i,%i,%i,%i)) ",
-                     constrType.c_str(), previousCurve, previousPosId, lastCurve, lastStartPosId);
+                     constrType.c_str(), previousCurve, static_cast<int>(previousPosId), lastCurve, static_cast<int>(lastStartPosId));
 
                 if(SnapMode == SNAP_MODE_45Degree && Mode != STATUS_Close) {
                     // -360, -315, -270, -225, -180, -135, -90, -45,  0, 45,  90, 135, 180, 225, 270, 315, 360
@@ -1634,7 +1635,7 @@ public:
                 if (Mode == STATUS_Close) {
                     // close the loop by constrain to the first curve point
                     Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Coincident',%i,%i,%i,%i)) ",
-                                          lastCurve,lastEndPosId,firstCurve,firstPosId);
+                                          lastCurve,static_cast<int>(lastEndPosId),firstCurve,static_cast<int>(firstPosId));
                 }
                 Gui::Command::commitCommand();
 
@@ -1662,7 +1663,7 @@ public:
                         if (sugConstr2[i].Type != Sketcher::Coincident)
                             sugConstr.push_back(sugConstr2[i]);
                     }
-                    createAutoConstraints(sugConstr, getHighestCurveIndex(), Sketcher::end);
+                    createAutoConstraints(sugConstr, getHighestCurveIndex(), Sketcher::PointPos::end);
                     sugConstr2.clear();
                 }
 
@@ -1686,8 +1687,8 @@ public:
                     suppressTransition=false;
                     firstCurve=-1;
                     previousCurve=-1;
-                    firstPosId=Sketcher::none;
-                    previousPosId=Sketcher::none;
+                    firstPosId=Sketcher::PointPos::none;
+                    previousPosId=Sketcher::PointPos::none;
                     EditCurve.clear();
                     sketchgui->drawEdit(EditCurve);
                     EditCurve.resize(2);
@@ -1706,7 +1707,7 @@ public:
 
                 // Add auto constraints
                 if (sugConstr1.size() > 0) { // this is relevant only to the very first point
-                    createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::start);
+                    createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::PointPos::start);
                     sugConstr1.clear();
                 }
 
@@ -1725,7 +1726,7 @@ public:
                 if (sugConstr2.size() > 0) {
                     createAutoConstraints(sugConstr2, getHighestCurveIndex(),
                                           (SegmentMode == SEGMENT_MODE_Arc && startAngle > endAngle) ?
-                                            Sketcher::start : Sketcher::end);
+                                            Sketcher::PointPos::start : Sketcher::PointPos::end);
                     sugConstr2.clear();
                 }
 
@@ -1734,7 +1735,7 @@ public:
                 // remember the vertex for the next rounds constraint..
                 previousCurve = getHighestCurveIndex();
                 previousPosId = (SegmentMode == SEGMENT_MODE_Arc && startAngle > endAngle) ?
-                                 Sketcher::start : Sketcher::end; // cw arcs are rendered in reverse
+                                 Sketcher::PointPos::start : Sketcher::PointPos::end; // cw arcs are rendered in reverse
 
                 // setup for the next line segment
                 // calculate dirVec and EditCurve[0]
@@ -1786,8 +1787,8 @@ public:
                 suppressTransition=false;
                 firstCurve=-1;
                 previousCurve=-1;
-                firstPosId=Sketcher::none;
-                previousPosId=Sketcher::none;
+                firstPosId=Sketcher::PointPos::none;
+                previousPosId=Sketcher::PointPos::none;
                 firstsegment=true;
                 EditCurve.clear();
                 sketchgui->drawEdit(EditCurve);
@@ -1827,7 +1828,7 @@ protected:
             dirVec.Set(lineSeg->getEndPoint().x - lineSeg->getStartPoint().x,
                        lineSeg->getEndPoint().y - lineSeg->getStartPoint().y,
                        0.f);
-            if (PosId == Sketcher::start) {
+            if (PosId == Sketcher::PointPos::start) {
                 dirVec *= -1;
                 EditCurve[0] = Base::Vector2d(lineSeg->getStartPoint().x, lineSeg->getStartPoint().y);
             }
@@ -1836,7 +1837,7 @@ protected:
         }
         else if (geom->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
             const Part::GeomArcOfCircle *arcSeg = static_cast<const Part::GeomArcOfCircle *>(geom);
-            if (PosId == Sketcher::start) {
+            if (PosId == Sketcher::PointPos::start) {
                 EditCurve[0] = Base::Vector2d(arcSeg->getStartPoint(/*emulateCCW=*/true).x,arcSeg->getStartPoint(/*emulateCCW=*/true).y);
                 dirVec = Base::Vector3d(0.f,0.f,-1.0) % (arcSeg->getStartPoint(/*emulateCCW=*/true)-arcSeg->getCenter());
             }
@@ -2046,19 +2047,19 @@ public:
 
             // Auto Constraint center point
             if (sugConstr1.size() > 0) {
-                createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::mid);
+                createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::PointPos::mid);
                 sugConstr1.clear();
             }
 
             // Auto Constraint first picked point
             if (sugConstr2.size() > 0) {
-                createAutoConstraints(sugConstr2, getHighestCurveIndex(), (arcAngle > 0) ? Sketcher::start : Sketcher::end );
+                createAutoConstraints(sugConstr2, getHighestCurveIndex(), (arcAngle > 0) ? Sketcher::PointPos::start : Sketcher::PointPos::end );
                 sugConstr2.clear();
             }
 
             // Auto Constraint second picked point
             if (sugConstr3.size() > 0) {
-                createAutoConstraints(sugConstr3, getHighestCurveIndex(), (arcAngle > 0) ? Sketcher::end : Sketcher::start);
+                createAutoConstraints(sugConstr3, getHighestCurveIndex(), (arcAngle > 0) ? Sketcher::PointPos::end : Sketcher::PointPos::start);
                 sugConstr3.clear();
             }
 
@@ -2130,8 +2131,8 @@ public:
       : Mode(STATUS_SEEK_First), EditCurve(2)
       , radius(0), startAngle(0)
       , endAngle(0), arcAngle(0)
-      , arcPos1(Sketcher::none)
-      , arcPos2(Sketcher::none)
+      , arcPos1(Sketcher::PointPos::none)
+      , arcPos2(Sketcher::PointPos::none)
     {
     }
     virtual ~DrawSketchHandler3PointArc(){}
@@ -2206,14 +2207,14 @@ public:
                     if (angle2 > angle1) {
                         EditCurve[0] =  FirstPoint;
                         EditCurve[29] = SecondPoint;
-                        arcPos1 = Sketcher::start;
-                        arcPos2 = Sketcher::end;
+                        arcPos1 = Sketcher::PointPos::start;
+                        arcPos2 = Sketcher::PointPos::end;
                     }
                     else {
                         EditCurve[0] =  SecondPoint;
                         EditCurve[29] = FirstPoint;
-                        arcPos1 = Sketcher::end;
-                        arcPos2 = Sketcher::start;
+                        arcPos1 = Sketcher::PointPos::end;
+                        arcPos2 = Sketcher::PointPos::start;
                     }
                     startAngle = min(angle1, angle2);
                     endAngle   = max(angle1, angle2);
@@ -2224,14 +2225,14 @@ public:
                     if (angle2 > angle1) {
                         EditCurve[0] =  SecondPoint;
                         EditCurve[29] = FirstPoint;
-                        arcPos1 = Sketcher::end;
-                        arcPos2 = Sketcher::start;
+                        arcPos1 = Sketcher::PointPos::end;
+                        arcPos2 = Sketcher::PointPos::start;
                     }
                     else {
                         EditCurve[0] =  FirstPoint;
                         EditCurve[29] = SecondPoint;
-                        arcPos1 = Sketcher::start;
-                        arcPos2 = Sketcher::end;
+                        arcPos1 = Sketcher::PointPos::start;
+                        arcPos2 = Sketcher::PointPos::end;
                     }
                     startAngle = max(angle1, angle2);
                     endAngle   = min(angle1, angle2);
@@ -2328,7 +2329,7 @@ public:
 
             // Auto Constraint third picked point
             if (sugConstr3.size() > 0) {
-                createAutoConstraints(sugConstr3, getHighestCurveIndex(), Sketcher::none);
+                createAutoConstraints(sugConstr3, getHighestCurveIndex(), Sketcher::PointPos::none);
                 sugConstr3.clear();
             }
 
@@ -2586,13 +2587,13 @@ public:
 
             // add auto constraints for the center point
             if (sugConstr1.size() > 0) {
-                createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::mid);
+                createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::PointPos::mid);
                 sugConstr1.clear();
             }
 
             // add suggested constraints for circumference
             if (sugConstr2.size() > 0) {
-                createAutoConstraints(sugConstr2, getHighestCurveIndex(), Sketcher::none);
+                createAutoConstraints(sugConstr2, getHighestCurveIndex(), Sketcher::PointPos::none);
                 sugConstr2.clear();
             }
 
@@ -3356,30 +3357,30 @@ private:
         if (method == CENTER_PERIAPSIS_B) {
             // add auto constraints for the center point
             if (sugConstr1.size() > 0) {
-                createAutoConstraints(sugConstr1, currentgeoid, Sketcher::mid);
+                createAutoConstraints(sugConstr1, currentgeoid, Sketcher::PointPos::mid);
                 sugConstr1.clear();
             }
             if (sugConstr2.size() > 0) {
-                createAutoConstraints(sugConstr2, currentgeoid, Sketcher::none);
+                createAutoConstraints(sugConstr2, currentgeoid, Sketcher::PointPos::none);
                 sugConstr2.clear();
             }
             if (sugConstr3.size() > 0) {
-                createAutoConstraints(sugConstr3, currentgeoid, Sketcher::none);
+                createAutoConstraints(sugConstr3, currentgeoid, Sketcher::PointPos::none);
                 sugConstr3.clear();
             }
         }
 
         if (method == PERIAPSIS_APOAPSIS_B) {
             if (sugConstr1.size() > 0) {
-                createAutoConstraints(sugConstr1, currentgeoid, Sketcher::none);
+                createAutoConstraints(sugConstr1, currentgeoid, Sketcher::PointPos::none);
                 sugConstr1.clear();
             }
             if (sugConstr2.size() > 0) {
-                createAutoConstraints(sugConstr2, currentgeoid, Sketcher::none);
+                createAutoConstraints(sugConstr2, currentgeoid, Sketcher::PointPos::none);
                 sugConstr2.clear();
             }
             if (sugConstr3.size() > 0) {
-                createAutoConstraints(sugConstr3, currentgeoid, Sketcher::none);
+                createAutoConstraints(sugConstr3, currentgeoid, Sketcher::PointPos::none);
                 sugConstr3.clear();
             }
         }
@@ -3728,25 +3729,25 @@ public:
 
             // add auto constraints for the center point
             if (sugConstr1.size() > 0) {
-                createAutoConstraints(sugConstr1, currentgeoid, Sketcher::mid);
+                createAutoConstraints(sugConstr1, currentgeoid, Sketcher::PointPos::mid);
                 sugConstr1.clear();
             }
 
             // add suggested constraints for arc
             if (sugConstr2.size() > 0) {
-                createAutoConstraints(sugConstr2, currentgeoid, Sketcher::none);
+                createAutoConstraints(sugConstr2, currentgeoid, Sketcher::PointPos::none);
                 sugConstr2.clear();
             }
 
             // add suggested constraints for start of arc
             if (sugConstr3.size() > 0) {
-                createAutoConstraints(sugConstr3, currentgeoid, isOriginalArcCCW?Sketcher::start:Sketcher::end);
+                createAutoConstraints(sugConstr3, currentgeoid, isOriginalArcCCW?Sketcher::PointPos::start:Sketcher::PointPos::end);
                 sugConstr3.clear();
             }
 
             // add suggested constraints for start of arc
             if (sugConstr4.size() > 0) {
-                createAutoConstraints(sugConstr4, currentgeoid, isOriginalArcCCW?Sketcher::end:Sketcher::start);
+                createAutoConstraints(sugConstr4, currentgeoid, isOriginalArcCCW?Sketcher::PointPos::end:Sketcher::PointPos::start);
                 sugConstr4.clear();
             }
 
@@ -4070,25 +4071,25 @@ public:
 
             // add auto constraints for the center point
             if (sugConstr1.size() > 0) {
-                createAutoConstraints(sugConstr1, currentgeoid, Sketcher::mid);
+                createAutoConstraints(sugConstr1, currentgeoid, Sketcher::PointPos::mid);
                 sugConstr1.clear();
             }
 
             // add suggested constraints for arc
             if (sugConstr2.size() > 0) {
-                createAutoConstraints(sugConstr2, currentgeoid, Sketcher::none);
+                createAutoConstraints(sugConstr2, currentgeoid, Sketcher::PointPos::none);
                 sugConstr2.clear();
             }
 
             // add suggested constraints for start of arc
             if (sugConstr3.size() > 0) {
-                createAutoConstraints(sugConstr3, currentgeoid, isOriginalArcCCW?Sketcher::start:Sketcher::end);
+                createAutoConstraints(sugConstr3, currentgeoid, isOriginalArcCCW?Sketcher::PointPos::start:Sketcher::PointPos::end);
                 sugConstr3.clear();
             }
 
             // add suggested constraints for start of arc
             if (sugConstr4.size() > 0) {
-                createAutoConstraints(sugConstr4, currentgeoid, isOriginalArcCCW?Sketcher::end:Sketcher::start);
+                createAutoConstraints(sugConstr4, currentgeoid, isOriginalArcCCW?Sketcher::PointPos::end:Sketcher::PointPos::start);
                 sugConstr4.clear();
             }
 
@@ -4370,25 +4371,25 @@ public:
 
             // add auto constraints for the focus point
             if (sugConstr1.size() > 0) {
-                createAutoConstraints(sugConstr1, currentgeoid+1, Sketcher::start);
+                createAutoConstraints(sugConstr1, currentgeoid+1, Sketcher::PointPos::start);
                 sugConstr1.clear();
             }
 
             // add suggested constraints for vertex point
             if (sugConstr2.size() > 0) {
-                createAutoConstraints(sugConstr2, currentgeoid, Sketcher::mid);
+                createAutoConstraints(sugConstr2, currentgeoid, Sketcher::PointPos::mid);
                 sugConstr2.clear();
             }
 
             // add suggested constraints for start of arc
             if (sugConstr3.size() > 0) {
-                createAutoConstraints(sugConstr3, currentgeoid, isOriginalArcCCW?Sketcher::start:Sketcher::end);
+                createAutoConstraints(sugConstr3, currentgeoid, isOriginalArcCCW?Sketcher::PointPos::start:Sketcher::PointPos::end);
                 sugConstr3.clear();
             }
 
             // add suggested constraints for start of arc
             if (sugConstr4.size() > 0) {
-                createAutoConstraints(sugConstr4, currentgeoid, isOriginalArcCCW?Sketcher::end:Sketcher::start);
+                createAutoConstraints(sugConstr4, currentgeoid, isOriginalArcCCW?Sketcher::PointPos::end:Sketcher::PointPos::start);
                 sugConstr4.clear();
             }
 
@@ -4691,7 +4692,7 @@ public:
 
             // add auto constraints on pole
             if (sugConstr[CurrentConstraint].size() > 0) {
-                createAutoConstraints(sugConstr[CurrentConstraint], FirstPoleGeoId, Sketcher::mid, false);
+                createAutoConstraints(sugConstr[CurrentConstraint], FirstPoleGeoId, Sketcher::PointPos::mid, false);
             }
 
             static_cast<Sketcher::SketchObject *>(sketchgui->getObject())->solve();
@@ -4706,7 +4707,7 @@ public:
 
             // check if coincident with first pole
             for(std::vector<AutoConstraint>::const_iterator it = sugConstr[CurrentConstraint].begin(); it != sugConstr[CurrentConstraint].end(); it++) {
-                if( (*it).Type == Sketcher::Coincident && (*it).GeoId == FirstPoleGeoId && (*it).PosId == Sketcher::mid ) {
+                if( (*it).Type == Sketcher::Coincident && (*it).GeoId == FirstPoleGeoId && (*it).PosId == Sketcher::PointPos::mid ) {
 
                     IsClosed = true;
                     }
@@ -4757,7 +4758,7 @@ public:
 
             // add auto constraints on pole
             if (sugConstr[CurrentConstraint].size() > 0) {
-                createAutoConstraints(sugConstr[CurrentConstraint], FirstPoleGeoId + EditCurve.size()-1, Sketcher::mid, false);
+                createAutoConstraints(sugConstr[CurrentConstraint], FirstPoleGeoId + EditCurve.size()-1, Sketcher::PointPos::mid, false);
             }
 
             //static_cast<Sketcher::SketchObject *>(sketchgui->getObject())->solve();
@@ -4826,13 +4827,13 @@ public:
                 if (ConstrMethod == 0) {
 
                     for(auto & constr : static_cast<Sketcher::SketchObject *>(sketchgui->getObject())->Constraints.getValues()) {
-                        if(constr->First == FirstPoleGeoId && constr->FirstPos == Sketcher::mid) {
+                        if(constr->First == FirstPoleGeoId && constr->FirstPos == Sketcher::PointPos::mid) {
                             constr->First = currentgeoid;
-                            constr->FirstPos = Sketcher::start;
+                            constr->FirstPos = Sketcher::PointPos::start;
                         }
-                        else if(constr->First == (FirstPoleGeoId + CurrentConstraint - 1) && constr->FirstPos == Sketcher::mid) {
+                        else if(constr->First == (FirstPoleGeoId + CurrentConstraint - 1) && constr->FirstPos == Sketcher::PointPos::mid) {
                             constr->First = currentgeoid;
-                            constr->FirstPos = Sketcher::end;
+                            constr->FirstPos = Sketcher::PointPos::end;
                         }
                     }
                 }
@@ -4844,7 +4845,7 @@ public:
 
                 for (size_t i = 0; i < EditCurve.size(); i++) {
                     cstream << "conList.append(Sketcher.Constraint('InternalAlignment:Sketcher::BSplineControlPoint'," << FirstPoleGeoId+i
-                        << "," << Sketcher::mid << "," << currentgeoid << "," << i << "))\n";
+                        << "," << static_cast<int>(Sketcher::PointPos::mid) << "," << currentgeoid << "," << i << "))\n";
                 }
 
                 cstream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
@@ -5273,19 +5274,19 @@ public:
 
             // Auto Constraint first picked point
             if (sugConstr1.size() > 0) {
-                createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::none);
+                createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::PointPos::none);
                 sugConstr1.clear();
             }
 
             // Auto Constraint second picked point
             if (sugConstr2.size() > 0) {
-                createAutoConstraints(sugConstr2, getHighestCurveIndex(), Sketcher::none);
+                createAutoConstraints(sugConstr2, getHighestCurveIndex(), Sketcher::PointPos::none);
                 sugConstr2.clear();
             }
 
             // Auto Constraint third picked point
             if (sugConstr3.size() > 0) {
-                createAutoConstraints(sugConstr3, getHighestCurveIndex(), Sketcher::none);
+                createAutoConstraints(sugConstr3, getHighestCurveIndex(), Sketcher::PointPos::none);
                 sugConstr3.clear();
             }
 
@@ -5498,7 +5499,7 @@ public:
 
             // add auto constraints for the line segment start
             if (sugConstr.size() > 0) {
-                createAutoConstraints(sugConstr, getHighestCurveIndex(), Sketcher::start);
+                createAutoConstraints(sugConstr, getHighestCurveIndex(), Sketcher::PointPos::start);
                 sugConstr.clear();
             }
 
@@ -5703,11 +5704,11 @@ public:
         int VtId = sketchgui->getPreselectPoint();
         if (Mode == STATUS_SEEK_First && VtId != -1) {
             int GeoId;
-            Sketcher::PointPos PosId=Sketcher::none;
+            Sketcher::PointPos PosId=Sketcher::PointPos::none;
             sketchgui->getSketchObject()->getGeoVertexIndex(VtId,GeoId,PosId);
             const Part::Geometry *geom = sketchgui->getSketchObject()->getGeometry(GeoId);
             if (geom->getTypeId() == Part::GeomLineSegment::getClassTypeId() &&
-                (PosId == Sketcher::start || PosId == Sketcher::end)) {
+                (PosId == Sketcher::PointPos::start || PosId == Sketcher::PointPos::end)) {
 
                 // guess fillet radius
                 double radius=-1;
@@ -5724,9 +5725,9 @@ public:
                         const Part::GeomLineSegment *lineSeg2 = static_cast<const Part::GeomLineSegment *>(geom2);
                         Base::Vector3d dir1 = lineSeg1->getEndPoint() - lineSeg1->getStartPoint();
                         Base::Vector3d dir2 = lineSeg2->getEndPoint() - lineSeg2->getStartPoint();
-                        if (PosIdList[0] == Sketcher::end)
+                        if (PosIdList[0] == Sketcher::PointPos::end)
                             dir1 *= -1;
-                        if (PosIdList[1] == Sketcher::end)
+                        if (PosIdList[1] == Sketcher::PointPos::end)
                             dir2 *= -1;
                         double l1 = dir1.Length();
                         double l2 = dir2.Length();
@@ -5742,7 +5743,7 @@ public:
                 try {
                     bool pointFillet = (filletType == 1);
                     Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Create fillet"));
-                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "fillet(%d,%d,%f,%s,%s,%d)", GeoId, PosId, radius, "True",
+                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "fillet(%d,%d,%f,%s,%s,%d)", GeoId, static_cast<int>(PosId), radius, "True",
                         pointFillet ? "True":"False", nofAngles);
 
                     if (construction) {
@@ -6270,17 +6271,17 @@ public:
 
                 EditMarkers.resize(0);
 
-                if(GeoId1 != Sketcher::Constraint::GeoUndef)
+                if(GeoId1 != Sketcher::GeoEnum::GeoUndef)
                     EditMarkers.emplace_back(intersect1.x, intersect1.y);
                 else {
-                    auto start = sk->getPoint(GeoId, Sketcher::start);
+                    auto start = sk->getPoint(GeoId, Sketcher::PointPos::start);
                     EditMarkers.emplace_back(start.x, start.y);
                 }
 
-                if(GeoId2 != Sketcher::Constraint::GeoUndef)
+                if(GeoId2 != Sketcher::GeoEnum::GeoUndef)
                     EditMarkers.emplace_back(intersect2.x, intersect2.y);
                 else {
-                    auto end = sk->getPoint(GeoId, Sketcher::end);
+                    auto end = sk->getPoint(GeoId, Sketcher::PointPos::end);
                     EditMarkers.emplace_back( end.x, end.y);
                 }
 
@@ -6587,7 +6588,7 @@ public:
             try {
                 Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Extend edge"));
                 Gui::cmdAppObjectArgs(sketchgui->getObject(), "extend(%d, %f, %d)\n", // GeoId, increment, PointPos
-                    BaseGeoId, Increment, ExtendFromStart ? Sketcher::start : Sketcher::end);
+                    BaseGeoId, Increment, ExtendFromStart ? static_cast<int>(Sketcher::PointPos::start) : static_cast<int>(Sketcher::PointPos::end));
                 Gui::Command::commitCommand();
 
                 ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
@@ -6597,7 +6598,7 @@ public:
 
                 // constrain chosen point
                 if (SugConstr.size() > 0) {
-                    createAutoConstraints(SugConstr, BaseGeoId, (ExtendFromStart) ? Sketcher::start : Sketcher::end);
+                    createAutoConstraints(SugConstr, BaseGeoId, (ExtendFromStart) ? Sketcher::PointPos::start : Sketcher::PointPos::end);
                     SugConstr.clear();
                 }
                 bool continuousMode = hGrp->GetBool("ContinuousCreationMode",true);
@@ -7324,7 +7325,8 @@ public:
             try {
                 Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add slot"));
 
-                AutoConstraint lastCons = {Sketcher::None, Sketcher::Constraint::GeoUndef, Sketcher::none};
+                AutoConstraint lastCons = {Sketcher::None, Sketcher::GeoEnum::GeoUndef, Sketcher::PointPos::none};
+
                 if (!sugConstr2.empty()) lastCons = sugConstr2.back();
 
                 ostringstream snapCon = ostringstream("");
@@ -7386,13 +7388,13 @@ public:
 
                 // add auto constraints at the center of the first arc
                 if (sugConstr1.size() > 0) {
-                    createAutoConstraints(sugConstr1, getHighestCurveIndex() - 3, Sketcher::mid);
+                    createAutoConstraints(sugConstr1, getHighestCurveIndex() - 3, Sketcher::PointPos::mid);
                     sugConstr1.clear();
                 }
 
                 // add auto constraints at the center of the second arc
                 if (sugConstr2.size() > 0) {
-                    createAutoConstraints(sugConstr2, getHighestCurveIndex() - 2, Sketcher::mid);
+                    createAutoConstraints(sugConstr2, getHighestCurveIndex() - 2, Sketcher::PointPos::mid);
                     sugConstr2.clear();
                 }
 
@@ -7578,13 +7580,13 @@ public:
 
                 // add auto constraints at the center of the polygon
                 if (sugConstr1.size() > 0) {
-                    createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::mid);
+                    createAutoConstraints(sugConstr1, getHighestCurveIndex(), Sketcher::PointPos::mid);
                     sugConstr1.clear();
                 }
 
                 // add auto constraints to the last side of the polygon
                 if (sugConstr2.size() > 0) {
-                    createAutoConstraints(sugConstr2, getHighestCurveIndex() - 1, Sketcher::end);
+                    createAutoConstraints(sugConstr2, getHighestCurveIndex() - 1, Sketcher::PointPos::end);
                     sugConstr2.clear();
                 }
 

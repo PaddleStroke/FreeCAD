@@ -130,15 +130,15 @@ bool SketcherGui::ReleaseHandler(Gui::Document* doc) {
 void SketcherGui::getIdsFromName(const std::string &name, const Sketcher::SketchObject* Obj,
                                  int &GeoId, PointPos &PosId)
 {
-    GeoId = Constraint::GeoUndef;
-    PosId = Sketcher::none;
+    GeoId = GeoEnum::GeoUndef;
+    PosId = Sketcher::PointPos::none;
 
     if (name.size() > 4 && name.substr(0,4) == "Edge") {
         GeoId = std::atoi(name.substr(4,4000).c_str()) - 1;
     }
     else if (name.size() == 9 && name.substr(0,9) == "RootPoint") {
         GeoId = Sketcher::GeoEnum::RtPnt;
-        PosId = Sketcher::start;
+        PosId = Sketcher::PointPos::start;
     }
     else if (name.size() == 6 && name.substr(0,6) == "H_Axis")
         GeoId = Sketcher::GeoEnum::HAxis;
@@ -154,7 +154,7 @@ void SketcherGui::getIdsFromName(const std::string &name, const Sketcher::Sketch
 
 bool SketcherGui::checkBothExternal(int GeoId1, int GeoId2)
 {
-    if (GeoId1 == Constraint::GeoUndef || GeoId2 == Constraint::GeoUndef)
+    if (GeoId1 == GeoEnum::GeoUndef || GeoId2 == GeoEnum::GeoUndef)
         return false;
     else
         return (GeoId1 < 0 && GeoId2 < 0);
@@ -162,7 +162,7 @@ bool SketcherGui::checkBothExternal(int GeoId1, int GeoId2)
 
 bool SketcherGui::checkBothExternalOrBSplinePoints(const Sketcher::SketchObject* Obj,int GeoId1, int GeoId2)
 {
-    if (GeoId1 == Constraint::GeoUndef || GeoId2 == Constraint::GeoUndef)
+    if (GeoId1 == GeoEnum::GeoUndef || GeoId2 == GeoEnum::GeoUndef)
         return false;
     else
         return (GeoId1 < 0 && GeoId2 < 0) || (isBsplineKnot(Obj,GeoId1) && isBsplineKnot(Obj,GeoId2)) ||
@@ -173,43 +173,43 @@ bool SketcherGui::isPointOrSegmentFixed(const Sketcher::SketchObject* Obj, int G
 {
     const std::vector< Sketcher::Constraint * > &vals = Obj->Constraints.getValues();
 
-    if (GeoId == Constraint::GeoUndef)
+    if (GeoId == GeoEnum::GeoUndef)
         return false;
     else
-        return checkConstraint(vals, Sketcher::Block, GeoId, Sketcher::none) || GeoId <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId);
+        return checkConstraint(vals, Sketcher::Block, GeoId, Sketcher::PointPos::none) || GeoId <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId);
 }
 
 bool SketcherGui::areBothPointsOrSegmentsFixed(const Sketcher::SketchObject* Obj, int GeoId1, int GeoId2)
 {
     const std::vector< Sketcher::Constraint * > &vals = Obj->Constraints.getValues();
 
-    if (GeoId1 == Constraint::GeoUndef || GeoId2 == Constraint::GeoUndef)
+    if (GeoId1 == GeoEnum::GeoUndef || GeoId2 == GeoEnum::GeoUndef)
         return false;
     else
-        return ((checkConstraint(vals, Sketcher::Block, GeoId1, Sketcher::none) || GeoId1 <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId1)) &&
-                (checkConstraint(vals, Sketcher::Block, GeoId2, Sketcher::none) || GeoId2 <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId2)));
+        return ((checkConstraint(vals, Sketcher::Block, GeoId1, Sketcher::PointPos::none) || GeoId1 <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId1)) &&
+                (checkConstraint(vals, Sketcher::Block, GeoId2, Sketcher::PointPos::none) || GeoId2 <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId2)));
 }
 
 bool SketcherGui::areAllPointsOrSegmentsFixed(const Sketcher::SketchObject* Obj, int GeoId1, int GeoId2, int GeoId3)
 {
     const std::vector< Sketcher::Constraint * > &vals = Obj->Constraints.getValues();
 
-    if (GeoId1 == Constraint::GeoUndef || GeoId2 == Constraint::GeoUndef || GeoId3 == Constraint::GeoUndef)
+    if (GeoId1 == GeoEnum::GeoUndef || GeoId2 == GeoEnum::GeoUndef || GeoId3 == GeoEnum::GeoUndef)
         return false;
     else
-        return ((checkConstraint(vals, Sketcher::Block, GeoId1, Sketcher::none) || GeoId1 <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId1)) &&
-                (checkConstraint(vals, Sketcher::Block, GeoId2, Sketcher::none) || GeoId2 <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId2)) &&
-                (checkConstraint(vals, Sketcher::Block, GeoId3, Sketcher::none) || GeoId3 <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId3)));
+        return ((checkConstraint(vals, Sketcher::Block, GeoId1, Sketcher::PointPos::none) || GeoId1 <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId1)) &&
+                (checkConstraint(vals, Sketcher::Block, GeoId2, Sketcher::PointPos::none) || GeoId2 <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId2)) &&
+                (checkConstraint(vals, Sketcher::Block, GeoId3, Sketcher::PointPos::none) || GeoId3 <= Sketcher::GeoEnum::RtPnt || isBsplineKnot(Obj,GeoId3)));
 }
 
 bool SketcherGui::isSimpleVertex(const Sketcher::SketchObject* Obj, int GeoId, PointPos PosId)
 {
-    if (PosId == Sketcher::start && (GeoId == Sketcher::GeoEnum::HAxis || GeoId == Sketcher::GeoEnum::VAxis))
+    if (PosId == Sketcher::PointPos::start && (GeoId == Sketcher::GeoEnum::HAxis || GeoId == Sketcher::GeoEnum::VAxis))
         return true;
     const Part::Geometry *geo = Obj->getGeometry(GeoId);
     if (geo->getTypeId() == Part::GeomPoint::getClassTypeId())
         return true;
-    else if (PosId == Sketcher::mid)
+    else if (PosId == Sketcher::PointPos::mid)
         return true;
     else
         return false;

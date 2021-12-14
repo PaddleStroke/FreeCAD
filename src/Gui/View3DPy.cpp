@@ -125,7 +125,7 @@ void View3DInventorPy::init_type()
     add_varargs_method("saveVectorGraphic",&View3DInventorPy::saveVectorGraphic,"saveVectorGraphic()");
     add_varargs_method("getCamera",&View3DInventorPy::getCamera,"getCamera()");
     add_varargs_method("getCameraNode",&View3DInventorPy::getCameraNode,"getCameraNode()");
-    add_varargs_method("getViewDirection",&View3DInventorPy::getViewDirection,"getViewDirection() --> tuple of integers\n"
+    add_varargs_method("getViewDirection",&View3DInventorPy::getViewDirection,"getViewDirection() --> tuple of floats\n"
         "returns the direction vector the view is currently pointing at as tuple with xyz values\n"
     );
     add_varargs_method("setViewDirection",&View3DInventorPy::setViewDirection,"setViewDirection(tuple) --> None\n"
@@ -155,8 +155,10 @@ void View3DInventorPy::init_type()
         "\n"
         "Does the same as getObjectInfo() but returns a list of dictionaries or None.\n");
     add_varargs_method("getSize",&View3DInventorPy::getSize,"getSize()");
-    add_varargs_method("getPoint",&View3DInventorPy::getPoint,
-        "getPoint(pixel coords (as integer)) -> 3D vector\n"
+    add_varargs_method("getPoint",&View3DInventorPy::getPointOnFocalPlane,
+        "Same as getPointOnFocalPlane");
+    add_varargs_method("getPointOnFocalPlane",&View3DInventorPy::getPointOnFocalPlane,
+        "getPointOnFocalPlane(pixel coords (as integer)) -> 3D vector\n"
         "\n"
         "Return the according 3D point on the focal plane to the given 2D point (in\n"
         "pixel coordinates).\n");
@@ -164,6 +166,10 @@ void View3DInventorPy::init_type()
         "getPointOnScreen(3D vector) -> pixel coords (as integer)\n"
         "\n"
         "Return the projected 3D point (in pixel coordinates).\n");
+    add_varargs_method("projectPointToLine",&View3DInventorPy::projectPointToLine,
+        "projectPointToLine(pixel coords (as integer)) -> line defined by two points\n"
+        "\n"
+        "Return the projecting 3D line to the given 2D point");
     add_varargs_method("addEventCallback",&View3DInventorPy::addEventCallback,"addEventCallback()");
     add_varargs_method("removeEventCallback",&View3DInventorPy::removeEventCallback,"removeEventCallback()");
     add_varargs_method("setAnnotation",&View3DInventorPy::setAnnotation,"setAnnotation()");
@@ -1654,7 +1660,7 @@ Py::Object View3DInventorPy::getSize(const Py::Tuple& args)
     }
 }
 
-Py::Object View3DInventorPy::getPoint(const Py::Tuple& args)
+Py::Object View3DInventorPy::getPointOnFocalPlane(const Py::Tuple& args)
 {
     short x,y;
     if (!PyArg_ParseTuple(args.ptr(), "hh", &x, &y)) {
@@ -1664,7 +1670,7 @@ Py::Object View3DInventorPy::getPoint(const Py::Tuple& args)
         y = (int)Py::Int(t[1]);
     }
     try {
-        SbVec3f pt = getView3DIventorPtr()->getViewer()->getPointOnScreen(SbVec2s(x,y));
+        SbVec3f pt = getView3DIventorPtr()->getViewer()->getPointOnFocalPlane(SbVec2s(x,y));
         return Py::Vector(Base::Vector3f(pt[0], pt[1], pt[2]));
     }
     catch (const Base::Exception& e) {
@@ -1693,28 +1699,36 @@ Py::Object View3DInventorPy::getPointOnScreen(const Py::Tuple& args)
     }
 
     try {
-        const SbViewportRegion& vp = getView3DIventorPtr()->getViewer()->getSoRenderManager()->getViewportRegion();
-        float fRatio = vp.getViewportAspectRatio();
-        const SbVec2s& sp = vp.getViewportSizePixels();
-        //float dX, dY; vp.getViewportSize().getValue(dX, dY);
-        SbViewVolume vv = getView3DIventorPtr()->getViewer()->getSoRenderManager()->getCamera()->getViewVolume(fRatio);
-
-        SbVec3f pt(vx,vy,vz);
-        vv.projectToScreen(pt, pt);
-
-        //if (fRatio > 1.0f) {
-        //    pt[0] = (pt[0] - 0.5f*dX) / fRatio + 0.5f*dX;
-        //}
-        //else {
-        //    pt[1] = (pt[1] - 0.5f*dY) * fRatio + 0.5f*dY;
-        //}
-
-        int x = pt[0] * sp[0];
-        int y = pt[1] * sp[1];
+        SbVec2s pt = getView3DIventorPtr()->getViewer()->getPointOnScreen(SbVec3f(vx,vy,vz));
         Py::Tuple tuple(2);
-        tuple.setItem(0, Py::Int(x));
-        tuple.setItem(1, Py::Int(y));
+        tuple.setItem(0, Py::Int(pt[0]));
+        tuple.setItem(1, Py::Int(pt[1]));
 
+        return tuple;
+    }
+    catch (const Base::Exception& e) {
+        throw Py::RuntimeError(e.what());
+    }
+    catch (const Py::Exception&) {
+        throw;
+    }
+}
+
+Py::Object View3DInventorPy::projectPointToLine(const Py::Tuple& args)
+{
+    short x,y;
+    if (!PyArg_ParseTuple(args.ptr(), "hh", &x, &y)) {
+        PyErr_Clear();
+        Py::Tuple t(args[0]);
+        x = (int)Py::Int(t[0]);
+        y = (int)Py::Int(t[1]);
+    }
+    try {
+        SbVec3f pt1, pt2;
+        getView3DIventorPtr()->getViewer()->projectPointToLine(SbVec2s(x,y), pt1, pt2);
+        Py::Tuple tuple(2);
+        tuple.setItem(0, Py::Vector(Base::Vector3f(pt1[0], pt1[1], pt1[2])));
+        tuple.setItem(1, Py::Vector(Base::Vector3f(pt2[0], pt2[1], pt2[2])));
         return tuple;
     }
     catch (const Base::Exception& e) {

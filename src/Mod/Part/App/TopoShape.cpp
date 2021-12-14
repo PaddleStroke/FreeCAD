@@ -1024,19 +1024,43 @@ void TopoShape::exportStep(const char *filename) const
 
 void TopoShape::exportBrep(const char *filename) const
 {
+#if OCC_VERSION_HEX >= 0x070600
+    if (!BRepTools::Write(this->_Shape,encodeFilename(filename).c_str(), Standard_False, Standard_False, TopTools_FormatVersion_VERSION_1))
+        throw Base::FileException("Writing of BREP failed");
+#else
     if (!BRepTools::Write(this->_Shape,encodeFilename(filename).c_str()))
         throw Base::FileException("Writing of BREP failed");
+#endif
 }
 
 void TopoShape::exportBrep(std::ostream& out) const
 {
-    BRepTools::Write(this->_Shape, out);
+    // See TopTools_FormatVersion of OCCT 7.6
+    enum {
+        VERSION_1 = 1,
+        VERSION_2 = 2,
+        VERSION_3 = 3
+    };
+    BRepTools_ShapeSet SS(Standard_False);
+    SS.SetFormatNb(VERSION_1);
+    SS.Add(this->_Shape);
+    SS.Write(out);
+    SS.Write(this->_Shape, out);
 }
 
 void TopoShape::exportBinary(std::ostream& out)
 {
+    // See BinTools_FormatVersion of OCCT 7.6
+    enum {
+        VERSION_1 = 1,
+        VERSION_2 = 2,
+        VERSION_3 = 3,
+        VERSION_4 = 4
+    };
+
     // An example how to use BinTools_ShapeSet can be found in BinMNaming_NamedShapeDriver.cxx
     BinTools_ShapeSet theShapeSet;
+    theShapeSet.SetFormatNb(VERSION_3);
     if (this->_Shape.IsNull()) {
         theShapeSet.Add(this->_Shape);
         theShapeSet.Write(out);

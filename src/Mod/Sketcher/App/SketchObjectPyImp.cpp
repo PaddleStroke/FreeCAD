@@ -1073,7 +1073,7 @@ PyObject* SketchObjectPy::fillet(PyObject *args)
     double radius;
 
     // Two Lines, radius
-    if (PyArg_ParseTuple(args, "iiO!O!d|iO!", &geoId1, &geoId2, &(Base::VectorPy::Type), &pcObj1, &(Base::VectorPy::Type), &pcObj2,
+    if (PyArg_ParseTuple(args, "iiO!O!d|iO!i", &geoId1, &geoId2, &(Base::VectorPy::Type), &pcObj1, &(Base::VectorPy::Type), &pcObj2,
         &radius, &trim, &PyBool_Type, &createCorner, &nofAngles)) {
         // The i for &trim should probably have been a bool like &createCorner, but we'll leave it an int for backward
         // compatibility (and because python will accept a bool there anyway)
@@ -1093,7 +1093,7 @@ PyObject* SketchObjectPy::fillet(PyObject *args)
 
     PyErr_Clear();
     // Point, radius
-    if (PyArg_ParseTuple(args, "iid|iO!", &geoId1, &posId1, &radius, &trim, &PyBool_Type, &createCorner, &nofAngles)) {
+    if (PyArg_ParseTuple(args, "iid|iO!i", &geoId1, &posId1, &radius, &trim, &PyBool_Type, &createCorner, &nofAngles)) {
         if (this->getSketchObjectPtr()->fillet(geoId1, (Sketcher::PointPos) posId1, radius, trim,
               PyObject_IsTrue(createCorner), nofAngles)) {
             std::stringstream str;

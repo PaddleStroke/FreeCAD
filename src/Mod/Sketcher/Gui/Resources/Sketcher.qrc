@@ -123,8 +123,10 @@
         <file>icons/geometry/Sketcher_CreateBSpline_Constr.svg</file>
 		<file>icons/geometry/Sketcher_CreateChamfer.svg</file>
         <file>icons/geometry/Sketcher_CreatePointChamfer.svg</file>
-        <file>icons/geometry/Sketcher_CreatePolyChamfer.svg</file>
-        <file>icons/geometry/Sketcher_CreatePolyChamferInward.svg</file>
+      <file>icons/geometry/Sketcher_CreatePolyChamfer.svg</file>
+      <file>icons/geometry/Sketcher_CreatePointPolyChamfer.svg</file>
+      <file>icons/geometry/Sketcher_CreatePolyChamferInward.svg</file>
+      <file>icons/geometry/Sketcher_CreatePointPolyChamferInward.svg</file>
         <file>icons/geometry/Sketcher_CreateCircle.svg</file>
         <file>icons/geometry/Sketcher_CreateCircle_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateEllipse.svg</file>

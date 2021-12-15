@@ -255,6 +255,8 @@ public:
     int toggleConstruction(int GeoId);
     int setConstruction(int GeoId, bool on);
 
+    //Make the chamfer's lines. Called from fillet() function.
+    int makeChamfers(Part::GeomArcOfCircle* arc, int nAngles);
     /*!
      \brief Create a sketch fillet from the point at the intersection of two lines
      \param geoId, pos - one of the (exactly) two coincident endpoints

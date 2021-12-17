@@ -5611,7 +5611,7 @@ bool CmdSketcherCreateDraftLine::isActive(void)
     return false;
 }
 
-// ======================================================================================
+// Fillets and chamfers ================================================================
 
 namespace SketcherGui {
     class FilletSelection : public Gui::SelectionFilterGate
@@ -6051,6 +6051,8 @@ bool CmdSketcherCreateChamfer::isActive(void)
     return isCreateGeoActive(getActiveGuiDocument());
 }
 
+// ======================================================================================
+
 DEF_STD_CMD_A(CmdSketcherCreatePolyChamfer)
 
 CmdSketcherCreatePolyChamfer::CmdSketcherCreatePolyChamfer()
@@ -6080,6 +6082,8 @@ bool CmdSketcherCreatePolyChamfer::isActive(void)
 {
     return isCreateGeoActive(getActiveGuiDocument());
 }
+
+// ======================================================================================
 
 DEF_STD_CMD_A(CmdSketcherCreatePolyChamferInward)
 
@@ -6766,7 +6770,7 @@ bool CmdSketcherExtend::isActive(void)
 }
 
 
-// ======================================================================================
+// Splitting ==============================================================*/
 
 namespace SketcherGui {
     class SplittingSelection : public Gui::SelectionFilterGate
@@ -7068,7 +7072,7 @@ bool CmdSketcherExternal::isActive(void)
     return isCreateGeoActive(getActiveGuiDocument());
 }
 
-// ======================================================================================
+/* Carbon Copy============================================================*/
 
 namespace SketcherGui {
     class CarbonCopySelection : public Gui::SelectionFilterGate
@@ -7128,123 +7132,122 @@ namespace SketcherGui {
     };
 }
 
-
-    class DrawSketchHandlerCarbonCopy: public DrawSketchHandler
+class DrawSketchHandlerCarbonCopy: public DrawSketchHandler
+{
+public:
+    DrawSketchHandlerCarbonCopy() {}
+    virtual ~DrawSketchHandlerCarbonCopy()
     {
-    public:
-        DrawSketchHandlerCarbonCopy() {}
-        virtual ~DrawSketchHandlerCarbonCopy()
-        {
-            Gui::Selection().rmvSelectionGate();
-        }
-
-        virtual void activated(ViewProviderSketch *sketchgui)
-        {
-            sketchgui->setAxisPickStyle(false);
-            Gui::MDIView *mdi = Gui::Application::Instance->activeDocument()->getActiveView();
-            Gui::View3DInventorViewer *viewer;
-            viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
-
-            SoNode* root = viewer->getSceneGraph();
-            static_cast<Gui::SoFCUnifiedSelection*>(root)->selectionRole.setValue(true);
-
-            Gui::Selection().clearSelection();
-            Gui::Selection().rmvSelectionGate();
-            Gui::Selection().addSelectionGate(new CarbonCopySelection(sketchgui->getObject()));
-            setCrosshairCursor("Sketcher_Pointer_CarbonCopy");
-        }
-
-        virtual void deactivated(ViewProviderSketch *sketchgui)
-        {
-            sketchgui->setAxisPickStyle(true);
-        }
-
-        virtual void mouseMove(Base::Vector2d onSketchPos)
-        {
-            Q_UNUSED(onSketchPos);
-            if (Gui::Selection().getPreselection().pObjectName)
-                applyCursor();
-        }
-
-        virtual bool pressButton(Base::Vector2d onSketchPos)
-        {
-            Q_UNUSED(onSketchPos);
-            return true;
-        }
-
-        virtual bool releaseButton(Base::Vector2d onSketchPos)
-        {
-            Q_UNUSED(onSketchPos);
-            /* this is ok not to call to purgeHandler
-             * in continuous creation mode because the
-             * handler is destroyed by the quit() method on pressing the
-             * right button of the mouse */
-            return true;
-        }
-
-        virtual bool onSelectionChanged(const Gui::SelectionChanges& msg)
-        {
-            if (msg.Type == Gui::SelectionChanges::AddSelection) {
-                App::DocumentObject* obj = sketchgui->getObject()->getDocument()->getObject(msg.pObjectName);
-                if (obj == NULL)
-                    throw Base::ValueError("Sketcher: Carbon Copy: Invalid object in selection");
-
-                if (obj->getTypeId() == Sketcher::SketchObject::getClassTypeId()) {
-
-                    try {
-                        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add carbon copy"));
-                        Gui::cmdAppObjectArgs(sketchgui->getObject(), "carbonCopy(\"%s\",%s)",
-                                              msg.pObjectName, geometryCreationMode==Construction?"True":"False");
-
-                        Gui::Command::commitCommand();
-
-                        tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()));
-
-                        Gui::Selection().clearSelection();
-                        /* this is ok not to call to purgeHandler
-                         * in continuous creation mode because the
-                         * handler is destroyed by the quit() method on pressing the
-                         * right button of the mouse */
-                    }
-                    catch (const Base::Exception& e) {
-                        Base::Console().Error("Failed to add carbon copy: %s\n", e.what());
-                        Gui::Command::abortCommand();
-                    }
-                    return true;
-                    }
-            }
-            return false;
-        }
-    };
-
-    DEF_STD_CMD_AU(CmdSketcherCarbonCopy)
-
-    CmdSketcherCarbonCopy::CmdSketcherCarbonCopy()
-    : Command("Sketcher_CarbonCopy")
-    {
-        sAppModule      = "Sketcher";
-        sGroup          = "Sketcher";
-        sMenuText       = QT_TR_NOOP("Carbon copy");
-        sToolTipText    = QT_TR_NOOP("Copies the geometry of another sketch");
-        sWhatsThis      = "Sketcher_CarbonCopy";
-        sStatusTip      = sToolTipText;
-        sPixmap         = "Sketcher_CarbonCopy";
-        sAccel          = "G, W";
-        eType           = ForEdit;
+        Gui::Selection().rmvSelectionGate();
     }
 
-    void CmdSketcherCarbonCopy::activated(int iMsg)
+    virtual void activated(ViewProviderSketch *sketchgui)
     {
-        Q_UNUSED(iMsg);
-        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerCarbonCopy());
+        sketchgui->setAxisPickStyle(false);
+        Gui::MDIView *mdi = Gui::Application::Instance->activeDocument()->getActiveView();
+        Gui::View3DInventorViewer *viewer;
+        viewer = static_cast<Gui::View3DInventor *>(mdi)->getViewer();
+
+        SoNode* root = viewer->getSceneGraph();
+        static_cast<Gui::SoFCUnifiedSelection*>(root)->selectionRole.setValue(true);
+
+        Gui::Selection().clearSelection();
+        Gui::Selection().rmvSelectionGate();
+        Gui::Selection().addSelectionGate(new CarbonCopySelection(sketchgui->getObject()));
+        setCrosshairCursor("Sketcher_Pointer_CarbonCopy");
     }
 
-    bool CmdSketcherCarbonCopy::isActive(void)
+    virtual void deactivated(ViewProviderSketch *sketchgui)
     {
-        return isCreateGeoActive(getActiveGuiDocument());
+        sketchgui->setAxisPickStyle(true);
     }
 
-    void CmdSketcherCarbonCopy::updateAction(int mode)
+    virtual void mouseMove(Base::Vector2d onSketchPos)
+    {
+        Q_UNUSED(onSketchPos);
+        if (Gui::Selection().getPreselection().pObjectName)
+            applyCursor();
+    }
+
+    virtual bool pressButton(Base::Vector2d onSketchPos)
+    {
+        Q_UNUSED(onSketchPos);
+        return true;
+    }
+
+    virtual bool releaseButton(Base::Vector2d onSketchPos)
+    {
+        Q_UNUSED(onSketchPos);
+        /* this is ok not to call to purgeHandler
+            * in continuous creation mode because the
+            * handler is destroyed by the quit() method on pressing the
+            * right button of the mouse */
+        return true;
+    }
+
+    virtual bool onSelectionChanged(const Gui::SelectionChanges& msg)
+    {
+        if (msg.Type == Gui::SelectionChanges::AddSelection) {
+            App::DocumentObject* obj = sketchgui->getObject()->getDocument()->getObject(msg.pObjectName);
+            if (obj == NULL)
+                throw Base::ValueError("Sketcher: Carbon Copy: Invalid object in selection");
+
+            if (obj->getTypeId() == Sketcher::SketchObject::getClassTypeId()) {
+
+                try {
+                    Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add carbon copy"));
+                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "carbonCopy(\"%s\",%s)",
+                                            msg.pObjectName, geometryCreationMode==Construction?"True":"False");
+
+                    Gui::Command::commitCommand();
+
+                    tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()));
+
+                    Gui::Selection().clearSelection();
+                    /* this is ok not to call to purgeHandler
+                        * in continuous creation mode because the
+                        * handler is destroyed by the quit() method on pressing the
+                        * right button of the mouse */
+                }
+                catch (const Base::Exception& e) {
+                    Base::Console().Error("Failed to add carbon copy: %s\n", e.what());
+                    Gui::Command::abortCommand();
+                }
+                return true;
+                }
+        }
+        return false;
+    }
+};
+
+DEF_STD_CMD_AU(CmdSketcherCarbonCopy)
+
+CmdSketcherCarbonCopy::CmdSketcherCarbonCopy()
+: Command("Sketcher_CarbonCopy")
+{
+    sAppModule      = "Sketcher";
+    sGroup          = "Sketcher";
+    sMenuText       = QT_TR_NOOP("Carbon copy");
+    sToolTipText    = QT_TR_NOOP("Copies the geometry of another sketch");
+    sWhatsThis      = "Sketcher_CarbonCopy";
+    sStatusTip      = sToolTipText;
+    sPixmap         = "Sketcher_CarbonCopy";
+    sAccel          = "G, W";
+    eType           = ForEdit;
+}
+
+void CmdSketcherCarbonCopy::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerCarbonCopy());
+}
+
+bool CmdSketcherCarbonCopy::isActive(void)
+{
+    return isCreateGeoActive(getActiveGuiDocument());
+}
+
+void CmdSketcherCarbonCopy::updateAction(int mode)
     {
         switch (mode) {
             case Normal:
@@ -7258,26 +7261,31 @@ namespace SketcherGui {
         }
     }
 
+/* Create Slot =========================================================*/
 
-/**
- * Create Slot
- */
 class DrawSketchHandlerSlot : public DrawSketchHandler
 {
 public:
-    DrawSketchHandlerSlot()
-        : Mode(STATUS_SEEK_First)
+    enum SlotType {
+        TwoPointsSlot,
+        ThreePointSlot
+    };
+
+    DrawSketchHandlerSlot(SlotType slotType)
+        : slotType(slotType)
+        , Mode(STATUS_SEEK_First)
         , SnapMode(SNAP_MODE_Free)
         , SnapDir(SNAP_DIR_Horz)
         , dx(0), dy(0), r(0)
         , EditCurve(35)
-    {
-    }
+    {}
     virtual ~DrawSketchHandlerSlot() {}
     /// mode table
     enum BoxMode {
         STATUS_SEEK_First,      /**< enum value ----. */
-        STATUS_SEEK_Second,     /**< enum value ----. */
+        STATUS_SEEK_Second,      /**< enum value ----. */
+        STATUS_SEEK_Third,      /**< enum value ----. */
+        STATUS_SEEK_Fourth,     /**< enum value ----. */
         STATUS_End
     };
 
@@ -7319,14 +7327,17 @@ public:
 
             double a = 0;
             double rev = 0;
+
+            r = sqrt(pow(dx, 2) + pow(dy, 2)) / 5; //radius choosen at 1/5 of length
+
             if (fabs(dx) > fabs(dy)) {
-                r = fabs(dx) / 4;
+                //r = fabs(dx) / 4;
                 rev = Base::sgn(dx);
                 SnapDir = SNAP_DIR_Horz;
                 if (SnapMode == SNAP_MODE_Straight) dy = 0;
             }
             else {
-                r = fabs(dy) / 4;
+                //r = fabs(dy) / 4;
                 a = 8;
                 rev = Base::sgn(dy);
                 SnapDir = SNAP_DIR_Vert;
@@ -7365,6 +7376,79 @@ public:
                 return;
             }
         }
+        else if (Mode == STATUS_SEEK_Third) {
+            dx = SecondPos.x - StartPos.x;
+            dy = SecondPos.y - StartPos.y;
+
+            if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+                SnapMode = SNAP_MODE_Straight;
+            else
+                SnapMode = SNAP_MODE_Free;
+
+            double a = 0;
+            double rev = 0;
+
+            /*To follow the cursor, r should adapt depending on the position of the cursor. If cursor is 'between' the center points, 
+            then its distance to that line and not distance to the second center.
+            A is "between" B and C if angle ∠ABC and angle ∠ACB are both less than or equal to ninety degrees.
+            An angle ∠ABC is greater than ninety degrees iff AB^2 + BC^2 < AC^2.*/
+
+            double L = sqrt(dx * dx + dy * dy); //distance between the two centers
+            double L1 = sqrt(pow(onSketchPos.x - StartPos.x, 2) + pow(onSketchPos.y - StartPos.y, 2)); //distance between first center and onSketchPos
+            double L2 = sqrt(pow(onSketchPos.x - SecondPos.x, 2) + pow(onSketchPos.y - SecondPos.y, 2)); //distance between second center and onSketchPos
+
+            if ((L1*L1 + L*L > L2*L2) && (L2 * L2 + L * L > L1 * L1)) {
+                //distance of onSketchPos to the line StartPos-SecondPos
+                r = (abs((SecondPos.y - StartPos.y) * onSketchPos.x - (SecondPos.x - StartPos.x) * onSketchPos.y + SecondPos.x * StartPos.y - SecondPos.y * StartPos.x)) /
+                    (pow((pow(SecondPos.y - StartPos.y, 2) + pow(SecondPos.x - StartPos.x, 2)), 0.5));
+            }
+            else {
+                r = min(L1,L2);
+            }
+
+            if (fabs(dx) > fabs(dy)) {
+                rev = Base::sgn(dx);
+                SnapDir = SNAP_DIR_Horz;
+            }
+            else {
+                a = 8;
+                rev = Base::sgn(dy);
+                SnapDir = SNAP_DIR_Vert;
+            }
+
+            // draw the arcs with each 16 segments
+            for (int i = 0; i < 17; i++) {
+                // first get the position at the arc
+                // if a is 0, the end points of the arc are at the y-axis, if it is 8, they are on the x-axis
+                double angle = (i + a) * M_PI / 16.0;
+                double rx = -r * rev * sin(angle);
+                double ry = r * rev * cos(angle);
+                // now apply the rotation matrix according to the angle between StartPos and onSketchPos
+                if (!(dx == 0 || dy == 0)) {
+                    double rotAngle = atan(dy / dx);
+                    if (a > 0)
+                        rotAngle = -atan(dx / dy);
+                    double rxRot = rx * cos(rotAngle) - ry * sin(rotAngle);
+                    double ryRot = rx * sin(rotAngle) + ry * cos(rotAngle);
+                    rx = rxRot;
+                    ry = ryRot;
+                }
+                EditCurve[i] = Base::Vector2d(StartPos.x + rx, StartPos.y + ry);
+                EditCurve[17 + i] = Base::Vector2d(StartPos.x + dx - rx, StartPos.y + dy - ry);
+            }
+            EditCurve[34] = EditCurve[0];
+
+
+            SbString text;
+            text.sprintf(" (%.1fR %.1fL)", r, L);
+            setPositionText(onSketchPos, text);
+
+            sketchgui->drawEdit(EditCurve);
+            if (seekAutoConstraint(sugConstr3, onSketchPos, Base::Vector2d(dx, dy), AutoConstraint::VERTEX_NO_TANGENCY)) {
+                renderSuggestConstraintsCursor(sugConstr3);
+                return;
+            }
+        }
         applyCursor();
     }
 
@@ -7374,9 +7458,19 @@ public:
             StartPos = onSketchPos;
             Mode = STATUS_SEEK_Second;
         }
+        else if (Mode == STATUS_SEEK_Second) {
+            if (slotType == ThreePointSlot) {
+                SecondPos = onSketchPos;
+                Mode = STATUS_SEEK_Third;
+            }
+            else { //so if slotType == TwoPointsSlot
+                Mode = STATUS_End;
+            }
+        }
         else {
             Mode = STATUS_End;
         }
+
         return true;
     }
 
@@ -7520,12 +7614,14 @@ public:
     }
 protected:
     BoxMode Mode;
+    int slotType;
     SNAP_MODE SnapMode;
     SNAP_DIR SnapDir;
     Base::Vector2d StartPos;
+    Base::Vector2d SecondPos;
     double dx, dy, r;
     std::vector<Base::Vector2d> EditCurve;
-    std::vector<AutoConstraint> sugConstr1, sugConstr2;
+    std::vector<AutoConstraint> sugConstr1, sugConstr2, sugConstr3;
 };
 
 DEF_STD_CMD_AU(CmdSketcherCreateSlot)
@@ -7547,7 +7643,7 @@ CmdSketcherCreateSlot::CmdSketcherCreateSlot()
 void CmdSketcherCreateSlot::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerSlot());
+    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerSlot(DrawSketchHandlerSlot::TwoPointsSlot));
 }
 
 void CmdSketcherCreateSlot::updateAction(int mode)
@@ -7565,6 +7661,874 @@ void CmdSketcherCreateSlot::updateAction(int mode)
 }
 
 bool CmdSketcherCreateSlot::isActive(void)
+{
+    return isCreateGeoActive(getActiveGuiDocument());
+}
+
+/* Create 3 points Slot =========================================================*/
+
+DEF_STD_CMD_AU(CmdSketcherCreateThreePointsSlot)
+
+CmdSketcherCreateThreePointsSlot::CmdSketcherCreateThreePointsSlot()
+    : Command("Sketcher_CreateThreePointsSlot")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Create 3 points slot");
+    sToolTipText = QT_TR_NOOP("Create a 3 points slot in the sketch");
+    sWhatsThis = "Sketcher_CreateSlot";
+    sStatusTip = sToolTipText;
+    sPixmap = "Sketcher_CreateThreePointsSlot";
+    sAccel = "G, S, 3";
+    eType = ForEdit;
+}
+
+void CmdSketcherCreateThreePointsSlot::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerSlot(DrawSketchHandlerSlot::ThreePointSlot));
+}
+
+void CmdSketcherCreateThreePointsSlot::updateAction(int mode)
+{
+    switch (mode) {
+    case Normal:
+        if (getAction())
+            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateThreePointsSlot"));
+        break;
+    case Construction:
+        if (getAction())
+            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateThreePointsSlot_Constr"));
+        break;
+    }
+}
+
+bool CmdSketcherCreateThreePointsSlot::isActive(void)
+{
+    return isCreateGeoActive(getActiveGuiDocument());
+}
+
+/* Create Arc Slot =========================================================*/
+
+class DrawSketchHandlerArcSlot : public DrawSketchHandler
+{
+public:
+    enum SlotType {
+        ArcSlot,
+        ThreePointArcSlot
+    };
+
+    DrawSketchHandlerArcSlot(SlotType slotType)
+        : slotType(slotType)
+        , Mode(STATUS_SEEK_First)
+        , SnapMode(SNAP_MODE_Free)
+        , SnapDir(SNAP_DIR_Horz)
+        , dx1(0), dy1(0), r(0)
+        , EditCurve(33)
+    {}
+    virtual ~DrawSketchHandlerArcSlot() {}
+    /// mode table
+    enum BoxMode {
+        STATUS_SEEK_First,      /**< enum value ----. */
+        STATUS_SEEK_Second,      /**< enum value ----. */
+        STATUS_SEEK_Third,      /**< enum value ----. */
+        STATUS_SEEK_Fourth,     /**< enum value ----. */
+        STATUS_End
+    };
+
+    enum SNAP_MODE
+    {
+        SNAP_MODE_Free,
+        SNAP_MODE_Straight
+    };
+
+    enum SNAP_DIR
+    {
+        SNAP_DIR_Horz,
+        SNAP_DIR_Vert
+    };
+
+    virtual void activated(ViewProviderSketch*)
+    {
+        setCrosshairCursor("Sketcher_Pointer_Slot");
+    }
+
+    virtual void mouseMove(Base::Vector2d onSketchPos)
+    {
+
+        if (Mode == STATUS_SEEK_First) {
+            setPositionText(onSketchPos);
+            if (seekAutoConstraint(sugConstr1, onSketchPos, Base::Vector2d(0.f, 0.f))) {
+                renderSuggestConstraintsCursor(sugConstr1);
+                return;
+            }
+        }
+        else if (Mode == STATUS_SEEK_Second) {
+            dx1 = onSketchPos.x - CenterPos.x;
+            dy1 = onSketchPos.y - CenterPos.y;
+           
+            StartPos = onSketchPos;
+
+            //Start angle
+            startAngle = atan2(dy1, dx1);
+            
+            //Arc radius
+            ra = sqrt(pow(dx1, 2) + pow(dy1, 2));
+
+            // draw the circle with 32 segments
+            for (int i = 0; i < 16; i++) {
+                double angle = i * M_PI / 16.0;
+                double rx = dx1 * cos(angle) + dy1 * sin(angle);
+                double ry = -dx1 * sin(angle) + dy1 * cos(angle);
+                EditCurve[0 + i] = Base::Vector2d(CenterPos.x + rx, CenterPos.y + ry);
+                EditCurve[16 + i] = Base::Vector2d(CenterPos.x - rx, CenterPos.y - ry);
+            }
+            EditCurve[32] = EditCurve[0];
+
+            SbString text;
+            text.sprintf(" (%.1fR %.1fdeg %.1fx %.1fy )", ra, startAngle * 180 / M_PI, onSketchPos.x, onSketchPos.x);
+            setPositionText(onSketchPos, text);
+
+            sketchgui->drawEdit(EditCurve);
+            if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.f, 0.f))) {
+                renderSuggestConstraintsCursor(sugConstr2);
+                return;
+            }
+        }
+        else if (Mode == STATUS_SEEK_Third) {
+
+            dx2 = onSketchPos.x - CenterPos.x;
+            dy2 = onSketchPos.y - CenterPos.y;
+
+            //find the center of the third arc.
+            EndPos.x = sqrt(pow(ra, 2) / (pow(dy2 / dx2, 2) + 1));
+            EndPos.y = sqrt(pow(ra, 2) / (pow(dx2 / dy2, 2) + 1));
+            if (dx2 < 0) {
+                EndPos.x = -EndPos.x;
+            }
+            if (dy2 < 0) {
+                EndPos.y = -EndPos.y;
+            }
+            EndPos.x = EndPos.x + CenterPos.x;
+            EndPos.y = EndPos.y + CenterPos.y;
+
+
+            r = ra/10; //Auto radius to 1/10 of the arc radius
+
+            EditCurve.resize(89);
+
+            double angle1 = atan2(onSketchPos.y - CenterPos.y,
+                onSketchPos.x - CenterPos.x) - startAngle;
+            double angle2 = angle1 + (angle1 < 0. ? 2 : -2) * M_PI;
+            arcAngle = abs(angle1 - arcAngle) < abs(angle2 - arcAngle) ? angle1 : angle2;
+
+            double dx11 = sqrt(pow(ra - r,2) / (pow(dy1 / dx1, 2) + 1));
+            double dy11 = sqrt(pow(ra - r, 2) / (pow(dx1 / dy1, 2) + 1));
+            double dx12 = sqrt(pow(ra + r, 2) / (pow(dy1 / dx1, 2) + 1));
+            double dy12 = sqrt(pow(ra + r, 2) / (pow(dx1 / dy1, 2) + 1));
+            if (dx1 < 0) { 
+                dx11 = -dx11; 
+                dx12 = -dx12;
+            }
+            if (dy1 < 0) { 
+                dy11 = -dy11; 
+                dy12 = -dy12;
+            }
+            for (int i = 0; i < 28; i++) {
+                double angle = i * arcAngle / 27.0;
+                double rx = dx11 * cos(angle) - dy11 * sin(angle);
+                double ry = dx11 * sin(angle) + dy11 * cos(angle);
+                EditCurve[i] = Base::Vector2d(CenterPos.x + rx, CenterPos.y + ry);
+                double rx2 = dx12 * cos(angle) - dy12 * sin(angle);
+                double ry2 = dx12 * sin(angle) + dy12 * cos(angle);
+                EditCurve[28+16 +27-i] = Base::Vector2d(CenterPos.x + rx2, CenterPos.y + ry2);
+            }
+
+            double angle3 = arcAngle < 0 ? M_PI : -M_PI;
+            for (int i = 0; i < 16; i++) {
+                double angle = i * angle3 / 16.0;
+                double rx = (EditCurve[71].x - StartPos.x) * cos(angle) - (EditCurve[71].y - StartPos.y) * sin(angle);
+                double ry = (EditCurve[71].x - StartPos.x) * sin(angle) + (EditCurve[71].y - StartPos.y) * cos(angle);
+                EditCurve[28 + 16 + 28 + i] = Base::Vector2d(StartPos.x + rx, StartPos.y + ry);
+                double rx2 = (EditCurve[27].x - EndPos.x) * cos(angle) - (EditCurve[27].y - EndPos.y) * sin(angle);
+                double ry2 = (EditCurve[27].x - EndPos.x) * sin(angle) + (EditCurve[27].y - EndPos.y) * cos(angle);
+                EditCurve[28 + i] = Base::Vector2d(EndPos.x + rx2, EndPos.y + ry2);
+            }
+            EditCurve[88] = EditCurve[0];
+
+            // Display radius and arc angle
+            SbString text;
+            text.sprintf(" (%.1fR,%.1fdeg %.1fx %.1fy )", ra, arcAngle * 180 / M_PI, onSketchPos.x, onSketchPos.x);
+            setPositionText(onSketchPos, text);
+
+            sketchgui->drawEdit(EditCurve);
+            if (seekAutoConstraint(sugConstr3, onSketchPos, Base::Vector2d(0.0, 0.0))) {
+                renderSuggestConstraintsCursor(sugConstr3);
+                return;
+            }
+        }
+        else if (Mode == STATUS_SEEK_Fourth) {
+
+            //radius at sketch pos
+            r = min( ra*0.999, abs(ra - sqrt(pow(onSketchPos.x - CenterPos.x, 2) + pow(onSketchPos.y - CenterPos.y, 2))));
+            
+            double dx11 = sqrt(pow(ra - r, 2) / (pow(dy1 / dx1, 2) + 1));
+            double dy11 = sqrt(pow(ra - r, 2) / (pow(dx1 / dy1, 2) + 1));
+            double dx12 = sqrt(pow(ra + r, 2) / (pow(dy1 / dx1, 2) + 1));
+            double dy12 = sqrt(pow(ra + r, 2) / (pow(dx1 / dy1, 2) + 1));
+            if (dx1 < 0) {
+                dx11 = -dx11;
+                dx12 = -dx12;
+            }
+            if (dy1 < 0) {
+                dy11 = -dy11;
+                dy12 = -dy12;
+            }
+            for (int i = 0; i < 28; i++) {
+                double angle = i * arcAngle / 27.0;
+                double rx = dx11 * cos(angle) - dy11 * sin(angle);
+                double ry = dx11 * sin(angle) + dy11 * cos(angle);
+                EditCurve[i] = Base::Vector2d(CenterPos.x + rx, CenterPos.y + ry);
+                double rx2 = dx12 * cos(angle) - dy12 * sin(angle);
+                double ry2 = dx12 * sin(angle) + dy12 * cos(angle);
+                EditCurve[28 + 16 + 27 - i] = Base::Vector2d(CenterPos.x + rx2, CenterPos.y + ry2);
+            }
+
+            double angle3 = arcAngle < 0 ? M_PI : -M_PI;
+            for (int i = 0; i < 16; i++) {
+                double angle = i * angle3 / 16.0;
+                double rx = (EditCurve[71].x - StartPos.x) * cos(angle) - (EditCurve[71].y - StartPos.y) * sin(angle);
+                double ry = (EditCurve[71].x - StartPos.x) * sin(angle) + (EditCurve[71].y - StartPos.y) * cos(angle);
+                EditCurve[28 + 16 + 28 + i] = Base::Vector2d(StartPos.x + rx, StartPos.y + ry);
+                double rx2 = (EditCurve[27].x - EndPos.x) * cos(angle) - (EditCurve[27].y - EndPos.y) * sin(angle);
+                double ry2 = (EditCurve[27].x - EndPos.x) * sin(angle) + (EditCurve[27].y - EndPos.y) * cos(angle);
+                EditCurve[28 + i] = Base::Vector2d(EndPos.x + rx2, EndPos.y + ry2);
+            }
+            EditCurve[88] = EditCurve[0];
+
+            // Display radius and arc angle
+
+            SbString text;
+            text.sprintf(" (%.1fR,%.1fdeg %.1fx %.1fy )", r, arcAngle * 180 / M_PI, onSketchPos.x, onSketchPos.x);
+            setPositionText(onSketchPos, text);
+
+            sketchgui->drawEdit(EditCurve);
+        }
+        applyCursor();
+    }
+
+    virtual bool pressButton(Base::Vector2d onSketchPos)
+    {
+        if (Mode == STATUS_SEEK_First) {
+            CenterPos = onSketchPos;
+            Mode = STATUS_SEEK_Second;
+        }
+        else if (Mode == STATUS_SEEK_Second) {
+            arcAngle = 0.;
+            Mode = STATUS_SEEK_Third;
+        }
+        else if (Mode == STATUS_SEEK_Third) {
+            if (arcAngle > 0)
+                endAngle = startAngle + arcAngle;
+            else {
+                endAngle = startAngle;
+                startAngle += arcAngle;
+            }
+            Mode = STATUS_SEEK_Fourth;
+        }
+        else {
+            Mode = STATUS_End;
+        }
+        return true;
+    }
+
+    virtual bool releaseButton(Base::Vector2d onSketchPos)
+    {
+        Q_UNUSED(onSketchPos);
+        if (Mode == STATUS_End) {
+            unsetCursor();
+            resetPositionText();
+
+            int firstCurve = getHighestCurveIndex() + 1;
+            
+            try {
+                Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add slot"));
+
+                AutoConstraint lastCons = { Sketcher::None, Sketcher::GeoEnum::GeoUndef, Sketcher::PointPos::none };
+
+                if (!sugConstr2.empty()) lastCons = sugConstr2.back();
+
+                Gui::Command::doCommand(Gui::Command::Doc,
+                    "geoList = []\n"
+                    "geoList.append(Part.ArcOfCircle(Part.Circle(App.Vector(%f, %f, 0), App.Vector(0, 0, 1), %f), %f, %f))\n"
+                    "geoList.append(Part.ArcOfCircle(Part.Circle(App.Vector(%f, %f ,0), App.Vector(0, 0, 1), %f), %f, %f))\n"
+                    "geoList.append(Part.ArcOfCircle(Part.Circle(App.Vector(%f, %f ,0), App.Vector(0, 0, 1), %f), %f, %f))\n"
+                    "geoList.append(Part.ArcOfCircle(Part.Circle(App.Vector(%f, %f ,0), App.Vector(0, 0, 1), %f), %f, %f))\n"
+                    "%s.addGeometry(geoList, %s)\n"
+                    "conList = []\n"
+                    "conList.append(Sketcher.Constraint('Coincident', %i, 3, %i, 3))\n"
+                    "conList.append(Sketcher.Constraint('Tangent', %i, %i, %i, %i))\n"
+                    "conList.append(Sketcher.Constraint('Tangent', %i, %i, %i, %i))\n"
+                    "conList.append(Sketcher.Constraint('Tangent', %i, %i, %i, %i))\n"
+                    "conList.append(Sketcher.Constraint('Tangent', %i, %i, %i, %i))\n"
+                    "%s.addConstraint(conList)\n"
+                    "del geoList, conList\n",
+                    CenterPos.x, CenterPos.y,         // center of the arc1
+                    ra - r,                           // radius arc1
+                    startAngle, endAngle,             // start and end angle of arc1
+                    CenterPos.x, CenterPos.y,         // center of the arc2
+                    ra + r,                           // radius arc2
+                    startAngle, endAngle,             // start and end angle of arc2
+                    StartPos.x, StartPos.y,           // center of the arc3
+                    r,                                // radius arc3
+                    (arcAngle > 0) ? startAngle + M_PI : endAngle,
+                    (arcAngle > 0) ? startAngle + 2 * M_PI : endAngle + M_PI,    // start and end angle of arc3
+                    EndPos.x, EndPos.y,               // center of the arc4
+                    r,                                // radius arc4
+                    (arcAngle > 0) ? endAngle : startAngle + M_PI,
+                    (arcAngle > 0) ? endAngle + M_PI :startAngle + 2*M_PI,        // start and end angle of arc4
+                    Gui::Command::getObjectCmd(sketchgui->getObject()).c_str(), // the sketch
+                    geometryCreationMode == Construction ? "True" : "False", // geometry as construction or not
+                    firstCurve, firstCurve + 1,      // coicident1: mid of the two arcs
+                    firstCurve    , (arcAngle > 0) ? Sketcher::PointPos::end : Sketcher::PointPos::start,     //tangent1
+                    firstCurve + 3, (arcAngle > 0) ? Sketcher::PointPos::end : Sketcher::PointPos::start,     //tangent1
+                    firstCurve    , (arcAngle > 0) ? Sketcher::PointPos::start : Sketcher::PointPos::end,     //tangent2
+                    firstCurve + 2, (arcAngle > 0) ? Sketcher::PointPos::start : Sketcher::PointPos::end,     //tangent2
+                    firstCurve + 1, (arcAngle > 0) ? Sketcher::PointPos::end : Sketcher::PointPos::start,     //tangent3
+                    firstCurve + 3, (arcAngle > 0) ? Sketcher::PointPos::start : Sketcher::PointPos::end,     //tangent3
+                    firstCurve + 1, (arcAngle > 0) ? Sketcher::PointPos::start : Sketcher::PointPos::end,     //tangent4
+                    firstCurve + 2, (arcAngle > 0) ? Sketcher::PointPos::end : Sketcher::PointPos::start,     //tangent4
+                    Gui::Command::getObjectCmd(sketchgui->getObject()).c_str()); // the sketch
+
+                Gui::Command::commitCommand();
+
+                // add auto constraints at the center of the first arc
+                if (sugConstr1.size() > 0) {
+                    createAutoConstraints(sugConstr1, getHighestCurveIndex() - 3, Sketcher::PointPos::mid);
+                    sugConstr1.clear();
+                }
+
+                // add auto constraints
+                if (sugConstr2.size() > 0) {
+                    createAutoConstraints(sugConstr2, getHighestCurveIndex() - 1, Sketcher::PointPos::mid);
+                    sugConstr2.clear();
+                }
+
+                // add auto constraints
+                if (sugConstr3.size() > 0) {
+                    createAutoConstraints(sugConstr3, getHighestCurveIndex(), Sketcher::PointPos::mid);
+                    sugConstr3.clear();
+                }
+
+                tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject*>(sketchgui->getObject()));
+            }
+            catch (const Base::Exception& e) {
+                Base::Console().Error("Failed to add slot: %s\n", e.what());
+                Gui::Command::abortCommand();
+
+                tryAutoRecompute(static_cast<Sketcher::SketchObject*>(sketchgui->getObject()));
+            }
+            ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+            bool continuousMode = hGrp->GetBool("ContinuousCreationMode", true);
+
+            if (continuousMode) {
+                // This code enables the continuous creation mode.
+                Mode = STATUS_SEEK_First;
+                EditCurve.clear();
+                sketchgui->drawEdit(EditCurve);
+                EditCurve.resize(33);
+                applyCursor();
+                /* this is ok not to call to purgeHandler
+                * in continuous creation mode because the
+                * handler is destroyed by the quit() method on pressing the
+                * right button of the mouse */
+            }
+            else {
+                sketchgui->purgeHandler(); // no code after this line, Handler get deleted in ViewProvider
+            }
+            SnapMode = SNAP_MODE_Straight;
+        }
+        return true;
+    }
+protected:
+    BoxMode Mode;
+    int slotType;
+    SNAP_MODE SnapMode;
+    SNAP_DIR SnapDir;
+    Base::Vector2d CenterPos;
+    Base::Vector2d StartPos;
+    Base::Vector2d EndPos;
+    double dx1, dy1, dx2, dy2, startAngle, endAngle, arcAngle, r, ra;
+    std::vector<Base::Vector2d> EditCurve;
+    std::vector<AutoConstraint> sugConstr1, sugConstr2, sugConstr3;
+};
+
+DEF_STD_CMD_AU(CmdSketcherCreateArcSlot)
+
+CmdSketcherCreateArcSlot::CmdSketcherCreateArcSlot()
+    : Command("Sketcher_CreateArcSlot")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Create arc slot");
+    sToolTipText = QT_TR_NOOP("Create an arc slot in the sketch");
+    sWhatsThis = "Sketcher_CreateArcSlot";
+    sStatusTip = sToolTipText;
+    sPixmap = "Sketcher_CreateArcSlot";
+    sAccel = "G, S, 2";
+    eType = ForEdit;
+}
+
+void CmdSketcherCreateArcSlot::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerArcSlot(DrawSketchHandlerArcSlot::ArcSlot));
+}
+
+void CmdSketcherCreateArcSlot::updateAction(int mode)
+{
+    switch (mode) {
+    case Normal:
+        if (getAction())
+            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot"));
+        break;
+    case Construction:
+        if (getAction())
+            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot_Constr"));
+        break;
+    }
+}
+
+bool CmdSketcherCreateArcSlot::isActive(void)
+{
+    return isCreateGeoActive(getActiveGuiDocument());
+}
+
+/* Create Rectangle Slot =========================================================*/
+
+class DrawSketchHandlerRectangleSlot : public DrawSketchHandler
+{
+public:
+    enum SlotType {
+        RectangleSlot
+    };
+
+    DrawSketchHandlerRectangleSlot(SlotType slotType)
+        : slotType(slotType)
+        , Mode(STATUS_SEEK_First)
+        , SnapMode(SNAP_MODE_Free)
+        , SnapDir(SNAP_DIR_Horz)
+        , dx1(0), dy1(0), r(0)
+        , EditCurve(33)
+    {}
+    virtual ~DrawSketchHandlerRectangleSlot() {}
+    /// mode table
+    enum BoxMode {
+        STATUS_SEEK_First,      /**< enum value ----. */
+        STATUS_SEEK_Second,      /**< enum value ----. */
+        STATUS_SEEK_Third,      /**< enum value ----. */
+        STATUS_SEEK_Fourth,     /**< enum value ----. */
+        STATUS_End
+    };
+
+    enum SNAP_MODE
+    {
+        SNAP_MODE_Free,
+        SNAP_MODE_Straight
+    };
+
+    enum SNAP_DIR
+    {
+        SNAP_DIR_Horz,
+        SNAP_DIR_Vert
+    };
+
+    virtual void activated(ViewProviderSketch*)
+    {
+        setCrosshairCursor("Sketcher_Pointer_Slot");
+    }
+
+    virtual void mouseMove(Base::Vector2d onSketchPos)
+    {
+
+        if (Mode == STATUS_SEEK_First) {
+            setPositionText(onSketchPos);
+            if (seekAutoConstraint(sugConstr1, onSketchPos, Base::Vector2d(0.f, 0.f))) {
+                renderSuggestConstraintsCursor(sugConstr1);
+                return;
+            }
+        }
+        else if (Mode == STATUS_SEEK_Second) {
+            dx1 = onSketchPos.x - CenterPos.x;
+            dy1 = onSketchPos.y - CenterPos.y;
+
+            //Start angle
+            startAngle = atan2(dy1, dx1);
+
+            //Arc radius
+            r = sqrt(pow(dx1, 2) + pow(dy1, 2));
+
+            // draw the circle with 32 segments
+            for (int i = 0; i < 16; i++) {
+                double angle = i * M_PI / 16.0;
+                double rx = dx1 * cos(angle) + dy1 * sin(angle);
+                double ry = -dx1 * sin(angle) + dy1 * cos(angle);
+                EditCurve[0 + i] = Base::Vector2d(CenterPos.x + rx, CenterPos.y + ry);
+                EditCurve[16 + i] = Base::Vector2d(CenterPos.x - rx, CenterPos.y - ry);
+            }
+            EditCurve[32] = EditCurve[0];
+
+            SbString text;
+            text.sprintf(" (%.1fa %.1fR %.1fx %.1fy )", startAngle, r, onSketchPos.x, onSketchPos.x);
+            setPositionText(onSketchPos, text);
+
+            sketchgui->drawEdit(EditCurve);
+            if (seekAutoConstraint(sugConstr2, onSketchPos, Base::Vector2d(0.f, 0.f))) {
+                renderSuggestConstraintsCursor(sugConstr2);
+                return;
+            }
+        }
+        else if (Mode == STATUS_SEEK_Third) {
+
+            //End angle
+            dx2 = onSketchPos.x - CenterPos.x;
+            dy2 = onSketchPos.y - CenterPos.y;
+
+            r2 = sqrt(pow(dx2, 2) + pow(dy2, 2));
+
+            EditCurve.resize(57);
+
+            double angle1 = atan2(onSketchPos.y - CenterPos.y,
+                onSketchPos.x - CenterPos.x) - startAngle;
+            double angle2 = angle1 + (angle1 < 0. ? 2 : -2) * M_PI;
+            arcAngle = abs(angle1 - arcAngle) < abs(angle2 - arcAngle) ? angle1 : angle2;
+
+            for (int i = 0; i < 28; i++) {
+                double angle = i * arcAngle / 27.0;
+                double rx = dx1 * cos(angle) - dy1 * sin(angle);
+                double ry = dx1 * sin(angle) + dy1 * cos(angle);
+                EditCurve[i] = Base::Vector2d(CenterPos.x + rx, CenterPos.y + ry);
+                double rx2 = dx2 * cos(-angle) - dy2 * sin(-angle);
+                double ry2 = dx2 * sin(-angle) + dy2 * cos(-angle);
+                EditCurve[28 + i] = Base::Vector2d(CenterPos.x + rx2, CenterPos.y + ry2);
+            }
+            EditCurve[56] = EditCurve[0];
+
+            // Display radius and arc angle
+            SbString text;
+            text.sprintf(" (%.1fR,%.1fdeg)", r2, arcAngle * 180 / M_PI);
+            setPositionText(onSketchPos, text);
+
+            sketchgui->drawEdit(EditCurve);
+            if (seekAutoConstraint(sugConstr3, onSketchPos, Base::Vector2d(0.0, 0.0))) {
+                renderSuggestConstraintsCursor(sugConstr3);
+                return;
+            }
+        }
+        applyCursor();
+    }
+
+    virtual bool pressButton(Base::Vector2d onSketchPos)
+    {
+        if (Mode == STATUS_SEEK_First) {
+            CenterPos = onSketchPos;
+            Mode = STATUS_SEEK_Second;
+        }
+        else if (Mode == STATUS_SEEK_Second) {
+            StartPos = onSketchPos;
+            arcAngle = 0.;
+            Mode = STATUS_SEEK_Third;
+        }
+        else if (Mode == STATUS_SEEK_Third) {
+            EndPos = onSketchPos;
+            if (arcAngle > 0)
+                endAngle = startAngle + arcAngle;
+            else {
+                endAngle = startAngle;
+                startAngle += arcAngle;
+            }
+            Mode = STATUS_End;
+        }
+        else {
+            Mode = STATUS_End;
+        }
+        return true;
+    }
+
+    virtual bool releaseButton(Base::Vector2d onSketchPos)
+    {
+        Q_UNUSED(onSketchPos);
+        if (Mode == STATUS_End) {
+            unsetCursor();
+            resetPositionText();
+
+            int firstCurve = getHighestCurveIndex() + 1;
+
+            try {
+                Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add slot"));
+
+                AutoConstraint lastCons = { Sketcher::None, Sketcher::GeoEnum::GeoUndef, Sketcher::PointPos::none };
+
+                if (!sugConstr2.empty()) lastCons = sugConstr2.back();
+
+                Gui::Command::doCommand(Gui::Command::Doc,
+                    "geoList = []\n"
+                    "geoList.append(Part.ArcOfCircle(Part.Circle(App.Vector(%f, %f, 0), App.Vector(0, 0, 1), %f), %f, %f))\n"
+                    "geoList.append(Part.ArcOfCircle(Part.Circle(App.Vector(%f, %f ,0), App.Vector(0, 0, 1), %f), %f, %f))\n"
+                    "geoList.append(Part.LineSegment(App.Vector(%f, %f, 0), App.Vector(%f, %f, 0)))\n"
+                    "geoList.append(Part.LineSegment(App.Vector(%f, %f, 0), App.Vector(%f, %f, 0)))\n"
+                    "%s.addGeometry(geoList, %s)\n"
+                    "conList = []\n"
+                    "conList.append(Sketcher.Constraint('Perpendicular', %i, 0, %i, 0))\n"
+                    "conList.append(Sketcher.Constraint('Perpendicular', %i, 0, %i, 0))\n"
+                    "conList.append(Sketcher.Constraint('Coincident', %i, 3, %i, 3))\n"
+                    "conList.append(Sketcher.Constraint('Coincident', %i, %i, %i, 2))\n"
+                    "conList.append(Sketcher.Constraint('Coincident', %i, %i, %i, 1))\n"
+                    "conList.append(Sketcher.Constraint('Coincident', %i, %i, %i, 1))\n"
+                    "conList.append(Sketcher.Constraint('Coincident', %i, %i, %i, 2))\n"
+                    "%s.addConstraint(conList)\n"
+                    "del geoList, conList\n",
+                    CenterPos.x, CenterPos.y,         // center of the arc1
+                    r,                                // radius arc1
+                    startAngle, endAngle,             // start and end angle of arc1
+                    CenterPos.x, CenterPos.y,         // center of the arc2
+                    r2,                               // radius arc2
+                    startAngle, endAngle,             // start and end angle of arc2
+                    EditCurve[27].x, EditCurve[27].y, EditCurve[28].x, EditCurve[28].y, // line1
+                    EditCurve[55].x, EditCurve[55].y, EditCurve[56].x, EditCurve[56].y, // line2
+                    Gui::Command::getObjectCmd(sketchgui->getObject()).c_str(), // the sketch
+                    geometryCreationMode == Construction ? "True" : "False", // geometry as construction or not
+                    firstCurve, firstCurve + 2,     // perpendicular1
+                    firstCurve, firstCurve + 3,     // perpendicular2
+                    firstCurve, firstCurve + 1,      // coicident1: mid of the two arcs
+                    firstCurve, (arcAngle > 0) ? Sketcher::PointPos::start : Sketcher::PointPos::end, firstCurve + 3,     // coicident2
+                    firstCurve, (arcAngle > 0) ? Sketcher::PointPos::end : Sketcher::PointPos::start, firstCurve + 2,     // coicident3
+                    firstCurve + 1, (arcAngle > 0) ? Sketcher::PointPos::start : Sketcher::PointPos::end, firstCurve + 3, // coicident4
+                    firstCurve + 1, (arcAngle > 0) ? Sketcher::PointPos::end : Sketcher::PointPos::start, firstCurve + 2, // coicident5
+                    Gui::Command::getObjectCmd(sketchgui->getObject()).c_str()); // the sketch
+
+                Gui::Command::commitCommand();
+
+                // add auto constraints at the center of the first arc
+                if (sugConstr1.size() > 0) {
+                    createAutoConstraints(sugConstr1, getHighestCurveIndex() - 3, Sketcher::PointPos::mid);
+                    sugConstr1.clear();
+                }
+
+                // add auto constraints
+                if (sugConstr2.size() > 0) {
+                    createAutoConstraints(sugConstr2, getHighestCurveIndex() - 3, (arcAngle > 0) ? Sketcher::PointPos::start : Sketcher::PointPos::end);
+                    sugConstr2.clear();
+                }
+
+                // add auto constraints
+                if (sugConstr3.size() > 0) {
+                    createAutoConstraints(sugConstr3, getHighestCurveIndex() - 2, (arcAngle > 0) ? Sketcher::PointPos::end : Sketcher::PointPos::start);
+                    sugConstr3.clear();
+                }
+
+                tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject*>(sketchgui->getObject()));
+            }
+            catch (const Base::Exception& e) {
+                Base::Console().Error("Failed to add slot: %s\n", e.what());
+                Gui::Command::abortCommand();
+
+                tryAutoRecompute(static_cast<Sketcher::SketchObject*>(sketchgui->getObject()));
+            }
+            ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
+            bool continuousMode = hGrp->GetBool("ContinuousCreationMode", true);
+
+            if (continuousMode) {
+                // This code enables the continuous creation mode.
+                Mode = STATUS_SEEK_First;
+                EditCurve.clear();
+                sketchgui->drawEdit(EditCurve);
+                EditCurve.resize(33);
+                applyCursor();
+                /* this is ok not to call to purgeHandler
+                * in continuous creation mode because the
+                * handler is destroyed by the quit() method on pressing the
+                * right button of the mouse */
+            }
+            else {
+                sketchgui->purgeHandler(); // no code after this line, Handler get deleted in ViewProvider
+            }
+            SnapMode = SNAP_MODE_Straight;
+        }
+        return true;
+    }
+protected:
+    BoxMode Mode;
+    int slotType;
+    SNAP_MODE SnapMode;
+    SNAP_DIR SnapDir;
+    Base::Vector2d CenterPos;
+    Base::Vector2d StartPos;
+    Base::Vector2d EndPos;
+    double dx1, dy1, dx2, dy2, startAngle, endAngle, arcAngle, r, r2;
+    std::vector<Base::Vector2d> EditCurve;
+    std::vector<AutoConstraint> sugConstr1, sugConstr2, sugConstr3;
+};
+
+DEF_STD_CMD_AU(CmdSketcherCreateRectangleSlot)
+
+CmdSketcherCreateRectangleSlot::CmdSketcherCreateRectangleSlot()
+    : Command("Sketcher_CreateRectangleSlot")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Create rectangle slot");
+    sToolTipText = QT_TR_NOOP("Create an rectangle slot in the sketch");
+    sWhatsThis = "Sketcher_CreateRectangleSlot";
+    sStatusTip = sToolTipText;
+    sPixmap = "Sketcher_CreateRectangleSlot";
+    sAccel = "G, S, 4";
+    eType = ForEdit;
+}
+
+void CmdSketcherCreateRectangleSlot::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerRectangleSlot(DrawSketchHandlerRectangleSlot::RectangleSlot));
+}
+
+void CmdSketcherCreateRectangleSlot::updateAction(int mode)
+{
+    switch (mode) {
+    case Normal:
+        if (getAction())
+            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot"));
+        break;
+    case Construction:
+        if (getAction())
+            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot_Constr"));
+        break;
+    }
+}
+
+bool CmdSketcherCreateRectangleSlot::isActive(void)
+{
+    return isCreateGeoActive(getActiveGuiDocument());
+}
+
+/* Slot comp ============================================================*/
+
+DEF_STD_CMD_ACLU(CmdSketcherCompCreateSlot)
+
+CmdSketcherCompCreateSlot::CmdSketcherCompCreateSlot()
+    : Command("Sketcher_CompCreateSlot")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Create slot");
+    sToolTipText = QT_TR_NOOP("Create a slot in the sketcher");
+    sWhatsThis = "Sketcher_CompCreateSlot";
+    sStatusTip = sToolTipText;
+    sAccel = "G, S, S";
+    eType = ForEdit;
+}
+
+void CmdSketcherCompCreateSlot::activated(int iMsg)
+{
+    switch (iMsg) {
+    case 0:
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerSlot(DrawSketchHandlerSlot::TwoPointsSlot)); break;
+    case 1:
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerSlot(DrawSketchHandlerSlot::ThreePointSlot)); break;
+    case 2:
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerArcSlot(DrawSketchHandlerArcSlot::ArcSlot)); break;
+    case 3:
+        ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerRectangleSlot(DrawSketchHandlerRectangleSlot::RectangleSlot)); break;
+    default:
+        return;
+    }
+
+    // Since the default icon is reset when enabling/disabling the command we have
+    // to explicitly set the icon of the used command.
+    Gui::ActionGroup* pcAction = qobject_cast<Gui::ActionGroup*>(_pcAction);
+    QList<QAction*> a = pcAction->actions();
+
+    assert(iMsg < a.size());
+    pcAction->setIcon(a[iMsg]->icon());
+}
+
+Gui::Action* CmdSketcherCompCreateSlot::createAction(void)
+{
+    Gui::ActionGroup* pcAction = new Gui::ActionGroup(this, Gui::getMainWindow());
+    pcAction->setDropDownMenu(true);
+    applyCommandData(this->className(), pcAction);
+
+    QAction* slot = pcAction->addAction(QString());
+    slot->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateSlot"));
+    QAction* threePointslot = pcAction->addAction(QString());
+    threePointslot->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateThreePointsSlot"));
+    QAction* arcSlot = pcAction->addAction(QString());
+    arcSlot->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot"));
+    QAction* rectangleSlot = pcAction->addAction(QString());
+    rectangleSlot->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot"));
+
+    _pcAction = pcAction;
+    languageChange();
+
+    pcAction->setIcon(slot->icon());
+    int defaultId = 0;
+    pcAction->setProperty("defaultAction", QVariant(defaultId));
+
+    return pcAction;
+}
+
+void CmdSketcherCompCreateSlot::updateAction(int mode)
+{
+    Gui::ActionGroup* pcAction = qobject_cast<Gui::ActionGroup*>(getAction());
+    if (!pcAction)
+        return;
+
+    QList<QAction*> a = pcAction->actions();
+    int index = pcAction->property("defaultAction").toInt();
+    switch (mode) {
+    case Normal:
+        a[0]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateSlot"));
+        a[1]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateThreePointsSlot"));
+        a[2]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot"));
+        getAction()->setIcon(a[index]->icon());
+        break;
+    case Construction:
+        a[0]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateSlot_Constr"));
+        a[1]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateThreePointsSlot_Constr"));
+        a[2]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot_Constr"));
+        getAction()->setIcon(a[index]->icon());
+        break;
+    }
+}
+
+void CmdSketcherCompCreateSlot::languageChange()
+{
+    Command::languageChange();
+
+    if (!_pcAction)
+        return;
+    Gui::ActionGroup* pcAction = qobject_cast<Gui::ActionGroup*>(_pcAction);
+    QList<QAction*> a = pcAction->actions();
+
+    QAction* twoPointsSlot = a[0];
+    twoPointsSlot->setText(QApplication::translate("CmdSketcherCompCreateSlot", "Slot by two points"));
+    twoPointsSlot->setToolTip(QApplication::translate("Sketcher_CreateTriangle", "Create a slot by its two center points and auto radius"));
+    twoPointsSlot->setStatusTip(QApplication::translate("Sketcher_CreateTriangle", "Create a slot by its two center points and auto radius"));
+    QAction* threePointsSlot = a[1];
+    threePointsSlot->setText(QApplication::translate("CmdSketcherCompCreateSlot", "Slot by three points"));
+    threePointsSlot->setToolTip(QApplication::translate("Sketcher_CreateTriangle", "Create a slot by its two center points and radius point"));
+    threePointsSlot->setStatusTip(QApplication::translate("Sketcher_CreateTriangle", "Create a slot by its two center points and radius point"));
+    QAction* arcSlot = a[2];
+    arcSlot->setText(QApplication::translate("CmdSketcherCompCreateSlot", "Arc slot by arc center first"));
+    arcSlot->setToolTip(QApplication::translate("Sketcher_CreateSquare", "Create a slot by its arc center first"));
+    arcSlot->setStatusTip(QApplication::translate("Sketcher_CreateSquare", "Create a slot by its arc center first"));
+    QAction* rectangleSlot = a[3];
+    rectangleSlot->setText(QApplication::translate("CmdSketcherCompCreateSlot", "Rectangle slot by arc center first"));
+    rectangleSlot->setToolTip(QApplication::translate("Sketcher_CreateSquare", "Create a rectangle by its arc center first"));
+    rectangleSlot->setStatusTip(QApplication::translate("Sketcher_CreateSquare", "Create a rectangle by its arc center first"));
+}
+
+bool CmdSketcherCompCreateSlot::isActive(void)
 {
     return isCreateGeoActive(getActiveGuiDocument());
 }
@@ -8107,7 +9071,11 @@ void CreateSketcherCommandsCreateGeo(void)
     rcCmdMgr.addCommand(new CmdSketcherCreateOctagon());
     rcCmdMgr.addCommand(new CmdSketcherCreateRegularPolygon());
     rcCmdMgr.addCommand(new CmdSketcherCompCreateRectangles());
+    rcCmdMgr.addCommand(new CmdSketcherCompCreateSlot());
     rcCmdMgr.addCommand(new CmdSketcherCreateSlot());
+    rcCmdMgr.addCommand(new CmdSketcherCreateThreePointsSlot());
+    rcCmdMgr.addCommand(new CmdSketcherCreateArcSlot());
+    rcCmdMgr.addCommand(new CmdSketcherCreateRectangleSlot());
     rcCmdMgr.addCommand(new CmdSketcherCompCreateFillets());
     rcCmdMgr.addCommand(new CmdSketcherCreateFillet());
     rcCmdMgr.addCommand(new CmdSketcherCreatePointFillet());

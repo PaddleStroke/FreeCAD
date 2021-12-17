@@ -164,8 +164,14 @@
         <file>icons/geometry/Sketcher_CreateRectangle_Center_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateRegularPolygon.svg</file>
         <file>icons/geometry/Sketcher_CreateRegularPolygon_Constr.svg</file>
-        <file>icons/geometry/Sketcher_CreateSlot.svg</file>
-        <file>icons/geometry/Sketcher_CreateSlot_Constr.svg</file>
+      <file>icons/geometry/Sketcher_CreateSlot.svg</file>
+      <file>icons/geometry/Sketcher_CreateSlot_Constr.svg</file>
+      <file>icons/geometry/Sketcher_CreateThreePointsSlot.svg</file>
+      <file>icons/geometry/Sketcher_CreateThreePointsSlot_Constr.svg</file>
+        <file>icons/geometry/Sketcher_CreateArcSlot.svg</file>
+        <file>icons/geometry/Sketcher_CreateArcSlot_Constr.svg</file>
+      <file>icons/geometry/Sketcher_CreateRectangleSlot.svg</file>
+      <file>icons/geometry/Sketcher_CreateRectangleSlot_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateSquare.svg</file>
         <file>icons/geometry/Sketcher_CreateSquare_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateText.svg</file>

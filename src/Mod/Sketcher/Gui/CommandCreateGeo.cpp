@@ -7624,7 +7624,7 @@ protected:
     std::vector<AutoConstraint> sugConstr1, sugConstr2, sugConstr3;
 };
 
-DEF_STD_CMD_AU(CmdSketcherCreateSlot)
+DEF_STD_CMD_A(CmdSketcherCreateSlot)
 
 CmdSketcherCreateSlot::CmdSketcherCreateSlot()
     : Command("Sketcher_CreateSlot")
@@ -7646,20 +7646,6 @@ void CmdSketcherCreateSlot::activated(int iMsg)
     ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerSlot(DrawSketchHandlerSlot::TwoPointsSlot));
 }
 
-void CmdSketcherCreateSlot::updateAction(int mode)
-{
-    switch (mode) {
-    case Normal:
-        if (getAction())
-            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateSlot"));
-        break;
-    case Construction:
-        if (getAction())
-            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateSlot_Constr"));
-        break;
-    }
-}
-
 bool CmdSketcherCreateSlot::isActive(void)
 {
     return isCreateGeoActive(getActiveGuiDocument());
@@ -7667,7 +7653,7 @@ bool CmdSketcherCreateSlot::isActive(void)
 
 /* Create 3 points Slot =========================================================*/
 
-DEF_STD_CMD_AU(CmdSketcherCreateThreePointsSlot)
+DEF_STD_CMD_A(CmdSketcherCreateThreePointsSlot)
 
 CmdSketcherCreateThreePointsSlot::CmdSketcherCreateThreePointsSlot()
     : Command("Sketcher_CreateThreePointsSlot")
@@ -7687,20 +7673,6 @@ void CmdSketcherCreateThreePointsSlot::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
     ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerSlot(DrawSketchHandlerSlot::ThreePointSlot));
-}
-
-void CmdSketcherCreateThreePointsSlot::updateAction(int mode)
-{
-    switch (mode) {
-    case Normal:
-        if (getAction())
-            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateThreePointsSlot"));
-        break;
-    case Construction:
-        if (getAction())
-            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateThreePointsSlot_Constr"));
-        break;
-    }
 }
 
 bool CmdSketcherCreateThreePointsSlot::isActive(void)
@@ -8063,7 +8035,7 @@ protected:
     std::vector<AutoConstraint> sugConstr1, sugConstr2, sugConstr3;
 };
 
-DEF_STD_CMD_AU(CmdSketcherCreateArcSlot)
+DEF_STD_CMD_A(CmdSketcherCreateArcSlot)
 
 CmdSketcherCreateArcSlot::CmdSketcherCreateArcSlot()
     : Command("Sketcher_CreateArcSlot")
@@ -8083,20 +8055,6 @@ void CmdSketcherCreateArcSlot::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
     ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerArcSlot(DrawSketchHandlerArcSlot::ArcSlot));
-}
-
-void CmdSketcherCreateArcSlot::updateAction(int mode)
-{
-    switch (mode) {
-    case Normal:
-        if (getAction())
-            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot"));
-        break;
-    case Construction:
-        if (getAction())
-            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot_Constr"));
-        break;
-    }
 }
 
 bool CmdSketcherCreateArcSlot::isActive(void)
@@ -8370,7 +8328,7 @@ protected:
     std::vector<AutoConstraint> sugConstr1, sugConstr2, sugConstr3;
 };
 
-DEF_STD_CMD_AU(CmdSketcherCreateRectangleSlot)
+DEF_STD_CMD_A(CmdSketcherCreateRectangleSlot)
 
 CmdSketcherCreateRectangleSlot::CmdSketcherCreateRectangleSlot()
     : Command("Sketcher_CreateRectangleSlot")
@@ -8390,20 +8348,6 @@ void CmdSketcherCreateRectangleSlot::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
     ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerRectangleSlot(DrawSketchHandlerRectangleSlot::RectangleSlot));
-}
-
-void CmdSketcherCreateRectangleSlot::updateAction(int mode)
-{
-    switch (mode) {
-    case Normal:
-        if (getAction())
-            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot"));
-        break;
-    case Construction:
-        if (getAction())
-            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot_Constr"));
-        break;
-    }
 }
 
 bool CmdSketcherCreateRectangleSlot::isActive(void)
@@ -8490,12 +8434,14 @@ void CmdSketcherCompCreateSlot::updateAction(int mode)
         a[0]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateSlot"));
         a[1]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateThreePointsSlot"));
         a[2]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot"));
+        a[3]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot"));
         getAction()->setIcon(a[index]->icon());
         break;
     case Construction:
         a[0]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateSlot_Constr"));
         a[1]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateThreePointsSlot_Constr"));
         a[2]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot_Constr"));
+        a[3]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot_Constr"));
         getAction()->setIcon(a[index]->icon());
         break;
     }

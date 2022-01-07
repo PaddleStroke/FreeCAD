@@ -827,10 +827,10 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     Mode = STATUS_NONE;
                     return true;
                 case STATUS_SKETCH_DragGroup:
-                    if (edit->DragCurvSet.empty() == false) {
-                        Base::Vector3d vec(x - xInit, y - yInit, 0);
+                    if (drag.DragCurvSet.empty() == false) {
+                        Base::Vector3d vec(x - drag.xInit, y - drag.yInit, 0);
                         //With 'for' all but the first geometry make a double jump.
-                        int geoId = *edit->DragCurvSet.begin();
+                        int geoId = *drag.DragCurvSet.begin();
                         //for (auto geoId : edit->DragCurvSet) {
                             Base::Console().Warning("Release button geoId:%d , vec.x = %d, vec.y %d= \n", geoId, vec.x, vec.y);
                             const Part::Geometry* geo = getSketchObject()->getGeometry(geoId);
@@ -848,7 +848,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
 
                                 try {
                                     Gui::cmdAppObjectArgs(getObject(), "movePoint(%i,%i,App.Vector(%f,%f,0),%i)"
-                                        ,geoId, Sketcher::none, vec.x, vec.y, relative ? 1 : 0);
+                                        ,geoId, static_cast<int>(Sketcher::PointPos::none), vec.x, vec.y, drag.relative ? 1 : 0);
                                     getDocument()->commitCommand();
 
                                     tryAutoRecomputeIfNotSolve(getSketchObject());
@@ -859,7 +859,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                                 }
                             }
                         //}
-                        edit->DragCurvSet.clear();
+                        drag.DragCurvSet.clear();
                         //updateColor();
                     }
                     resetPositionText();
@@ -1130,17 +1130,17 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             if (!getSolvedSketch().hasConflicts() &&
                 preselection.isPreselectCurveValid() && drag.DragCurve != preselection.PreselectCurve) {
                 //Case of a group dragging
-                if (edit->SelCurvSet.size() > 1) {
+                if (selection.SelCurvSet.size() > 1) {
                     Mode = STATUS_SKETCH_DragGroup;
-                    edit->DragCurvSet = edit->SelCurvSet;
-                    Base::Console().Warning("DragCurvSet size:%d\n", edit->DragCurvSet.size());
-                    relative = true;
+                    drag.DragCurvSet = selection.SelCurvSet;
+                    Base::Console().Warning("DragCurvSet size:%d\n", drag.DragCurvSet.size());
+                    drag.relative = true;
                     SbLine line2;
-                    getProjectingLine(prvCursorPos, viewer, line2);
-                    getCoordsOnSketchPlane(xInit, yInit, line2.getPosition(), line2.getDirection());
-                    snapToGrid(xInit, yInit);
+                    getProjectingLine(DoubleClick::prvCursorPos, viewer, line2);
+                    getCoordsOnSketchPlane(line2.getPosition(), line2.getDirection(), drag.xInit, drag.yInit);
+                    snapToGrid(drag.xInit, drag.yInit);
 
-                    getSketchObject()->initTemporaryGroupMove(edit->DragCurvSet, false);
+                    getSketchObject()->initTemporaryGroupMove(drag.DragCurvSet, false);
                 }
                 //Case of single curve dragging
                 else {
@@ -1294,9 +1294,9 @@ bool ViewProviderSketch::mouseMove(const SbVec2s &cursorPos, Gui::View3DInventor
             }
             return true;
         case STATUS_SKETCH_DragGroup:
-            if (edit->DragCurvSet.empty() == false) {
-                Base::Vector3d vec(x - xInit, y - yInit, 0);
-                if (getSketchObject()->moveTemporaryGroupPoint(edit->DragCurvSet, vec) == 0) {
+            if (drag.DragCurvSet.empty() == false) {
+                Base::Vector3d vec(x - drag.xInit, y - drag.yInit, 0);
+                if (getSketchObject()->moveTemporaryGroupPoint(drag.DragCurvSet, vec) == 0) {
                     setPositionText(Base::Vector2d(x, y));
                     draw(true, false);
                 }

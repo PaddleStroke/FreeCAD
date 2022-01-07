@@ -258,6 +258,7 @@ private:
             DragCurve = InvalidCurve;
             DragConstraintSet.clear();
         }
+        std::set<int> DragCurvSet;
 
         bool isDragPointValid() { return DragPoint > InvalidPoint;}
         bool isDragCurveValid() { return DragCurve > InvalidCurve;}

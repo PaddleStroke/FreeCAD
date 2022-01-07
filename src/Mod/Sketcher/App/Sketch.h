@@ -129,6 +129,7 @@ public:
       * sketch status as a reference
       */
     int initMove(int geoId, PointPos pos, bool fine=true);
+    int initGroupMove(std::set<int> SelCurvSet, bool fine=true);
 
     /** Resets the initialization of a point or curve drag
      */
@@ -140,6 +141,7 @@ public:
       * The relative flag permits moving relatively to the current position
       */
     int movePoint(int geoId, PointPos pos, Base::Vector3d toPoint, bool relative=false);
+    int moveGroupPoint(std::set<int> SelCurvSet, Base::Vector3d toPoint);
 
     /**
      * Sets whether the initial solution should be recalculated while dragging after a certain distance from the previous drag point

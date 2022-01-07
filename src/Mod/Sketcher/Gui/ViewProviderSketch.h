@@ -425,7 +425,7 @@ public:
     /** @name modus handling */
     //@{
     /// mode table
-    enum SketchMode{
+    enum SketchMode {
         STATUS_NONE,              /**< enum value View provider is in neutral. */
         STATUS_SELECT_Point,      /**< enum value a point was selected. */
         STATUS_SELECT_Edge,       /**< enum value an edge was selected. */
@@ -436,7 +436,9 @@ public:
         STATUS_SKETCH_DragConstraint,  /**< enum value while dragging a compatible constraint. */
         STATUS_SKETCH_UseHandler, /**< enum value a DrawSketchHandler is in control. */
         STATUS_SKETCH_StartRubberBand, /**< enum value for initiating a rubber band selection */
-        STATUS_SKETCH_UseRubberBand /**< enum value when making a rubber band selection *//**< enum value a DrawSketchHandler is in control. */
+        STATUS_SKETCH_UseRubberBand, /**< enum value when making a rubber band selection */
+        STATUS_SELECT_Group,  /**< enum value a group of geometries was selected. */
+        STATUS_SKETCH_DragGroup  /**< enum value while dragging a group of geometries. *//**< enum value a DrawSketchHandler is in control. */
     };
 
     /// is called by GuiCommands to set the drawing mode

@@ -3988,6 +3988,89 @@ int Sketch::initMove(int geoId, PointPos pos, bool fine)
     return 0;
 }
 
+int Sketch::initGroupMove(std::set<int> DragCurvSet, bool fine)
+{
+    isFine = fine;
+    clearTemporaryConstraints();
+    MoveParameters.clear();
+    InitParameters.clear();
+    int indexInMoveParameter = 0;
+    // don't try to move sketches that contain conflicting constraints
+    if (hasConflicts()) {
+        isInitMove = false;
+        return -1;
+    }
+
+    for (auto geoId : DragCurvSet) {
+
+        geoId = checkGeoId(geoId);
+        Base::Console().Warning("initialization of geoID:%d\n", geoId);
+        if (Geoms[geoId].type == Point) {
+            GCS::Point& point = Points[Geoms[geoId].startPointId];
+            GCS::Point p0;
+            indexInMoveParameter = indexInMoveParameter + 2;
+            MoveParameters.resize(indexInMoveParameter); // px,py
+            p0.x = &MoveParameters[indexInMoveParameter - 2];
+            p0.y = &MoveParameters[indexInMoveParameter - 1];
+            *p0.x = *point.x;
+            *p0.y = *point.y;
+            GCSsys.addConstraintP2PCoincident(p0, point, GCS::DefaultTemporaryConstraint);
+        }
+        else if (Geoms[geoId].type == Line) {
+            GCS::Point p1, p2;
+            indexInMoveParameter = indexInMoveParameter + 4;
+            MoveParameters.resize(indexInMoveParameter); // px,py
+            p1.x = &MoveParameters[indexInMoveParameter - 4];
+            p1.y = &MoveParameters[indexInMoveParameter - 3];
+            p2.x = &MoveParameters[indexInMoveParameter - 2];
+            p2.y = &MoveParameters[indexInMoveParameter - 1];
+            GCS::Line& l = Lines[Geoms[geoId].index];
+            *p1.x = *l.p1.x;
+            *p1.y = *l.p1.y;
+            *p2.x = *l.p2.x;
+            *p2.y = *l.p2.y;
+            GCSsys.addConstraintP2PCoincident(p1, l.p1, GCS::DefaultTemporaryConstraint);
+            GCSsys.addConstraintP2PCoincident(p2, l.p2, GCS::DefaultTemporaryConstraint);
+        }
+        else if (Geoms[geoId].type == Circle || Geoms[geoId].type == Ellipse 
+            || Geoms[geoId].type == Arc || Geoms[geoId].type == ArcOfEllipse 
+            || Geoms[geoId].type == ArcOfHyperbola || Geoms[geoId].type == ArcOfParabola) {
+            GCS::Point& center = Points[Geoms[geoId].midPointId];
+            GCS::Point p0;
+            indexInMoveParameter = indexInMoveParameter + 2;
+            MoveParameters.resize(indexInMoveParameter); // px,py
+            p0.x = &MoveParameters[indexInMoveParameter - 2];
+            p0.y = &MoveParameters[indexInMoveParameter - 1];
+            *p0.x = *center.x;
+            *p0.y = *center.y;
+            GCSsys.addConstraintP2PCoincident(p0, center, GCS::DefaultTemporaryConstraint);
+        }
+        else if (Geoms[geoId].type == BSpline) {
+            GCS::BSpline& bsp = BSplines[Geoms[geoId].index];
+            indexInMoveParameter = indexInMoveParameter + bsp.poles.size() * 2;
+            MoveParameters.resize(indexInMoveParameter); // x0,y0,x1,y1,....xp,yp
+
+            int mvindex = 0;
+            for (std::vector<GCS::Point>::iterator it = bsp.poles.begin(); it != bsp.poles.end(); it++, mvindex++) {
+                GCS::Point p1;
+                p1.x = &MoveParameters[indexInMoveParameter - bsp.poles.size() * 2 + mvindex];
+                mvindex++;
+                p1.y = &MoveParameters[indexInMoveParameter - bsp.poles.size() * 2 + mvindex];
+
+                *p1.x = *(*it).x;
+                *p1.y = *(*it).y;
+
+                GCSsys.addConstraintP2PCoincident(p1, (*it), GCS::DefaultTemporaryConstraint);
+            }
+        }
+    }
+    InitParameters = MoveParameters;
+
+    GCSsys.initSolution();
+    isInitMove = true;
+    return 0;
+}
+
 void Sketch::resetInitMove()
 {
     isInitMove = false;
@@ -4097,6 +4180,25 @@ int Sketch::movePoint(int geoId, PointPos pos, Base::Vector3d toPoint, bool rela
         }
     }
 
+    return solve();
+}
+
+int Sketch::moveGroupPoint(std::set<int> DragCurvSet, Base::Vector3d toPoint)
+{
+    // don't try to move sketches that contain conflicting constraints
+    if (hasConflicts())
+        return -1;
+
+    if (!isInitMove) {
+        initGroupMove(DragCurvSet, false);
+        initToPoint = toPoint;
+        moveStep = 0;
+    }
+
+    for (int i = 0; i < int(MoveParameters.size() - 1); i += 2) {
+        MoveParameters[i] = InitParameters[i] + toPoint.x;
+        MoveParameters[i + 1] = InitParameters[i + 1] + toPoint.y;
+    }
     return solve();
 }
 

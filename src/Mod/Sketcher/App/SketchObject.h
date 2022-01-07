@@ -438,10 +438,12 @@ public: /* Solver exposed interface */
         {solvedSketch.setRecalculateInitialSolutionWhileMovingPoint(recalculateInitialSolutionWhileMovingPoint);}
     /// Forwards a request for a temporary initMove to the solver using the current sketch state as a reference (enables dragging)
     inline int initTemporaryMove(int geoId, PointPos pos, bool fine=true);
+    inline int initTemporaryGroupMove(std::set<int> SelCurvSet, bool fine = true);
     /** Forwards a request for point or curve temporary movement to the solver using the current state as a reference (enables dragging).
      *  NOTE: A temporary move operation must always be preceded by a initTemporaryMove() operation.
      */
     inline int moveTemporaryPoint(int geoId, PointPos pos, Base::Vector3d toPoint, bool relative=false);
+    inline int moveTemporaryGroupPoint(std::set<int> SelCurvSet, Base::Vector3d toPoint);
     /// forwards a request to update an extension of a geometry of the solver to the solver.
     inline void updateSolverExtension(int geoId, std::unique_ptr<Part::GeometryExtension> && ext)
         { return solvedSketch.updateExtension(geoId, std::move(ext));}
@@ -679,10 +681,24 @@ inline int SketchObject::initTemporaryMove(int geoId, PointPos pos, bool fine/*=
 
     return solvedSketch.initMove(geoId,pos,fine);
 }
+inline int SketchObject::initTemporaryGroupMove(std::set<int> SelCurvSet, bool fine/*=true*/)
+{
+    // if a previous operation did not update the geometry (including geometry extensions)
+    // or constraints (including any deleted pointer, as in renameConstraint) of the solver,
+    // here we update them before starting a temporary operation.
+    if (solverNeedsUpdate)
+        solve();
+
+    return solvedSketch.initGroupMove(SelCurvSet, fine);
+}
 
 inline int SketchObject::moveTemporaryPoint(int geoId, PointPos pos, Base::Vector3d toPoint, bool relative/*=false*/)
 {
     return solvedSketch.movePoint(geoId, pos, toPoint, relative);
+}
+inline int SketchObject::moveTemporaryGroupPoint(std::set<int> SelCurvSet, Base::Vector3d toPoint)
+{
+    return solvedSketch.moveGroupPoint(SelCurvSet, toPoint);
 }
 
 template <  typename GeometryT,

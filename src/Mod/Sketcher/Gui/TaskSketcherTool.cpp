@@ -172,204 +172,250 @@ void SketcherToolWidget::emitSetparameterFive(double val)
 
 void SketcherToolWidget::setSettings(int toolSelected)
 {
-    //Set names and hide excess parameters
-    //For reference unit can be changed with : 
-    //setUnit(Base::Unit::Length); Base::Unit::Angle
+    //reset and hide all settings (case 0)
+    isWidgetActive = 0;
+    toolParameters.clear();
+    isSettingSet.clear();
+
+    ui->label->setVisible(0);
+    ui->label2->setVisible(0);
+    ui->label3->setVisible(0);
+    ui->label4->setVisible(0);
+    ui->label5->setVisible(0);
+    setparameter(0, 0);
+    setparameter(0, 1);
+    setparameter(0, 2);
+    setparameter(0, 3);
+    setparameter(0, 4);
+
+    ui->parameterOne->setVisible(0);
+    ui->parameterTwo->setVisible(0);
+    ui->parameterThree->setVisible(0);
+    ui->parameterFour->setVisible(0);
+    ui->parameterFive->setVisible(0);
+
     switch (toolSelected) {
-    case 0: //none, reset and hide all settings
-        isWidgetActive = 0;
-        toolParameters.clear();
-        isSettingSet.clear();
+        case 1://rectangle : DrawSketchHandlerBox
+        { 
+            toolParameters.resize(4, 0);
+            isSettingSet.resize(4, 0);
 
-        ui->label->setVisible(0);
-        ui->label2->setVisible(0);
-        ui->label3->setVisible(0);
-        ui->label4->setVisible(0);
-        ui->label5->setVisible(0);
-        setparameter(0, 0);
-        setparameter(0, 1);
-        setparameter(0, 2);
-        setparameter(0, 3);
-        setparameter(0, 4);
-
-        ui->parameterOne->setVisible(0);
-        ui->parameterTwo->setVisible(0);
-        ui->parameterThree->setVisible(0);
-        ui->parameterFour->setVisible(0);
-        ui->parameterFive->setVisible(0);
-        break;
-    case 1: //rectangle : DrawSketchHandlerBox
-        toolParameters.resize(4, 0);
-        isSettingSet.resize(4, 0);
-
-        ui->label->setVisible(1);
-        ui->label2->setVisible(1);
-        ui->label3->setVisible(1);
-        ui->label4->setVisible(1);
-        ui->label->setText(QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
-        ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
-        ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_rectangle", "Length (along x axis)"));
-        ui->label4->setText(QApplication::translate("TaskSketcherTool_p4_rectangle", "Width (along y axis)"));
+            ui->label->setVisible(1);
+            ui->label2->setVisible(1);
+            ui->label3->setVisible(1);
+            ui->label4->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
+            ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
+            ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_rectangle", "Length (along x axis)"));
+            ui->label4->setText(QApplication::translate("TaskSketcherTool_p4_rectangle", "Width (along y axis)"));
         
-        ui->parameterOne->setVisible(1);
-        ui->parameterOne->setEnabled(1);
-        ui->parameterTwo->setVisible(1);
-        ui->parameterTwo->setEnabled(1);
-        ui->parameterThree->setVisible(1);
-        ui->parameterThree->setEnabled(0);
-        ui->parameterFour->setVisible(1);
-        ui->parameterFour->setEnabled(0);
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+            ui->parameterTwo->setVisible(1);
+            ui->parameterTwo->setEnabled(1);
+            ui->parameterThree->setVisible(1);
+            ui->parameterThree->setEnabled(0);
+            ui->parameterFour->setVisible(1);
+            ui->parameterFour->setEnabled(0);
 
-        QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
-        isWidgetActive = 1;
-        break;
-    case 2: //Round corner rectangle : DrawSketchHandlerOblong
-        toolParameters.resize(5, 0);
-        isSettingSet.resize(5, 0);
+            QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
+            isWidgetActive = 1;
+            break; 
+        }
+        case 2: //Round corner rectangle : DrawSketchHandlerOblong
+        {
+            toolParameters.resize(5, 0);
+            isSettingSet.resize(5, 0);
 
-        ui->label->setVisible(1);
-        ui->label2->setVisible(1);
-        ui->label3->setVisible(1);
-        ui->label4->setVisible(1);
-        ui->label5->setVisible(1);
-        ui->label->setText(QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
-        ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
-        ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_rectangle", "Length (along x axis)"));
-        ui->label4->setText(QApplication::translate("TaskSketcherTool_p4_rectangle", "Width (along y axis)"));
-        ui->label5->setText(QApplication::translate("TaskSketcherTool_p5_Oblong", "Corner radius"));
+            ui->label->setVisible(1);
+            ui->label2->setVisible(1);
+            ui->label3->setVisible(1);
+            ui->label4->setVisible(1);
+            ui->label5->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
+            ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
+            ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_rectangle", "Length (along x axis)"));
+            ui->label4->setText(QApplication::translate("TaskSketcherTool_p4_rectangle", "Width (along y axis)"));
+            ui->label5->setText(QApplication::translate("TaskSketcherTool_p5_Oblong", "Corner radius"));
 
-        ui->parameterOne->setVisible(1);
-        ui->parameterOne->setEnabled(1);
-        ui->parameterTwo->setVisible(1);
-        ui->parameterTwo->setEnabled(1);
-        ui->parameterThree->setVisible(1);
-        ui->parameterThree->setEnabled(0);
-        ui->parameterFour->setVisible(1);
-        ui->parameterFour->setEnabled(0);
-        ui->parameterFive->setVisible(1);
-        ui->parameterFive->setEnabled(0);
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+            ui->parameterTwo->setVisible(1);
+            ui->parameterTwo->setEnabled(1);
+            ui->parameterThree->setVisible(1);
+            ui->parameterThree->setEnabled(0);
+            ui->parameterFour->setVisible(1);
+            ui->parameterFour->setEnabled(0);
+            ui->parameterFive->setVisible(1);
+            ui->parameterFive->setEnabled(0);
 
-        QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
-        isWidgetActive = 1;
-        break;
-    case 3: //Circle : DrawSketchHandlerCircle & arc
-        toolParameters.resize(3, 0);
-        isSettingSet.resize(3, 0);
+            QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
+            isWidgetActive = 1;
+            break;
+        }
+        case 3: //Circle : DrawSketchHandlerCircle & arc
+        {
+            toolParameters.resize(3, 0);
+            isSettingSet.resize(3, 0);
 
-        ui->label->setVisible(1);
-        ui->label2->setVisible(1);
-        ui->label3->setVisible(1);
-        ui->label->setText(QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
-        ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
-        ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_circle", "Radius"));
+            ui->label->setVisible(1);
+            ui->label2->setVisible(1);
+            ui->label3->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
+            ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
+            ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_circle", "Radius"));
 
-        ui->parameterOne->setVisible(1);
-        ui->parameterOne->setEnabled(1);
-        ui->parameterTwo->setVisible(1);
-        ui->parameterTwo->setEnabled(1);
-        ui->parameterThree->setVisible(1);
-        ui->parameterThree->setEnabled(0);
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+            ui->parameterTwo->setVisible(1);
+            ui->parameterTwo->setEnabled(1);
+            ui->parameterThree->setVisible(1);
+            ui->parameterThree->setEnabled(0);
 
-        QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
-        isWidgetActive = 1;
-        break;
-    case 4: //Point : DrawSketchHandlerPoint
-        toolParameters.resize(2, 0);
-        isSettingSet.resize(2, 0);
+            QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
+            isWidgetActive = 1;
+            break;
+        }
+        case 4: //Point : DrawSketchHandlerPoint
+        {
+            toolParameters.resize(2, 0);
+            isSettingSet.resize(2, 0);
 
-        ui->label->setVisible(1);
-        ui->label2->setVisible(1);
-        ui->label->setText(QApplication::translate("TaskSketcherTool_p1_point", "x of point"));
-        ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_point", "y of point"));
+            ui->label->setVisible(1);
+            ui->label2->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_p1_point", "x of point"));
+            ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_point", "y of point"));
 
-        ui->parameterOne->setVisible(1);
-        ui->parameterOne->setEnabled(1);
-        ui->parameterTwo->setVisible(1);
-        ui->parameterTwo->setEnabled(1);
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+            ui->parameterTwo->setVisible(1);
+            ui->parameterTwo->setEnabled(1);
 
-        QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
-        isWidgetActive = 1;
-        break;
-    case 5: //Line : DrawSketchHandlerLine & arcby3points & circle by 3 points
-        toolParameters.resize(4, 0);
-        isSettingSet.resize(4, 0);
+            QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
+            isWidgetActive = 1;
+            break;
+        }
+        case 5: //Line : DrawSketchHandlerLine & arcby3points & circle by 3 points
+        {
+            toolParameters.resize(4, 0);
+            isSettingSet.resize(4, 0);
 
-        ui->label->setVisible(1);
-        ui->label2->setVisible(1);
-        ui->label3->setVisible(1);
-        ui->label4->setVisible(1);
-        ui->label->setText(QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
-        ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
-        ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_rectangle", "x of 2nd point"));
-        ui->label4->setText(QApplication::translate("TaskSketcherTool_p4_rectangle", "y of 2nd point"));
+            ui->label->setVisible(1);
+            ui->label2->setVisible(1);
+            ui->label3->setVisible(1);
+            ui->label4->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
+            ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
+            ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_rectangle", "x of 2nd point"));
+            ui->label4->setText(QApplication::translate("TaskSketcherTool_p4_rectangle", "y of 2nd point"));
 
-        ui->parameterOne->setVisible(1);
-        ui->parameterOne->setEnabled(1);
-        ui->parameterTwo->setVisible(1);
-        ui->parameterTwo->setEnabled(1);
-        ui->parameterThree->setVisible(1);
-        ui->parameterThree->setEnabled(0);
-        ui->parameterFour->setVisible(1);
-        ui->parameterFour->setEnabled(0);
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+            ui->parameterTwo->setVisible(1);
+            ui->parameterTwo->setEnabled(1);
+            ui->parameterThree->setVisible(1);
+            ui->parameterThree->setEnabled(0);
+            ui->parameterFour->setVisible(1);
+            ui->parameterFour->setEnabled(0);
 
-        QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
-        isWidgetActive = 1;
-        break;
-    case 6: //PolyLine (from second line)
-        toolParameters.resize(4, 0);
-        isSettingSet.resize(4, 0);
+            QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
+            isWidgetActive = 1;
+            break;
+        }
+        case 6: //PolyLine (from second line)
+        {
+            toolParameters.resize(4, 0);
+            isSettingSet.resize(4, 0);
 
-        ui->label->setVisible(1);
-        ui->label2->setVisible(1);
-        ui->label3->setVisible(1);
-        ui->label4->setVisible(1);
-        ui->label->setText(QApplication::translate("TaskSketcherTool_p1_polyline", "x of n-1 point"));
-        ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_polyline", "y of n-1 point"));
-        ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_polyline", "x of n point"));
-        ui->label4->setText(QApplication::translate("TaskSketcherTool_p4_polyline", "y of n point"));
+            ui->label->setVisible(1);
+            ui->label2->setVisible(1);
+            ui->label3->setVisible(1);
+            ui->label4->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_p1_polyline", "x of n-1 point"));
+            ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_polyline", "y of n-1 point"));
+            ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_polyline", "x of n point"));
+            ui->label4->setText(QApplication::translate("TaskSketcherTool_p4_polyline", "y of n point"));
 
-        ui->parameterOne->setVisible(1);
-        ui->parameterOne->setEnabled(0);
-        ui->parameterTwo->setVisible(1);
-        ui->parameterTwo->setEnabled(0);
-        ui->parameterThree->setVisible(1);
-        ui->parameterThree->setEnabled(1);
-        ui->parameterFour->setVisible(1);
-        ui->parameterFour->setEnabled(1);
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(0);
+            ui->parameterTwo->setVisible(1);
+            ui->parameterTwo->setEnabled(0);
+            ui->parameterThree->setVisible(1);
+            ui->parameterThree->setEnabled(1);
+            ui->parameterFour->setVisible(1);
+            ui->parameterFour->setEnabled(1);
 
-        QMetaObject::invokeMethod(ui->parameterThree, "setFocus", Qt::QueuedConnection);
-        isWidgetActive = 1;
-        break;
-    case 7: //Ellipse : DrawSketchHandlerEllipse
-        toolParameters.resize(5, 0);
-        isSettingSet.resize(5, 0);
+            QMetaObject::invokeMethod(ui->parameterThree, "setFocus", Qt::QueuedConnection);
+            isWidgetActive = 1;
+            break;
+        }
+        case 7: //Ellipse : DrawSketchHandlerEllipse
+        {
+            toolParameters.resize(5, 0);
+            isSettingSet.resize(5, 0);
 
-        ui->label->setVisible(1);
-        ui->label2->setVisible(1);
-        ui->label3->setVisible(1);
-        ui->label4->setVisible(1);
-        ui->label5->setVisible(1);
-        ui->label->setText(QApplication::translate("TaskSketcherTool_p1_Ellipse", "x of 1st point"));
-        ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_Ellipse", "y of 1st point"));
-        ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_Ellipse", "x of 2nd point"));
-        ui->label4->setText(QApplication::translate("TaskSketcherTool_p4_Ellipse", "y of 2nd point"));
-        ui->label5->setText(QApplication::translate("TaskSketcherTool_p5_Ellipse", "Second radius"));
+            ui->label->setVisible(1);
+            ui->label2->setVisible(1);
+            ui->label3->setVisible(1);
+            ui->label4->setVisible(1);
+            ui->label5->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_p1_Ellipse", "x of 1st point"));
+            ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_Ellipse", "y of 1st point"));
+            ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_Ellipse", "x of 2nd point"));
+            ui->label4->setText(QApplication::translate("TaskSketcherTool_p4_Ellipse", "y of 2nd point"));
+            ui->label5->setText(QApplication::translate("TaskSketcherTool_p5_Ellipse", "Second radius"));
 
-        ui->parameterOne->setVisible(1);
-        ui->parameterOne->setEnabled(1);
-        ui->parameterTwo->setVisible(1);
-        ui->parameterTwo->setEnabled(1);
-        ui->parameterThree->setVisible(1);
-        ui->parameterThree->setEnabled(0);
-        ui->parameterFour->setVisible(1);
-        ui->parameterFour->setEnabled(0);
-        ui->parameterFive->setVisible(1);
-        ui->parameterFive->setEnabled(0);
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+            ui->parameterTwo->setVisible(1);
+            ui->parameterTwo->setEnabled(1);
+            ui->parameterThree->setVisible(1);
+            ui->parameterThree->setEnabled(0);
+            ui->parameterFour->setVisible(1);
+            ui->parameterFour->setEnabled(0);
+            ui->parameterFive->setVisible(1);
+            ui->parameterFive->setEnabled(0);
 
-        QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
-        isWidgetActive = 1;
-        break;
+            QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
+            isWidgetActive = 1;
+            break;
+        }
+        case 8: //Constraint mm
+        {
+            toolParameters.resize(1, 0);
+            isSettingSet.resize(1, 0);
+
+            ui->label->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_Constrain_Distance", "Distance"));
+
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+
+            QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
+            isWidgetActive = 1;
+            break;
+        }
+        case 9: //Constraint 2 * mm
+        {
+            toolParameters.resize(2, 0);
+            isSettingSet.resize(2, 0);
+
+            ui->label->setVisible(1);
+            ui->label2->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_Constrain_DistanceX", "Distance X"));
+            ui->label2->setText(QApplication::translate("TaskSketcherTool_Constrain_DistanceY", "Distance Y"));
+
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+            ui->parameterTwo->setVisible(1);
+            ui->parameterTwo->setEnabled(1);
+
+            QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
+            isWidgetActive = 1;
+            break;
+        }
     }
+
 }
 
 void SketcherToolWidget::setparameter(double val, int i)
@@ -388,6 +434,44 @@ void SketcherToolWidget::setparameter(double val, int i)
     }
     else if (i == 4) {
         ui->parameterFive->setValue(Base::Quantity(val, Base::Unit::Length));
+    }
+}
+void SketcherToolWidget::setUnit(Base::Unit unit, int i)
+{
+    //For reference unit can be changed with : 
+    //setUnit(Base::Unit::Length); Base::Unit::Angle
+    if (i == 0) {
+        ui->parameterOne->setUnit(unit);
+    }
+    else if (i == 1) {
+        ui->parameterTwo->setUnit(unit);
+    }
+    else if (i == 2) {
+        ui->parameterThree->setUnit(unit);
+    }
+    else if (i == 3) {
+        ui->parameterFour->setUnit(unit);
+    }
+    else if (i == 4) {
+        ui->parameterFive->setUnit(unit);
+    }
+}
+void SketcherToolWidget::setLabel(const QString& atext, int i)
+{
+    if (i == 0) {
+        ui->label->setText(atext);
+    }
+    else if (i == 1) {
+        ui->label2->setText(atext);
+    }
+    else if (i == 2) {
+        ui->label3->setText(atext);
+    }
+    else if (i == 3) {
+        ui->label4->setText(atext);
+    }
+    else if (i == 4) {
+        ui->label5->setText(atext);
     }
 }
 

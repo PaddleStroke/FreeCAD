@@ -55,6 +55,8 @@ public:
     
 
     void setparameter(double val, int i);
+    void setLabel(const QString& atext, int i);
+    void setUnit(Base::Unit unit, int i);
     void setParameterActive(bool val, int i);
     void setParameterFocus(int i);
     void setSettings(int toolSelected);

@@ -187,6 +187,11 @@ void SketcherToolWidget::setSettings(int toolSelected)
     setparameter(0, 2);
     setparameter(0, 3);
     setparameter(0, 4);
+    setUnit(Base::Unit::Length, 0);
+    setUnit(Base::Unit::Length, 1);
+    setUnit(Base::Unit::Length, 2);
+    setUnit(Base::Unit::Length, 3);
+    setUnit(Base::Unit::Length, 4);
 
     ui->parameterOne->setVisible(0);
     ui->parameterTwo->setVisible(0);
@@ -412,6 +417,23 @@ void SketcherToolWidget::setSettings(int toolSelected)
 
             QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
             isWidgetActive = 1;
+            break;
+        }
+        case 10: //Constraint angle
+        {
+            toolParameters.resize(1, 0);
+            isSettingSet.resize(1, 0);
+
+            ui->label->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_Constrain_Distance", "Angle"));
+            setUnit(Base::Unit::Angle, 0);
+
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+
+            QMetaObject::invokeMethod(ui->parameterOne, "setFocus", Qt::QueuedConnection);
+            isWidgetActive = 1;
+            isSettingSet[0] = 0; //setUnit triggers ValuedChanged.
             break;
         }
     }

@@ -880,14 +880,14 @@ class DrawSketchHandlerConstrainContextual : public DrawSketchHandler
 {
 public:
     DrawSketchHandlerConstrainContextual()
-        : Mode(STATUS_SEEK_First)
     {
     }
     virtual ~DrawSketchHandlerConstrainContextual() {}
 
-    enum BoxMode {
-        STATUS_SEEK_First,      /**< enum value ----. */
-        STATUS_End
+    enum DistanceType {
+        DISTANCE,      /**< enum value ----. */
+        DISTANCEX,
+        DISTANCEY
     };
     enum selGeoType {/**< enum value ----. */
         UNKNOWN,
@@ -906,6 +906,7 @@ public:
     {
         numberOfConstraintsCreated = 0;
         numberOfGeoCreated = 0;
+        isLineOr2PointsDistance = 0;
         savedCursorText = "Select any geometry";
 
         // Constrain icon size in px
@@ -945,6 +946,61 @@ public:
         Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
         const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
         
+        //Change distance constraint based on position of mouse.
+        if (isLineOr2PointsDistance) {
+            Base::Vector3d pnt1, pnt2;
+            if (selLine.size() == 1) {
+                pnt1 = Obj->getPoint(selLine[0].GeoId, Sketcher::PointPos::start);
+                pnt2 = Obj->getPoint(selLine[0].GeoId, Sketcher::PointPos::end);
+            }
+            else {
+                pnt1 = Obj->getPoint(selPoints[0].GeoId, selPoints[0].PosId);
+                pnt2 = Obj->getPoint(selPoints[1].GeoId, selPoints[1].PosId);
+            }
+
+            double minX, minY, maxX, maxY;
+            minX = min(pnt1.x, pnt2.x);
+            maxX = max(pnt1.x, pnt2.x);
+            minY = min(pnt1.y, pnt2.y);
+            maxY = max(pnt1.y, pnt2.y);
+            if (onSketchPos.x > minX && onSketchPos.x < maxX 
+                && (onSketchPos.y < minY || onSketchPos.y > maxY) && distanceType != DISTANCEX) {
+                deleteCreatedConstrainsAndGeo();
+                setCursorText("Click to validate 'DistanceX' constrain or select other geometries...", onSketchPos);
+                if (selLine.size() == 1) {
+                    createDistanceXYConstrain(0, selLine[0].GeoId, Sketcher::PointPos::start, selLine[0].GeoId, Sketcher::PointPos::end, onSketchPos);
+                }
+                else {
+                    createDistanceXYConstrain(0, selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId, onSketchPos);
+                }
+            }
+            else if (onSketchPos.y > minY && onSketchPos.y < maxY 
+                && (onSketchPos.x < minX || onSketchPos.x > maxX) && distanceType != DISTANCEY) {
+                deleteCreatedConstrainsAndGeo();
+                setCursorText("Click to validate 'DistanceY' constrain or select other geometries...", onSketchPos);
+                if (selLine.size() == 1) {
+                    createDistanceXYConstrain(1, selLine[0].GeoId, Sketcher::PointPos::start, selLine[0].GeoId, Sketcher::PointPos::end, onSketchPos);
+                }
+                else {
+                    createDistanceXYConstrain(1, selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId, onSketchPos);
+                }
+            }
+            else if ( ( ((onSketchPos.y < minY || onSketchPos.y > maxY) && (onSketchPos.x < minX || onSketchPos.x > maxX))
+                || (onSketchPos.y > minY && onSketchPos.y < maxY && onSketchPos.x > minX && onSketchPos.x < maxX) )  && distanceType != DISTANCE) {
+                deleteCreatedConstrainsAndGeo();
+                setCursorText("Click to validate 'Distance' constrain or select other geometries...", onSketchPos);
+                if (selLine.size() == 1) {
+                    createDistanceConstrain(selLine[0].GeoId, Sketcher::PointPos::start, selLine[0].GeoId, Sketcher::PointPos::end, onSketchPos);
+                }
+                else {
+                    createDistanceConstrain(selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId, onSketchPos);
+                }
+
+            }
+
+        }
+
+        //Move constraints
         if (numberOfConstraintsCreated > 0) {
             for (int i = 0; i < numberOfConstraintsCreated; i++) {
                 sketchgui->moveConstraint(ConStr.size() - 1 - i, onSketchPos);
@@ -952,6 +1008,7 @@ public:
             sketchgui->draw(false, false); // Redraw
         }
 
+        //Handle the Tool Settings widget
         if (sketchgui->toolSettings->widget->isSettingSet.size() == 1 && numberOfConstraintsCreated > 0) {
             if (sketchgui->toolSettings->widget->isSettingSet[0] == 1) {
                 isItDone = 1;
@@ -1111,6 +1168,7 @@ public:
                 setCursorText("Select any geometry", onSketchPos);
                 Gui::Selection().clearSelection();
                 isItDone = 0;
+                isLineOr2PointsDistance = 0;
                 selPoints.clear();
                 selLine.clear();
                 selCircleArc.clear(); 
@@ -1416,7 +1474,7 @@ public:
         return true;
     }
 protected:
-    BoxMode Mode;
+    DistanceType distanceType;
 
     GenericConstraintSelection* selFilterGate = nullptr;
 
@@ -1429,6 +1487,7 @@ protected:
     int numberOfGeoCreated;
     bool isItDone;
     bool parallel;
+    bool isLineOr2PointsDistance;
 
     void setCursorText(char* cursorText, Base::Vector2d onSketchPos) {
         savedCursorText = cursorText;
@@ -1454,6 +1513,15 @@ protected:
         if (constraintCreationMode == Driving) {
             sketchgui->toolSettings->widget->setSettings(8);
         }
+
+        if (GeoId1 == GeoId2 || (PosId1 != Sketcher::PointPos::none && PosId2 != Sketcher::PointPos::none)) {
+            //if line distance or point to point distance
+            isLineOr2PointsDistance = 1;
+        }
+        else {
+            isLineOr2PointsDistance = 0;
+        }
+        distanceType = DISTANCE;
 
         bool arebothpointsorsegmentsfixed = isPointOrSegmentFixed(Obj, GeoId1) && isPointOrSegmentFixed(Obj, GeoId2);
 
@@ -1490,6 +1558,63 @@ protected:
             Gui::cmdAppObjectArgs(Obj, "setDriving(%i,%s)", ConStr.size() - 1, "False");
         }
 
+        Gui::Command::commitCommand();
+        numberOfConstraintsCreated++;
+        sketchgui->moveConstraint(ConStr.size() - 1, onSketchPos);
+    }
+
+    void createDistanceXYConstrain(bool typeXzeroYone, int GeoId1, Sketcher::PointPos PosId1, int GeoId2, Sketcher::PointPos PosId2, Base::Vector2d onSketchPos) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        if (constraintCreationMode == Driving) {
+            sketchgui->toolSettings->widget->setSettings(8);
+        }
+
+        if (GeoId1 == GeoId2 || (PosId1 != Sketcher::PointPos::none && PosId2 != Sketcher::PointPos::none)) {
+            //if line distance or point to point distance
+            isLineOr2PointsDistance = 1;
+        }
+        else {
+            isLineOr2PointsDistance = 0;
+        }
+
+        Base::Vector3d pnt1 = Obj->getPoint(GeoId1, PosId1);
+        Base::Vector3d pnt2 = Obj->getPoint(GeoId2, PosId2);
+        double ActLength;
+        if (typeXzeroYone) {
+            ActLength = pnt2.y - pnt1.y;
+        }
+        else {
+            ActLength = pnt2.x - pnt1.x;
+        }
+
+        //negative sign avoidance: swap the points to make value positive
+        if (ActLength < -Precision::Confusion()) {
+            std::swap(GeoId1, GeoId2);
+            std::swap(PosId1, PosId2);
+            std::swap(pnt1, pnt2);
+            ActLength = -ActLength;
+        }
+
+        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add point to point horizontal distance constraint"));
+
+        if (typeXzeroYone) {
+            Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('DistanceY',%d,%d,%d,%d,%f)) ",
+                GeoId1, static_cast<int>(PosId1), GeoId2, static_cast<int>(PosId2), ActLength);
+            distanceType = DISTANCEY;
+        }
+        else {
+            Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('DistanceX',%d,%d,%d,%d,%f)) ",
+                GeoId1, static_cast<int>(PosId1), GeoId2, static_cast<int>(PosId2), ActLength);
+            distanceType = DISTANCEX;
+        }
+
+        const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
+        if (areBothPointsOrSegmentsFixed(Obj, GeoId1, GeoId2) || constraintCreationMode == Reference) {
+            // it is a constraint on a external line, make it non-driving
+            Gui::cmdAppObjectArgs(Obj, "setDriving(%i,%s)",
+                ConStr.size() - 1, "False");
+        }
+        
         Gui::Command::commitCommand();
         numberOfConstraintsCreated++;
         sketchgui->moveConstraint(ConStr.size() - 1, onSketchPos);
@@ -1995,6 +2120,7 @@ protected:
     }
 
     void deleteCreatedConstrainsAndGeo() {
+        isLineOr2PointsDistance = 0;
         if (numberOfConstraintsCreated > 0) {
             Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
             Obj->Constraints.setSize(Obj->Constraints.getSize() - numberOfConstraintsCreated);

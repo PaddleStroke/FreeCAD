@@ -901,12 +901,21 @@ public:
         ARCOFPARABOLA,
         BSPLINE
     };
+    enum AvailableConstraint {/**< enum value ----. */
+        AvailableConstraint_FIRST,
+        AvailableConstraint_SECOND,
+        AvailableConstraint_THIRD,
+        AvailableConstraint_FOURTH,
+        AvailableConstraint_FIFTH
+    };
 
     virtual void activated(ViewProviderSketch*)
     {
         numberOfConstraintsCreated = 0;
         numberOfGeoCreated = 0;
         isLineOr2PointsDistance = 0;
+        availableConstraint = AvailableConstraint_FIRST;
+        previousOnSketchPos = Base::Vector2d(0.f, 0.f);
         savedCursorText = "Select any geometry";
 
         // Constrain icon size in px
@@ -941,11 +950,33 @@ public:
         deleteCreatedConstrainsAndGeo();
     }
 
+    virtual void registerPressedKey(bool pressed, int key)
+    {
+        if ((key == SoKeyboardEvent::RIGHT_SHIFT || key == SoKeyboardEvent::LEFT_SHIFT) && pressed) {
+            if (availableConstraint == AvailableConstraint_FIRST) {
+                availableConstraint = AvailableConstraint_SECOND;
+            }
+            else if (availableConstraint == AvailableConstraint_SECOND) {
+                availableConstraint = AvailableConstraint_THIRD;
+            }
+            else if (availableConstraint == AvailableConstraint_THIRD) {
+                availableConstraint = AvailableConstraint_FOURTH;
+            }
+            else if (availableConstraint == AvailableConstraint_FOURTH) {
+                availableConstraint = AvailableConstraint_FIFTH;
+            }
+            else if (availableConstraint == AvailableConstraint_FIFTH) {
+                availableConstraint = AvailableConstraint_FIRST;
+            }
+            makeAppropriateConstraint(previousOnSketchPos);
+        }
+    }
+
     virtual void mouseMove(Base::Vector2d onSketchPos)
     {
         Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
         const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
-        
+        previousOnSketchPos = onSketchPos;
         //Change distance constraint based on position of mouse.
         if (isLineOr2PointsDistance) {
             Base::Vector3d pnt1, pnt2;
@@ -1081,6 +1112,7 @@ public:
     {
         Q_UNUSED(onSketchPos);
 
+        availableConstraint = AvailableConstraint_FIRST;
         SelIdPair selIdPair;
         selIdPair.GeoId = GeoEnum::GeoUndef;
         selIdPair.PosId = Sketcher::PointPos::none;
@@ -1169,6 +1201,7 @@ public:
                 Gui::Selection().clearSelection();
                 isItDone = 0;
                 isLineOr2PointsDistance = 0;
+                previousOnSketchPos = Base::Vector2d(0.f, 0.f);
                 selPoints.clear();
                 selLine.clear();
                 selCircleArc.clear(); 
@@ -1197,262 +1230,12 @@ public:
                 selEllipseAndCo.push_back(selIdPair);
             }
             
-            bool selAllowed = 0;
-            if (selPoints.size() > 0) {
-                if      (selPoints.size() == 1 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
-                    //only one point : Lock constrain
-                    if (constraintCreationMode == Driving) {
-                        sketchgui->toolSettings->widget->setSettings(9);
-                    }
-                    // check if the edge already has a Block constraint
-                    bool pointfixed = false;
-                    if (isPointOrSegmentFixed(Obj, selIdPair.GeoId))
-                        pointfixed = true;
-
-                    Base::Vector3d pnt = Obj->getPoint(selIdPair.GeoId, selIdPair.PosId);
-
-                    // undo command open
-                    Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add fixed constraint"));
-                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceX', %d, %d, %f)) ",
-                        selIdPair.GeoId, static_cast<int>(selIdPair.PosId), pnt.x);
-                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceY', %d, %d, %f)) ",
-                        selIdPair.GeoId, static_cast<int>(selIdPair.PosId), pnt.y);
-
-                    const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
-                    if (pointfixed || constraintCreationMode == Reference) {
-                        // it is a constraint on a external line, make it non-driving
-                        const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
-                        Gui::cmdAppObjectArgs(sketchgui->getObject(), "setDriving(%i, %s)", ConStr.size() - 2, "False");
-                        Gui::cmdAppObjectArgs(sketchgui->getObject(), "setDriving(%i, %s)", ConStr.size() - 1, "False");
-                    }
-
-                    // finish the transaction and update
-                    Gui::Command::commitCommand();
-                    sketchgui->moveConstraint(ConStr.size() - 2, onSketchPos);
-                    sketchgui->moveConstraint(ConStr.size() - 1, onSketchPos);
-
-                    numberOfConstraintsCreated = 2;
-                    selAllowed = 1;
-                    setCursorText("Click to validate 'Lock' constrain or select other geometries...", onSketchPos);
-
-                }
-                else if (selPoints.size() == 2 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
-                    //distance between 2 points
-                    deleteCreatedConstrainsAndGeo();
-                    createDistanceConstrain(selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId, onSketchPos);
-                    selAllowed = 1;
-                    setCursorText("Click to validate 'Distance' constrain or select other geometries...", onSketchPos);
-                }
-                else if (selPoints.size() == 1 && selLine.size() == 1 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) { 
-                    //distance between 1 point and 1 line
-                    deleteCreatedConstrainsAndGeo();
-                    createDistanceConstrain(selPoints[0].GeoId, selPoints[0].PosId, selLine[0].GeoId, selLine[0].PosId, onSketchPos); // line to be on second parameter
-                    selAllowed = 1;
-                    setCursorText("Click to validate 'Distance' constrain or select other geometries...", onSketchPos);
-                }
-                else if (selPoints.size() >= 3 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
-                    //3 points or more. Prepare for PointOnObj.
-                    sketchgui->toolSettings->widget->setSettings(0);
-                    deleteCreatedConstrainsAndGeo();
-                    selAllowed = 1;
-                    setCursorText("3+ Points selected. Select a curve for 'Point On Object'", onSketchPos);
-                }
-                else if (selPoints.size() >= 2 && selLine.size() == 1 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
-                    //2+ points + line do pointOnObject.
-                    sketchgui->toolSettings->widget->setSettings(0);
-                    deleteCreatedConstrainsAndGeo();
-                    for (int i = 0; i < selPoints.size(); i++) {
-                        createPointOnObjectConstrain(selPoints[i].GeoId, selPoints[i].PosId, selLine[0].GeoId);
-                    }
-                    selAllowed = 1;
-                    setCursorText("Click to validate 'Point On Object' constrain", onSketchPos);
-                }
-                else if (selPoints.size() >= 1 && selLine.size() == 0 && selCircleArc.size() == 1 && selEllipseAndCo.size() == 0) {
-                    //distance between 1 point and circle/arc not supported. So pointOnObject.
-                    sketchgui->toolSettings->widget->setSettings(0);
-                    deleteCreatedConstrainsAndGeo();
-                    for (int i = 0; i < selPoints.size(); i++) {
-                        createPointOnObjectConstrain(selPoints[i].GeoId, selPoints[i].PosId, selCircleArc[0].GeoId);
-                    }
-                    selAllowed = 1;
-                    setCursorText("Click to validate 'Point On Object' constrain", onSketchPos);
-                }
-                else if (selPoints.size() >= 1 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 1) {
-                    //distance between 2 point and elipse/arc of... not supported. So pointOnObject.
-                    sketchgui->toolSettings->widget->setSettings(0);
-                    deleteCreatedConstrainsAndGeo();
-                    for (int i = 0; i < selPoints.size(); i++) {
-                        createPointOnObjectConstrain(selPoints[i].GeoId, selPoints[i].PosId, selEllipseAndCo[0].GeoId);
-                    }
-                    selAllowed = 1;
-                    setCursorText("Click to validate 'Point On Object' constrain", onSketchPos);
-                }
-            }
-            else if (selLine.size() > 0) {
-                if      (selPoints.size() == 0 && selLine.size() == 1 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
-                    //only one line selected
-                    if ((selIdPair.GeoId != Sketcher::GeoEnum::VAxis && selIdPair.GeoId != Sketcher::GeoEnum::HAxis)) {
-                        //axis can be selected but we don't want distance on axis!
-                        createDistanceConstrain(selIdPair.GeoId, Sketcher::PointPos::start, selIdPair.GeoId, Sketcher::PointPos::end, onSketchPos);
-                        setCursorText("Click to validate 'Distance' constrain or select other geometries...", onSketchPos);
-                    }
-                    else {
-                        setCursorText("Axis selected, select other geometries...", onSketchPos);
-                    }
-                    //But axis can still be selected
-                    selAllowed = 1;
-                }
-                else if (selPoints.size() == 0 && selLine.size() == 2 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
-                    //Two lines: if parallel: Distance (launched from createAngleConstrain). 
-                    //Else : angle. If angle typed in = 0 then parallel. If 90 Then perpendicular
-                    sketchgui->toolSettings->widget->setSettings(0);
-                    deleteCreatedConstrainsAndGeo();
-                    createAngleConstrain(selLine[0].GeoId, selLine[1].GeoId, onSketchPos);
-                    setCursorText("Click to validate 'Angle' constrain or select other geometries...", onSketchPos);
-                    //But axis can still be selected
-                    selAllowed = 1;
-                }
-                else if (selPoints.size() == 0 && selLine.size()  > 2 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
-                    //only lines (more than 2), then equality of all radius.
-                    sketchgui->toolSettings->widget->setSettings(0);
-                    deleteCreatedConstrainsAndGeo();
-                    for (int i = 0; i < selLine.size() - 1; i++) {
-                        createEqualityConstrain(selLine[i].GeoId, selLine[i + 1].GeoId);
-                    }
-                    selAllowed = 1;
-                    setCursorText("Click to validate 'Equality'", onSketchPos);
-                }
-                else if (selPoints.size() == 0 && selLine.size() == 1 && selCircleArc.size() == 1 && selEllipseAndCo.size() == 0) {
-                    //distance between line and circle/arc not supported. So tangency.
-                    sketchgui->toolSettings->widget->setSettings(0);
-                    deleteCreatedConstrainsAndGeo();
-                    createTangentConstrain(selCircleArc[0].GeoId, selLine[0].GeoId);
-                    setCursorText("Click to validate 'Tangency'", onSketchPos);
-                    selAllowed = 1;
-                }
-                else if (selPoints.size() == 0 && selLine.size() == 1 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 1) {
-                    //distance between line and ellipse/arc of... not supported. So tangency.
-                    sketchgui->toolSettings->widget->setSettings(0);
-                    deleteCreatedConstrainsAndGeo();
-                    createTangentConstrain(selEllipseAndCo[0].GeoId, selLine[0].GeoId);
-                    setCursorText("Click to validate 'Tangency'", onSketchPos);
-                    selAllowed = 1;
-                }
-
-            }
-            else if (selCircleArc.size() > 0) {
-                if      (selPoints.size() == 0 && selLine.size() == 0 && selCircleArc.size() == 1 && selEllipseAndCo.size() == 0) {
-                    // Only one arc or circle : radius constrain
-                    if (constraintCreationMode == Driving) {
-                        sketchgui->toolSettings->widget->setSettings(8);
-                        sketchgui->toolSettings->widget->setLabel(QApplication::translate("TaskSketcherTool_Constraint_Radius", "Radius"), 0);
-                    }
-
-                    int GeoId = selCircleArc[0].GeoId;
-                    double radius = 0.0;
-
-                    bool updateNeeded = false;
-
-                    const Part::Geometry* geom = Obj->getGeometry(GeoId);
-                    if (geom && geom->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
-                        const Part::GeomArcOfCircle* arc = static_cast<const Part::GeomArcOfCircle*>(geom);
-                        radius = arc->getRadius();
-                    }
-                    else if (geom && geom->getTypeId() == Part::GeomCircle::getClassTypeId()) {
-                        const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geom);
-                        radius = circle->getRadius();
-                    }
-                    else {
-                        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
-                            QObject::tr("Constraint only applies to arcs or circles."));
-                        return false;
-                    }
-
-                    // Create the radius constraint now
-                    Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add radius constraint"));
-
-                    bool ispole = isBsplinePole(geom);
-                    if (ispole)
-                        Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Weight',%d,%f)) ",
-                            GeoId, radius);
-                    else
-                        Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Radius',%d,%f)) ",
-                            GeoId, radius);
-
-                    const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
-                    bool fixed = isPointOrSegmentFixed(Obj, GeoId);
-                    if (fixed || constraintCreationMode == Reference || GeoId <= Sketcher::GeoEnum::RefExt) {
-                        Gui::cmdAppObjectArgs(Obj, "setDriving(%i,%s)",
-                            ConStr.size() - 1, "False");
-
-                        updateNeeded = true; // We do need to update the solver DoF after setting the constraint driving.
-                    }
-
-                    Gui::Command::commitCommand();
-                    sketchgui->moveConstraint(ConStr.size() - 1, onSketchPos);
-
-                    if (updateNeeded) {
-                        tryAutoRecomputeIfNotSolve(Obj); // we have to update the solver after this aborted addition.
-                    }
-
-                    numberOfConstraintsCreated = 1;
-                    selAllowed = 1;
-                    setCursorText("Click to validate 'Radius' constrain or select other geometries...", onSketchPos);
-                }
-                else if (selPoints.size() == 0 && selLine.size() == 0 && selCircleArc.size() > 1 && selEllipseAndCo.size() == 0) {
-                    //only circles and arc, then equality of all radius.
-                    sketchgui->toolSettings->widget->setSettings(0);
-                    deleteCreatedConstrainsAndGeo();
-                    for (int i = 0; i < selCircleArc.size()-1; i++) {
-                        createEqualityConstrain(selCircleArc[i].GeoId, selCircleArc[i+1].GeoId);
-                    }
-                    selAllowed = 1;
-                    setCursorText("Click to validate 'Equality' of radiuses", onSketchPos);
-                }
-                else if (selPoints.size() == 0 && selLine.size() == 0 && selCircleArc.size() == 1 && selEllipseAndCo.size() == 1) {
-                    //distance between circle and ellipse/arc of... not supported. So tangency.
-                    sketchgui->toolSettings->widget->setSettings(0);
-                    deleteCreatedConstrainsAndGeo();
-                    createTangentConstrain(selCircleArc[0].GeoId, selEllipseAndCo[0].GeoId);
-                    setCursorText("Click to validate 'Tangency'", onSketchPos);
-                    selAllowed = 1;
-                }
-
-            }
-            else if (selEllipseAndCo.size() > 0) {
-                if      (selPoints.size() == 0 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 1) {
-                    //One ellipse or arc of ellipse/hyperbola/parabola - no constrain to attribute
-                    selAllowed = 1;
-                    setCursorText("Ellipse, parabola, hyperbola selected.", onSketchPos);
-                }
-                else if (selPoints.size() == 0 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() > 1) {
-                    //only ellipse or arc of of same kind, then equality of all radius.
-                    bool allTheSame = 1;
-                    const Part::Geometry* geom = Obj->getGeometry(selEllipseAndCo[0].GeoId);
-                    Base::Type typeOf = geom->getTypeId();
-                    for (int i = 1; i < selEllipseAndCo.size(); i++) {
-                        const Part::Geometry* geomi = Obj->getGeometry(selEllipseAndCo[i].GeoId);
-                        if (typeOf != geomi->getTypeId()) {
-                            allTheSame = 0;
-                        }
-                    }
-                    if (allTheSame) {
-                        //sketchgui->toolSettings->widget->setSettings(0);
-                        deleteCreatedConstrainsAndGeo();
-                        for (int i = 1; i < selEllipseAndCo.size(); i++) {
-                            createEqualityConstrain(selEllipseAndCo[0].GeoId, selEllipseAndCo[i].GeoId);
-                        }
-                        selAllowed = 1;
-                        setCursorText("Click to validate 'Equality' of radiuses", onSketchPos);
-                    }
-                }
-            }
-
+            bool selAllowed = makeAppropriateConstraint(onSketchPos);
             
             if (selAllowed) {
                 // If mouse is released on something allowed, select it
-                Gui::Selection().addSelection(sketchgui->getSketchObject()->getDocument()->getName(),
-                    sketchgui->getSketchObject()->getNameInDocument(),
+                Gui::Selection().addSelection(Obj->getDocument()->getName(),
+                    Obj->getNameInDocument(),
                     ss.str().c_str(), onSketchPos.x, onSketchPos.y, 0.f);
                 sketchgui->draw(false, false); // Redraw
             }
@@ -1475,6 +1258,8 @@ public:
     }
 protected:
     DistanceType distanceType;
+    AvailableConstraint availableConstraint;
+    Base::Vector2d previousOnSketchPos;
 
     GenericConstraintSelection* selFilterGate = nullptr;
 
@@ -1506,6 +1291,175 @@ protected:
             }
         }
         return false;
+    }
+
+    bool makeAppropriateConstraint(Base::Vector2d onSketchPos) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        bool selAllowed = 0;
+        if (selPoints.size() > 0) {
+            if (selPoints.size() == 1 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
+                //only one point : Lock constrain
+                deleteCreatedConstrainsAndGeo();
+                createLockConstrain(selPoints[0].GeoId, selPoints[0].PosId, onSketchPos);
+                selAllowed = 1;
+                setCursorText("Click to validate 'Lock' constrain or select other geometries...", onSketchPos);
+
+            }
+            else if (selPoints.size() == 2 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
+                //distance between 2 points
+                deleteCreatedConstrainsAndGeo();
+                createDistanceConstrain(selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId, onSketchPos);
+                selAllowed = 1;
+                setCursorText("Click to validate 'Distance' constrain or select other geometries...", onSketchPos);
+            }
+            else if (selPoints.size() == 1 && selLine.size() == 1 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
+                //distance between 1 point and 1 line
+                deleteCreatedConstrainsAndGeo();
+                createDistanceConstrain(selPoints[0].GeoId, selPoints[0].PosId, selLine[0].GeoId, selLine[0].PosId, onSketchPos); // line to be on second parameter
+                selAllowed = 1;
+                setCursorText("Click to validate 'Distance' constrain or select other geometries...", onSketchPos);
+            }
+            else if (selPoints.size() >= 3 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
+                //3 points or more. Prepare for PointOnObj.
+                sketchgui->toolSettings->widget->setSettings(0);
+                deleteCreatedConstrainsAndGeo();
+                selAllowed = 1;
+                setCursorText("3+ Points selected. Select a curve for 'Point On Object'", onSketchPos);
+            }
+            else if (selPoints.size() >= 2 && selLine.size() == 1 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
+                //2+ points + line do pointOnObject.
+                deleteCreatedConstrainsAndGeo();
+                for (int i = 0; i < selPoints.size(); i++) {
+                    createPointOnObjectConstrain(selPoints[i].GeoId, selPoints[i].PosId, selLine[0].GeoId);
+                }
+                selAllowed = 1;
+                setCursorText("Click to validate 'Point On Object' constrain", onSketchPos);
+            }
+            else if (selPoints.size() >= 1 && selLine.size() == 0 && selCircleArc.size() == 1 && selEllipseAndCo.size() == 0) {
+                //distance between 1 point and circle/arc not supported. So pointOnObject.
+                deleteCreatedConstrainsAndGeo();
+                for (int i = 0; i < selPoints.size(); i++) {
+                    createPointOnObjectConstrain(selPoints[i].GeoId, selPoints[i].PosId, selCircleArc[0].GeoId);
+                }
+                selAllowed = 1;
+                setCursorText("Click to validate 'Point On Object' constrain", onSketchPos);
+            }
+            else if (selPoints.size() >= 1 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 1) {
+                //distance between 2 point and elipse/arc of... not supported. So pointOnObject.
+                deleteCreatedConstrainsAndGeo();
+                for (int i = 0; i < selPoints.size(); i++) {
+                    createPointOnObjectConstrain(selPoints[i].GeoId, selPoints[i].PosId, selEllipseAndCo[0].GeoId);
+                }
+                selAllowed = 1;
+                setCursorText("Click to validate 'Point On Object' constrain", onSketchPos);
+            }
+        }
+        else if (selLine.size() > 0) {
+            if (selPoints.size() == 0 && selLine.size() == 1 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
+                //only one line selected
+                if ((selLine[0].GeoId != Sketcher::GeoEnum::VAxis && selLine[0].GeoId != Sketcher::GeoEnum::HAxis)) {
+                    //axis can be selected but we don't want distance on axis!
+                    deleteCreatedConstrainsAndGeo();
+                    createDistanceConstrain(selLine[0].GeoId, Sketcher::PointPos::start, selLine[0].GeoId, Sketcher::PointPos::end, onSketchPos);
+                    setCursorText("Click to validate 'Distance' constrain or select other geometries...", onSketchPos);
+                }
+                else {
+                    setCursorText("Axis selected, select other geometries...", onSketchPos);
+                }
+                //But axis can still be selected
+                selAllowed = 1;
+            }
+            else if (selPoints.size() == 0 && selLine.size() == 2 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
+                //Two lines: if parallel: Distance (launched from createAngleConstrain). 
+                //Else : angle. If angle typed in = 0 then parallel. If 90 Then perpendicular
+                deleteCreatedConstrainsAndGeo();
+                createAngleConstrain(selLine[0].GeoId, selLine[1].GeoId, onSketchPos);
+                setCursorText("Click to validate 'Angle' constrain or select other geometries...", onSketchPos);
+                //But axis can still be selected
+                selAllowed = 1;
+            }
+            else if (selPoints.size() == 0 && selLine.size() > 2 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
+                //only lines (more than 2), then equality of all radius.
+                sketchgui->toolSettings->widget->setSettings(0);
+                deleteCreatedConstrainsAndGeo();
+                for (int i = 0; i < selLine.size() - 1; i++) {
+                    createEqualityConstrain(selLine[i].GeoId, selLine[i + 1].GeoId);
+                }
+                selAllowed = 1;
+                setCursorText("Click to validate 'Equality'", onSketchPos);
+            }
+            else if (selPoints.size() == 0 && selLine.size() == 1 && selCircleArc.size() == 1 && selEllipseAndCo.size() == 0) {
+                //distance between line and circle/arc not supported. So tangency.
+                deleteCreatedConstrainsAndGeo();
+                createTangentConstrain(selCircleArc[0].GeoId, selLine[0].GeoId);
+                setCursorText("Click to validate 'Tangency'", onSketchPos);
+                selAllowed = 1;
+            }
+            else if (selPoints.size() == 0 && selLine.size() == 1 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 1) {
+                //distance between line and ellipse/arc of... not supported. So tangency.
+                deleteCreatedConstrainsAndGeo();
+                createTangentConstrain(selEllipseAndCo[0].GeoId, selLine[0].GeoId);
+                setCursorText("Click to validate 'Tangency'", onSketchPos);
+                selAllowed = 1;
+            }
+
+        }
+        else if (selCircleArc.size() > 0) {
+            if (selPoints.size() == 0 && selLine.size() == 0 && selCircleArc.size() == 1 && selEllipseAndCo.size() == 0) {
+                // Only one arc or circle : radius constrain
+                deleteCreatedConstrainsAndGeo();
+                createRadiusDiameterConstrain(selCircleArc[0].GeoId, onSketchPos);
+                selAllowed = 1;
+                setCursorText("Click to validate 'Radius' constrain or select other geometries...", onSketchPos);
+            }
+            else if (selPoints.size() == 0 && selLine.size() == 0 && selCircleArc.size() > 1 && selEllipseAndCo.size() == 0) {
+                //only circles and arc, then equality of all radius.
+                sketchgui->toolSettings->widget->setSettings(0);
+                deleteCreatedConstrainsAndGeo();
+                for (int i = 0; i < selCircleArc.size() - 1; i++) {
+                    createEqualityConstrain(selCircleArc[i].GeoId, selCircleArc[i + 1].GeoId);
+                }
+                selAllowed = 1;
+                setCursorText("Click to validate 'Equality' of radiuses", onSketchPos);
+            }
+            else if (selPoints.size() == 0 && selLine.size() == 0 && selCircleArc.size() == 1 && selEllipseAndCo.size() == 1) {
+                //distance between circle and ellipse/arc of... not supported. So tangency.
+                deleteCreatedConstrainsAndGeo();
+                createTangentConstrain(selCircleArc[0].GeoId, selEllipseAndCo[0].GeoId);
+                setCursorText("Click to validate 'Tangency'", onSketchPos);
+                selAllowed = 1;
+            }
+
+        }
+        else if (selEllipseAndCo.size() > 0) {
+            if (selPoints.size() == 0 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 1) {
+                //One ellipse or arc of ellipse/hyperbola/parabola - no constrain to attribute
+                selAllowed = 1;
+                setCursorText("Ellipse, parabola, hyperbola selected.", onSketchPos);
+            }
+            else if (selPoints.size() == 0 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() > 1) {
+                //only ellipse or arc of of same kind, then equality of all radius.
+                bool allTheSame = 1;
+                const Part::Geometry* geom = Obj->getGeometry(selEllipseAndCo[0].GeoId);
+                Base::Type typeOf = geom->getTypeId();
+                for (int i = 1; i < selEllipseAndCo.size(); i++) {
+                    const Part::Geometry* geomi = Obj->getGeometry(selEllipseAndCo[i].GeoId);
+                    if (typeOf != geomi->getTypeId()) {
+                        allTheSame = 0;
+                    }
+                }
+                if (allTheSame) {
+                    //sketchgui->toolSettings->widget->setSettings(0);
+                    deleteCreatedConstrainsAndGeo();
+                    for (int i = 1; i < selEllipseAndCo.size(); i++) {
+                        createEqualityConstrain(selEllipseAndCo[0].GeoId, selEllipseAndCo[i].GeoId);
+                    }
+                    selAllowed = 1;
+                    setCursorText("Click to validate 'Equality' of radiuses", onSketchPos);
+                }
+            }
+        }
+        return selAllowed;
     }
 
     void createDistanceConstrain(int GeoId1, Sketcher::PointPos PosId1, int GeoId2, Sketcher::PointPos PosId2, Base::Vector2d onSketchPos) {
@@ -1620,6 +1574,104 @@ protected:
         sketchgui->moveConstraint(ConStr.size() - 1, onSketchPos);
     }
 
+    void createLockConstrain(int GeoId1, Sketcher::PointPos PosId1, Base::Vector2d onSketchPos) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        if (constraintCreationMode == Driving) {
+            sketchgui->toolSettings->widget->setSettings(9);
+        }
+        // check if the edge already has a Block constraint
+        bool pointfixed = false;
+        if (isPointOrSegmentFixed(Obj, GeoId1))
+            pointfixed = true;
+
+        Base::Vector3d pnt = Obj->getPoint(GeoId1, PosId1);
+
+        // undo command open
+        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add fixed constraint"));
+        Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceX', %d, %d, %f)) ",
+            GeoId1, static_cast<int>(PosId1), pnt.x);
+        Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceY', %d, %d, %f)) ",
+            GeoId1, static_cast<int>(PosId1), pnt.y);
+
+        const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
+        if (pointfixed || constraintCreationMode == Reference) {
+            // it is a constraint on a external line, make it non-driving
+            const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
+            Gui::cmdAppObjectArgs(sketchgui->getObject(), "setDriving(%i, %s)", ConStr.size() - 2, "False");
+            Gui::cmdAppObjectArgs(sketchgui->getObject(), "setDriving(%i, %s)", ConStr.size() - 1, "False");
+        }
+
+        // finish the transaction and update
+        Gui::Command::commitCommand();
+        sketchgui->moveConstraint(ConStr.size() - 2, onSketchPos);
+        sketchgui->moveConstraint(ConStr.size() - 1, onSketchPos);
+
+        numberOfConstraintsCreated = 2;
+    }
+
+    void createRadiusDiameterConstrain(int GeoId, Base::Vector2d onSketchPos) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        if (constraintCreationMode == Driving) {
+            sketchgui->toolSettings->widget->setSettings(8);
+            sketchgui->toolSettings->widget->setLabel(QApplication::translate("TaskSketcherTool_Constraint_Radius", "Radius"), 0);
+        }
+
+        double radius = 0.0;
+
+        bool updateNeeded = false;
+
+        const Part::Geometry* geom = Obj->getGeometry(GeoId);
+        if (geom && geom->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+            const Part::GeomArcOfCircle* arc = static_cast<const Part::GeomArcOfCircle*>(geom);
+            radius = arc->getRadius();
+        }
+        else if (geom && geom->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+            const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geom);
+            radius = circle->getRadius();
+        }
+        else {
+            QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
+                QObject::tr("Constraint only applies to arcs or circles."));
+            return;
+        }
+
+        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add radius/diameter constraint"));
+
+        if (isBsplinePole(geom))
+            Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Weight',%d,%f)) ",
+                GeoId, radius);
+        else {
+            if (availableConstraint == AvailableConstraint_FIRST) {
+                Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Radius',%d,%f)) ",
+                    GeoId, radius);
+            }
+            else {
+                //This way if key is pressed again it goes back to FIRST
+                availableConstraint = AvailableConstraint_FIFTH;
+                Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Diameter',%d,%f)) ",
+                    GeoId, radius*2);
+            }
+        }
+
+        const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
+        bool fixed = isPointOrSegmentFixed(Obj, GeoId);
+        if (fixed || constraintCreationMode == Reference || GeoId <= Sketcher::GeoEnum::RefExt) {
+            Gui::cmdAppObjectArgs(Obj, "setDriving(%i,%s)",
+                ConStr.size() - 1, "False");
+
+            updateNeeded = true; // We do need to update the solver DoF after setting the constraint driving.
+        }
+
+        Gui::Command::commitCommand();
+        sketchgui->moveConstraint(ConStr.size() - 1, onSketchPos);
+
+        if (updateNeeded) {
+            tryAutoRecomputeIfNotSolve(Obj); // we have to update the solver after this aborted addition.
+        }
+
+        numberOfConstraintsCreated = 1;
+    }
+
     void createCoincidenceConstrain(int GeoId1, Sketcher::PointPos PosId1, int GeoId2, Sketcher::PointPos PosId2) {
         Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
         
@@ -1692,6 +1744,7 @@ protected:
 
     void createPointOnObjectConstrain(int GeoIdVt, Sketcher::PointPos PosIdVt, int GeoIdCrv) {
         Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        sketchgui->toolSettings->widget->setSettings(0);
 
         Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add point on object constraint"));
         bool allOK = true;
@@ -1777,6 +1830,7 @@ protected:
     void createTangentConstrain(int GeoId1, int GeoId2) {
         //GeoId1 circle/arc/... GeoId2 line
         Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        sketchgui->toolSettings->widget->setSettings(0);
         QString strError;
                 
         const Part::Geometry* geom1 = Obj->getGeometry(GeoId1);

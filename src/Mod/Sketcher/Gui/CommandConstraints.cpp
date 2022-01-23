@@ -911,6 +911,7 @@ public:
 
     virtual void activated(ViewProviderSketch*)
     {
+        isItDone = 0;
         numberOfConstraintsCreated = 0;
         numberOfGeoCreated = 0;
         isLineOr2PointsDistance = 0;
@@ -1045,7 +1046,7 @@ public:
                 isItDone = 1;
 
                 if (selPoints.size() == 2 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0
-                    && sketchgui->toolSettings->widget->toolParameters[0] == 0) { //
+                    && sketchgui->toolSettings->widget->toolParameters[0] == 0 && distanceType == DISTANCE) { //
                     //if distance is set to 0 then replace constrain by coincidence.
                     deleteCreatedConstrainsAndGeo();
                     createCoincidenceConstrain(selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId);
@@ -1950,7 +1951,7 @@ protected:
         Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Tangent',%d,%d)) ",
             GeoId1, GeoId2);
         Gui::Command::commitCommand();
-        numberOfConstraintsCreated ++; //tangent
+        numberOfConstraintsCreated ++;
         return;
     }
     bool substituteConstraintCombinations3(SketchObject* Obj, int GeoId1, int GeoId2)

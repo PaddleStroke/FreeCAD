@@ -55,6 +55,7 @@
 #include "ui_InsertDatum.h"
 #include "EditDatumDialog.h"
 #include "CommandConstraints.h"
+#include <Inventor/events/SoKeyboardEvent.h>
 
 using namespace std;
 using namespace SketcherGui;

@@ -28,6 +28,7 @@
 #include <Gui/TaskView/TaskDialog.h>
 #include <Gui/Selection.h>
 #include <boost_signals2.hpp>
+#include <Inventor/events/SoKeyboardEvent.h>
 
 namespace App {
 class Property;

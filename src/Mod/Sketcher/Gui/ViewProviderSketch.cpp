@@ -276,6 +276,8 @@ SbVec2s ViewProviderSketch::DoubleClick::prvClickPos; //used by double-click-det
 SbVec2s ViewProviderSketch::DoubleClick::prvCursorPos;
 SbVec2s ViewProviderSketch::DoubleClick::newCursorPos;
 
+SbVec2s ViewProviderSketch::prvMoveCursorPos;
+
 //**************************************************************************
 // Construction/Destruction
 

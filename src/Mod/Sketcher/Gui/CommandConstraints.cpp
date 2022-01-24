@@ -1589,26 +1589,48 @@ protected:
         Base::Vector3d pnt = Obj->getPoint(GeoId1, PosId1);
 
         // undo command open
-        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add fixed constraint"));
-        Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceX', %d, %d, %f)) ",
-            GeoId1, static_cast<int>(PosId1), pnt.x);
-        Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceY', %d, %d, %f)) ",
-            GeoId1, static_cast<int>(PosId1), pnt.y);
+        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add lock constraint"));
+
+        if (availableConstraint == AvailableConstraint_FIRST) {
+            Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceX', %d, %d, %f)) ",
+                GeoId1, static_cast<int>(PosId1), pnt.x);
+            Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceY', %d, %d, %f)) ",
+                GeoId1, static_cast<int>(PosId1), pnt.y);
+            numberOfConstraintsCreated = 2;
+        }
+        else if (availableConstraint == AvailableConstraint_SECOND) {
+            Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceX', %d, %d, %f)) ",
+                GeoId1, static_cast<int>(PosId1), pnt.x);
+            numberOfConstraintsCreated = 1;
+        }
+        else {
+            Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceY', %d, %d, %f)) ",
+                GeoId1, static_cast<int>(PosId1), pnt.y);
+            numberOfConstraintsCreated = 1;
+        }
 
         const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
         if (pointfixed || constraintCreationMode == Reference) {
             // it is a constraint on a external line, make it non-driving
             const std::vector<Sketcher::Constraint*>& ConStr = Obj->Constraints.getValues();
-            Gui::cmdAppObjectArgs(sketchgui->getObject(), "setDriving(%i, %s)", ConStr.size() - 2, "False");
+            if (availableConstraint == AvailableConstraint_FIRST) {
+                Gui::cmdAppObjectArgs(sketchgui->getObject(), "setDriving(%i, %s)", ConStr.size() - 2, "False");
+            }
             Gui::cmdAppObjectArgs(sketchgui->getObject(), "setDriving(%i, %s)", ConStr.size() - 1, "False");
         }
 
-        // finish the transaction and update
         Gui::Command::commitCommand();
-        sketchgui->moveConstraint(ConStr.size() - 2, onSketchPos);
+
+        if (availableConstraint == AvailableConstraint_THIRD) {
+            //This way if key is pressed again it goes back to FIRST
+            availableConstraint = AvailableConstraint_FIFTH;
+        }
+
+        if (availableConstraint == AvailableConstraint_FIRST) {
+            sketchgui->moveConstraint(ConStr.size() - 2, onSketchPos);
+        }
         sketchgui->moveConstraint(ConStr.size() - 1, onSketchPos);
 
-        numberOfConstraintsCreated = 2;
     }
 
     void createRadiusDiameterConstrain(int GeoId, Base::Vector2d onSketchPos) {

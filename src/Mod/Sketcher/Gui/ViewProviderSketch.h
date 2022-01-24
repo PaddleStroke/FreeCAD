@@ -408,7 +408,7 @@ public:
     App::PropertyString EditingWorkbench;
     //@}
 
-    SbVec2s prvMoveCursorPos;
+    static SbVec2s prvMoveCursorPos;
     Gui::View3DInventorViewer * prvMoveViewer;
 
     // TODO: It is difficult to imagine that these functions are necessary in the public interface. This requires review at a second stage and possibly

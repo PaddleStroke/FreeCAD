@@ -66,7 +66,7 @@ SketcherToolWidget::SketcherToolWidget(QWidget *parent, ViewProviderSketch* sket
     ui->parameterThree->installEventFilter(this);
     ui->parameterFour->installEventFilter(this);
     ui->parameterFive->installEventFilter(this);
-    
+    ui->notice->setWordWrap(true);
     isWidgetActive = 0;
 }
 
@@ -177,11 +177,16 @@ void SketcherToolWidget::setSettings(int toolSelected)
     toolParameters.clear();
     isSettingSet.clear();
 
+    //Give the focus back to the viewproviderSketcher
+    Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveView();
+    mdi->setFocus();
+
     ui->label->setVisible(0);
     ui->label2->setVisible(0);
     ui->label3->setVisible(0);
     ui->label4->setVisible(0);
     ui->label5->setVisible(0);
+    ui->notice->setVisible(0);
     setparameter(0, 0);
     setparameter(0, 1);
     setparameter(0, 2);
@@ -481,19 +486,28 @@ void SketcherToolWidget::setUnit(Base::Unit unit, int i)
 void SketcherToolWidget::setLabel(const QString& atext, int i)
 {
     if (i == 0) {
+        ui->label->setVisible(1);
         ui->label->setText(atext);
     }
     else if (i == 1) {
+        ui->label2->setVisible(1);
         ui->label2->setText(atext);
     }
     else if (i == 2) {
+        ui->label3->setVisible(1);
         ui->label3->setText(atext);
     }
     else if (i == 3) {
+        ui->label4->setVisible(1);
         ui->label4->setText(atext);
     }
     else if (i == 4) {
+        ui->label5->setVisible(1);
         ui->label5->setText(atext);
+    }
+    else if (i == 5) {
+        ui->notice->setVisible(1);
+        ui->notice->setText(atext);
     }
 }
 

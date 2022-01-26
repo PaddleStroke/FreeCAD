@@ -543,6 +543,7 @@ public:
     boost::signals2::signal<void ()> signalElementsChanged;
     //@}
     TaskSketcherTool* toolSettings;
+    bool ctrlIsPressed;
 
     /** @name Attorneys for collaboration with helper classes */
     //@{

@@ -290,6 +290,7 @@ ViewProviderSketch::ViewProviderSketch()
   : SelectionObserver(false),
     Mode(STATUS_NONE),
     listener(0),
+    ctrlIsPressed(0),
     editCoinManager(nullptr),
     pObserver(std::make_unique<ViewProviderSketch::ParameterObserver>(*this)),
     sketchHandler(nullptr)
@@ -469,6 +470,50 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
             }
             return false;
         }
+    case SoKeyboardEvent::LEFT_CONTROL:
+    case SoKeyboardEvent::RIGHT_CONTROL:
+    {
+        if (isInEditMode()) {
+            if (pressed) {
+                ctrlIsPressed = 1;
+            }
+            else {
+                ctrlIsPressed = 0;
+            }
+            return true;
+        }
+        return false;
+    }
+    case SoKeyboardEvent::C:
+    {
+        if (isInEditMode()) {
+            if (!pressed && ctrlIsPressed) {
+                //copy the currently selected geometry.
+                return getSketchObject()->copySelectedGeoToClipboard(0);
+            }
+        }
+        return false;
+    }
+    case SoKeyboardEvent::X:
+    {
+        if (isInEditMode()) {
+            if (!pressed && ctrlIsPressed) {
+                //copy the currently selected geometry.
+                return getSketchObject()->copySelectedGeoToClipboard(1);
+            }
+        }
+        return false;
+    }
+    case SoKeyboardEvent::V:
+    {
+        if (isInEditMode()) {
+            if (!pressed && ctrlIsPressed) {
+                //copy the currently selected geometry.
+                return getSketchObject()->pasteGeometriesInClipboard();
+            }
+        }
+        return false;
+    }
     default:
         {
             if (isInEditMode() && sketchHandler) {

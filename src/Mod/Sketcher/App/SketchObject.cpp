@@ -4077,6 +4077,21 @@ int SketchObject::addSymmetric(const std::vector<int> &geoIdList, int refGeoId, 
     return Geometry.getSize()-1;
 }
 
+bool SketchObject::copySelectedGeoToClipboard(bool copyZeroCutOne) {
+    if(copyZeroCutOne)
+        Base::Console().Warning("ctrlX ");
+    else
+        Base::Console().Warning("ctrlC ");
+
+    return 0;
+}
+
+bool SketchObject::pasteGeometriesInClipboard() {
+
+    Base::Console().Warning("ctrlV ");
+    return 0;
+}
+
 int SketchObject::addCopy(const std::vector<int> &geoIdList, const Base::Vector3d& displacement, bool moveonly /*=false*/,
                           bool clone /*=false*/, int csize/*=2*/, int rsize/*=1*/, bool constraindisplacement /*= false*/,
                           double perpscale /*= 1.0*/)

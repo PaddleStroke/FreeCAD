@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) 2020 Werner Mayer <wmayer[at]users.sourceforge.net>     *
+ *   Copyright (c) 2021 Werner Mayer <wmayer[at]users.sourceforge.net>     *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -415,6 +415,7 @@ void TaskExtrudeParameters::setCheckboxes(Modes mode, Type type)
         isOffsetEditVisible = true;
         isOffsetEditEnabled = false; // offset may have some meaning for through all but it doesn't work
         isMidplaneEnabled = true;
+        isMidplaneVisible = true;
         isReversedEnabled = !ui->checkBoxMidplane->isChecked();
     }
     else if (mode == Modes::ToLast && type == Type::Pad) {

@@ -371,20 +371,19 @@ void ActionSelector::on_downButton_clicked()
 
 /**
  * Constructs a line edit with no text.
- * The \a parent and \a name arguments are sent to the QLineEdit constructor.
+ * The \a parent argument is sent to the QLineEdit constructor.
  */
 AccelLineEdit::AccelLineEdit ( QWidget * parent )
   : QLineEdit(parent)
 {
-    noneStr = tr("none");
-    setText(noneStr);
+    setPlaceholderText(tr("Press a keyboard shortcut"));
+    setClearButtonEnabled(true);
     keyPressedCount = 0;
 }
 
 bool AccelLineEdit::isNone() const
 {
-    QString t = text();
-    return t.isEmpty() || t == noneStr;
+    return text().isEmpty();
 }
 
 /**
@@ -397,14 +396,21 @@ void AccelLineEdit::keyPressEvent ( QKeyEvent * e)
     int key = e->key();
     Qt::KeyboardModifiers state = e->modifiers();
 
-    // Backspace clears the shortcut
+    // Backspace clears the shortcut if text is present, else sets Backspace as shortcut.
     // If a modifier is pressed without any other key, return.
-    // AltGr is not a modifier but doesn't have a QtSring representation.
+    // AltGr is not a modifier but doesn't have a QString representation.
     switch(key) {
     case Qt::Key_Backspace:
+    case Qt::Key_Delete:
         if (state == Qt::NoModifier) {
             keyPressedCount = 0;
-            setText(noneStr);
+            if (isNone()) {
+                QKeySequence ks(key);
+                setText(ks.toString(QKeySequence::NativeText));
+            }
+            else {
+                clear();
+            }
         }
     case Qt::Key_Control:
     case Qt::Key_Shift:
@@ -426,7 +432,7 @@ void AccelLineEdit::keyPressEvent ( QKeyEvent * e)
         txtLine.clear();
         break;
     default:
-        txtLine += QString::fromLatin1(",");
+        txtLine += QChar::fromLatin1(',');
         break;
     }
 
@@ -454,6 +460,66 @@ void AccelLineEdit::keyPressEvent ( QKeyEvent * e)
 
     setText(txtLine);
     keyPressedCount++;
+}
+
+// ------------------------------------------------------------------------------
+
+/* TRANSLATOR Gui::ModifierLineEdit */
+
+/**
+ * Constructs a line edit with no text.
+ * The \a parent argument is sent to the QLineEdit constructor.
+ */
+ModifierLineEdit::ModifierLineEdit ( QWidget * parent )
+  : QLineEdit(parent)
+{
+    setPlaceholderText(tr("Press modifier keys"));
+}
+
+/**
+ * Checks which modifiers are pressed and show it as text.
+ */
+void ModifierLineEdit::keyPressEvent ( QKeyEvent * e)
+{
+    int key = e->key();
+    Qt::KeyboardModifiers state = e->modifiers();
+
+    switch(key) {
+    case Qt::Key_Backspace:
+    case Qt::Key_Delete:
+        clear();
+        return;
+    case Qt::Key_Control:
+    case Qt::Key_Shift:
+    case Qt::Key_Alt:
+    case Qt::Key_Meta:
+        break;
+    default:
+        return;
+    }
+
+    clear();
+    QString txtLine;
+
+    // Handles modifiers applying a mask.
+    if ((state & Qt::ControlModifier) == Qt::ControlModifier) {
+        QKeySequence ks(Qt::CTRL);
+        txtLine += ks.toString(QKeySequence::NativeText);
+    }
+    if ((state & Qt::AltModifier) == Qt::AltModifier) {
+        QKeySequence ks(Qt::ALT);
+        txtLine += ks.toString(QKeySequence::NativeText);
+    }
+    if ((state & Qt::ShiftModifier) == Qt::ShiftModifier) {
+        QKeySequence ks(Qt::SHIFT);
+        txtLine += ks.toString(QKeySequence::NativeText);
+    }
+    if ((state & Qt::MetaModifier) == Qt::MetaModifier) {
+        QKeySequence ks(Qt::META);
+        txtLine += ks.toString(QKeySequence::NativeText);
+    }
+
+    setText(txtLine);
 }
 
 // ------------------------------------------------------------------------------

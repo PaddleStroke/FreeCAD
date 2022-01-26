@@ -112,7 +112,7 @@ class PathWorkbench(Workbench):
             "Path_Helix",
             "Path_Adaptive",
         ]
-        threedopcmdlist = ["Path_Pocket_3D"]
+        threedopcmdlist = ["Path_Pocket3D"]
         engravecmdlist = ["Path_Engrave", "Path_Deburr", "Path_Vcarve"]
         modcmdlist = ["Path_OperationCopy", "Path_Array", "Path_SimpleCopy"]
         dressupcmdlist = [
@@ -141,7 +141,7 @@ class PathWorkbench(Workbench):
         FreeCADGui.addCommand(
             "Path_EngraveTools",
             PathCommandGroup(
-                engravecmdlist, QT_TRANSLATE_NOOP("Path", "Engraving Operations")
+                engravecmdlist, QT_TRANSLATE_NOOP("Path_EngraveTools", "Engraving Operations")
             ),
         )
 
@@ -150,7 +150,7 @@ class PathWorkbench(Workbench):
             projcmdlist.append("Path_Sanity")
             prepcmdlist.append("Path_Shape")
             extracmdlist.extend(["Path_Area", "Path_Area_Workplane"])
-            specialcmdlist.append("Path_Thread_Milling")
+            specialcmdlist.append("Path_ThreadMilling")
             twodopcmdlist.append("Path_Slot")
 
         if PathPreferences.advancedOCLFeaturesEnabled():
@@ -165,7 +165,7 @@ class PathWorkbench(Workbench):
                     "Path_3dTools",
                     PathCommandGroup(
                         threedopcmdlist,
-                        QT_TRANSLATE_NOOP("Path", "3D Operations"),
+                        QT_TRANSLATE_NOOP("Path_3dTools", "3D Operations"),
                     ),
                 )
             except ImportError:

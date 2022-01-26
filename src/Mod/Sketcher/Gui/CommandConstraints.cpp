@@ -958,7 +958,7 @@ public:
 
     virtual void registerPressedKey(bool pressed, int key)
     {
-        if ((key == SoKeyboardEvent::RIGHT_SHIFT || key == SoKeyboardEvent::LEFT_SHIFT) && pressed) {
+        if ((key == SoKeyboardEvent::SPACE) && pressed) {
             if (availableConstraint == AvailableConstraint_FIRST) {
                 availableConstraint = AvailableConstraint_SECOND;
             }

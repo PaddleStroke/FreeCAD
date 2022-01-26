@@ -90,27 +90,39 @@ bool SketcherToolWidget::eventFilter(QObject* object, QEvent* event)
     else if (object == ui->parameterFive && event->type() == QEvent::FocusIn) {
         ui->parameterFive->selectNumber();
     }
+    if (event->type() == QEvent::KeyPress) {
+        /*If a key shortcut is required to work on sketcher when a tool using Tool Setting widget
+        is being used, then you have to add this key to the below section such that the spinbox
+        doesn't keep the keypress event for itself. Note if you want the event to be handled by 
+        the spinbox too, you can return false.*/
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+        if (keyEvent->key() == Qt::Key_Control)
+        {
+            sketchView->keyPressed(0, SoKeyboardEvent::LEFT_CONTROL);
+            return true;
+        }
+        else if (keyEvent->key() == Qt::Key_Shift)
+        {
+            sketchView->keyPressed(1, SoKeyboardEvent::RIGHT_SHIFT);
+            return true;
+        }
+        else if (keyEvent->key() == Qt::Key_Alt)
+        {
+            sketchView->keyPressed(1, SoKeyboardEvent::RIGHT_ALT);
+            return true;
+        }
+        else if (keyEvent->key() == Qt::Key_Escape)
+        {
+            sketchView->keyPressed(0, SoKeyboardEvent::ESCAPE);
+            return true;
+        }
+        else if (keyEvent->key() == Qt::Key_Space)
+        {
+            sketchView->keyPressed(1, SoKeyboardEvent::SPACE);
+            return true;
+        }
+    }
     return false;
-}
-
-void SketcherToolWidget::keyPressEvent(QKeyEvent* event) {
-    if (event->key() == Qt::Key_Control)
-    {
-        sketchView->keyPressed(0, SoKeyboardEvent::LEFT_CONTROL);
-    }
-    if (event->key() == Qt::Key_Shift)
-    {
-        sketchView->keyPressed(1, SoKeyboardEvent::RIGHT_SHIFT);
-    }
-    if (event->key() == Qt::Key_Escape)
-    {
-        sketchView->keyPressed(0, SoKeyboardEvent::ESCAPE);
-    }
-    //It whould be best to catch all keys than manually mapping them here...
-    //But I can't find how to. Maybe with this below function
-    //const SoEvent* keyboard->translateEvent(event)
-    //sketchView->keyPressed(0, sokey);
-    //QWidget::keyReleaseEvent(event);
 }
 
 

@@ -52,7 +52,6 @@ public:
     ~SketcherToolWidget();
 
     bool eventFilter(QObject* object, QEvent* event);
-    void keyPressEvent(QKeyEvent* event);
     
 
     void setparameter(double val, int i);

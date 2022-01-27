@@ -987,6 +987,15 @@ public:
         //Change distance constraint based on position of mouse.
         if (isLineOr2PointsDistance && selPoints.size() < 3) {
             Base::Vector3d pnt1, pnt2;
+            bool addedOrigin = 0;
+            if (selPoints.size() == 1) {
+                //then we add temporarily the origin in the vector.
+                addedOrigin = 1;
+                SelIdPair selIdPair;
+                selIdPair.GeoId = Sketcher::GeoEnum::RtPnt;
+                selIdPair.PosId = Sketcher::PointPos::start;
+                selPoints.push_back(selIdPair);
+            }
             if (selLine.size() == 1) {
                 pnt1 = Obj->getPoint(selLine[0].GeoId, Sketcher::PointPos::start);
                 pnt2 = Obj->getPoint(selLine[0].GeoId, Sketcher::PointPos::end);
@@ -1005,12 +1014,12 @@ public:
                 && (onSketchPos.y < minY || onSketchPos.y > maxY) && distanceType != DISTANCEX) {
                 restartCommand(QT_TRANSLATE_NOOP("Command", "Add DistanceX constraint"));
                 if (selLine.size() == 1) {
-                    createDistanceXYConstrain(0, -1, selLine[0].GeoId, Sketcher::PointPos::start, selLine[0].GeoId, Sketcher::PointPos::end, onSketchPos);
+                    createDistanceXYConstrain(0, 0, -1, selLine[0].GeoId, Sketcher::PointPos::start, selLine[0].GeoId, Sketcher::PointPos::end, onSketchPos);
                     sketchgui->toolSettings->widget->setLabel(QApplication::translate("ConstrainContextually_6",
                         "Left Click to validate 'DistanceX'.\n\nPress SHIFT to alternate between 'Distance(X/Y)', 'Horizontal' and 'Vertical'.\n\nOr select a : \n   - Point: distance, pointOnObject\n   - Line: angle, distance, equality\n   - Curve: tangent"), 5);
                 }
                 else {
-                    createDistanceXYConstrain(0, -1, selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId, onSketchPos);
+                    createDistanceXYConstrain(0, 0, -1, selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId, onSketchPos);
                     sketchgui->toolSettings->widget->setLabel(QApplication::translate("ConstrainContextually_2",
                         "Left Click to validate 'DistanceX'. \n\nPress SHIFT to alternate between 'Distance(X/Y)' and 'Equality'.\n\nOr select a : \n   - Point: coincidence, pointOnObject\n   - Curve: pointOnObject"), 5);
                 }
@@ -1019,12 +1028,12 @@ public:
                 && (onSketchPos.x < minX || onSketchPos.x > maxX) && distanceType != DISTANCEY) {
                 restartCommand(QT_TRANSLATE_NOOP("Command", "Add DistanceY constraint"));
                 if (selLine.size() == 1) {
-                    createDistanceXYConstrain(1, -1, selLine[0].GeoId, Sketcher::PointPos::start, selLine[0].GeoId, Sketcher::PointPos::end, onSketchPos);
+                    createDistanceXYConstrain(0, 1, -1, selLine[0].GeoId, Sketcher::PointPos::start, selLine[0].GeoId, Sketcher::PointPos::end, onSketchPos);
                     sketchgui->toolSettings->widget->setLabel(QApplication::translate("ConstrainContextually_6",
                         "Left Click to validate 'DistanceY'.\n\nPress SHIFT to alternate between 'Distance(X/Y)', 'Horizontal' and 'Vertical'.\n\nOr select a : \n   - Point: distance, pointOnObject\n   - Line: angle, distance, equality\n   - Curve: tangent"), 5);
                 }
                 else {
-                    createDistanceXYConstrain(1, -1, selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId, onSketchPos);
+                    createDistanceXYConstrain(0, 1, -1, selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId, onSketchPos);
                     sketchgui->toolSettings->widget->setLabel(QApplication::translate("ConstrainContextually_2",
                         "Left Click to validate 'DistanceY'. \n\nPress SHIFT to alternate between 'Distance(X/Y)' and 'Equality'.\n\nOr select a : \n   - Point: coincidence, pointOnObject\n   - Curve: pointOnObject"), 5);
                 }
@@ -1045,6 +1054,10 @@ public:
 
             }
 
+            if (addedOrigin) {
+                //remove origin
+                selPoints.pop_back();
+            }
         }
 
         //Move constraints
@@ -1343,29 +1356,22 @@ protected:
                 //only one point : Lock constrain
                 if (availableConstraint == AvailableConstraint_FIRST) {
                     restartCommand(QT_TRANSLATE_NOOP("Command", "Add lock constraint"));
-                    createDistanceXYConstrain(0, -1, selPoints[0].GeoId, selPoints[0].PosId, Sketcher::GeoEnum::RtPnt, Sketcher::PointPos::start, onSketchPos);
-                    createDistanceXYConstrain(1, -1, selPoints[0].GeoId, selPoints[0].PosId, Sketcher::GeoEnum::RtPnt, Sketcher::PointPos::start, onSketchPos);
+                    createDistanceXYConstrain(1, 0, -1, selPoints[0].GeoId, selPoints[0].PosId, Sketcher::GeoEnum::RtPnt, Sketcher::PointPos::start, onSketchPos);
+                    createDistanceXYConstrain(1, 1, -1, selPoints[0].GeoId, selPoints[0].PosId, Sketcher::GeoEnum::RtPnt, Sketcher::PointPos::start, onSketchPos);
                     if (constraintCreationMode == Driving) {
                         sketchgui->toolSettings->widget->setSettings(9);
                     }
                     sketchgui->toolSettings->widget->setLabel(QApplication::translate("ConstrainContextually_1",
                         "Left Click to validate 'Lock'. \n\nPress SHIFT to alternate between 'Lock', 'DistanceX to origin' and 'DistanceY to origin'.\n\nOr select a : \n   - Point: distance, coincidence\n   - Curve: distance, pointOnObject"), 5);
                 }
-                else if (availableConstraint == AvailableConstraint_SECOND) {
-                    restartCommand(QT_TRANSLATE_NOOP("Command", "Add 'DistanceX to origin' constraint"));
-                    createDistanceXYConstrain(0, -1, selPoints[0].GeoId, selPoints[0].PosId, Sketcher::GeoEnum::RtPnt, Sketcher::PointPos::start, onSketchPos);
-                    sketchgui->toolSettings->widget->setLabel(QApplication::translate("ConstrainContextually_14",
-                        "Left Click to validate 'DistanceX to origin'. \n\nPress SHIFT to alternate between 'Lock', 'DistanceX to origin' and 'DistanceY to origin'.\n\nOr select a : \n   - Point: distance, coincidence\n   - Curve: distance, pointOnObject"), 5);
-                }
                 else {
-                    restartCommand(QT_TRANSLATE_NOOP("Command", "Add 'DistanceY to origin' constraint"));
-                    createDistanceXYConstrain(1, -1, selPoints[0].GeoId, selPoints[0].PosId, Sketcher::GeoEnum::RtPnt, Sketcher::PointPos::start, onSketchPos);
-                    sketchgui->toolSettings->widget->setLabel(QApplication::translate("ConstrainContextually_15",
-                        "Left Click to validate 'DistanceY to origin'. \n\nPress SHIFT to alternate between 'Lock', 'DistanceX to origin' and 'DistanceY to origin'.\n\nOr select a : \n   - Point: distance, coincidence\n   - Curve: distance, pointOnObject"), 5);
+                    restartCommand(QT_TRANSLATE_NOOP("Command", "Add 'DistanceX to origin' constraint"));
+                    createDistanceConstrain(selPoints[0].GeoId, selPoints[0].PosId, Sketcher::GeoEnum::RtPnt, Sketcher::PointPos::start, onSketchPos);
+                    sketchgui->toolSettings->widget->setLabel(QApplication::translate("ConstrainContextually_14",
+                        "Left Click to validate 'Distance(X/Y) to origin'. \n\nPress SHIFT to alternate between 'Lock' and 'Distance(X/Y) to origin'.\n\nOr select a : \n   - Point: distance, coincidence\n   - Curve: distance, pointOnObject"), 5);
                     availableConstraint = AvailableConstraint_FIFTH;
                 }
                 selAllowed = 1;
-
             }
             else if (selPoints.size() == 2 && selLine.size() == 0 && selCircleArc.size() == 0 && selEllipseAndCo.size() == 0) {
                 //distance between 2 points or coincidence
@@ -1891,13 +1897,13 @@ protected:
         sketchgui->moveConstraint(ConStr.size() - 1, onSketchPos);
     }
 
-    void createDistanceXYConstrain(bool typeXzeroYone, int distance, int GeoId1, Sketcher::PointPos PosId1, int GeoId2, Sketcher::PointPos PosId2, Base::Vector2d onSketchPos) {
+    void createDistanceXYConstrain(bool lock, bool typeXzeroYone, int distance, int GeoId1, Sketcher::PointPos PosId1, int GeoId2, Sketcher::PointPos PosId2, Base::Vector2d onSketchPos) {
         Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
         if (constraintCreationMode == Driving) {
             sketchgui->toolSettings->widget->setSettings(8);
         }
 
-        if ((GeoId1 == GeoId2 || (PosId1 != Sketcher::PointPos::none && PosId2 != Sketcher::PointPos::none)) && GeoId2 != Sketcher::GeoEnum::RtPnt) {
+        if ((GeoId1 == GeoId2 || (PosId1 != Sketcher::PointPos::none && PosId2 != Sketcher::PointPos::none)) && !lock ) {
             //if line distance or point to point distance
             isLineOr2PointsDistance = 1;
         }

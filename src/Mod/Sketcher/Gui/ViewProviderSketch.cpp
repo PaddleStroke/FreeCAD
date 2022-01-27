@@ -472,7 +472,7 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
     default:
         {
             if (isInEditMode() && sketchHandler) {
-                Base::Console().Warning("key pressed %i   -   pressed = %i\n", *sketchHandler, pressed);
+                //Base::Console().Warning("key pressed %i   -   pressed = %i\n", *sketchHandler, pressed);
                 sketchHandler->registerPressedKey(pressed,key);
             }
         }

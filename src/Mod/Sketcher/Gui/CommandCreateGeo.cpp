@@ -1736,7 +1736,7 @@ public:
         if (Mode != STATUS_SEEK_Second)
             return; // SegmentMode can be changed only in STATUS_SEEK_Second mode
 
-        if ( (key == SoKeyboardEvent::SPACE ) && pressed && previousCurve != -1) {
+        if ( (key == SoKeyboardEvent::RIGHT_SHIFT || key == SoKeyboardEvent::LEFT_SHIFT) && pressed && previousCurve != -1) {
             //Note: for key press to be registered by the registerPressedKey when tool settings is being used (has focus), then the key has to be mapped in taskSketcherTool.cpp
             // loop through the following modes:
             // SEGMENT_MODE_Line, TRANSITION_MODE_Free / TRANSITION_MODE_Tangent

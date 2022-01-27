@@ -34,6 +34,7 @@
 #include <Gui/BitmapFactory.h>
 #include <Gui/ViewProvider.h>
 #include <Gui/WaitCursor.h>
+#include <Gui/MainWindow.h>
 #include <Base/Tools.h>
 #include <Base/UnitsApi.h>
 
@@ -61,6 +62,7 @@ SketcherToolWidget::SketcherToolWidget(QWidget *parent, ViewProviderSketch* sket
         this, SLOT(emitSetparameterFour(double)));
     connect(ui->parameterFive, SIGNAL(valueChanged(double)),
         this, SLOT(emitSetparameterFive(double)));
+    this->installEventFilter(this);
     ui->parameterOne->installEventFilter(this);
     ui->parameterTwo->installEventFilter(this);
     ui->parameterThree->installEventFilter(this);
@@ -98,7 +100,7 @@ bool SketcherToolWidget::eventFilter(QObject* object, QEvent* event)
         QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
         if (keyEvent->key() == Qt::Key_Control)
         {
-            sketchView->keyPressed(0, SoKeyboardEvent::LEFT_CONTROL);
+            sketchView->keyPressed(1, SoKeyboardEvent::LEFT_CONTROL);
             return true;
         }
         else if (keyEvent->key() == Qt::Key_Shift)
@@ -113,7 +115,7 @@ bool SketcherToolWidget::eventFilter(QObject* object, QEvent* event)
         }
         else if (keyEvent->key() == Qt::Key_Escape)
         {
-            sketchView->keyPressed(0, SoKeyboardEvent::ESCAPE);
+            sketchView->keyPressed(1, SoKeyboardEvent::ESCAPE);
             return true;
         }
         else if (keyEvent->key() == Qt::Key_Space)
@@ -189,9 +191,6 @@ void SketcherToolWidget::setSettings(int toolSelected)
     toolParameters.clear();
     isSettingSet.clear();
 
-    //Give the focus back to the viewproviderSketcher
-    Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveView();
-    mdi->setFocus();
 
     ui->label->setVisible(0);
     ui->label2->setVisible(0);
@@ -215,6 +214,11 @@ void SketcherToolWidget::setSettings(int toolSelected)
     ui->parameterThree->setVisible(0);
     ui->parameterFour->setVisible(0);
     ui->parameterFive->setVisible(0);
+
+    //Give the focus back to the viewproviderSketcher
+    Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveMainView();
+    mdi->setFocus();
+
 
     switch (toolSelected) {
         case 1://rectangle : DrawSketchHandlerBox

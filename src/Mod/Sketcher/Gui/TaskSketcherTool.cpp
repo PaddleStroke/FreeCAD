@@ -216,7 +216,7 @@ void SketcherToolWidget::setSettings(int toolSelected)
     ui->parameterFive->setVisible(0);
 
     //Give the focus back to the viewproviderSketcher
-    Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveMainView();
+    Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveView();
     mdi->setFocus();
 
 

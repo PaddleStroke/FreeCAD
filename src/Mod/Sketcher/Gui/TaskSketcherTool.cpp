@@ -39,6 +39,7 @@
 #include <Base/UnitsApi.h>
 
 #include <QEvent>
+#include <QMdiSubWindow>
 
 #include "ViewProviderSketch.h"
 

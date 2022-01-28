@@ -216,9 +216,11 @@ void SketcherToolWidget::setSettings(int toolSelected)
     ui->parameterFive->setVisible(0);
 
     //Give the focus back to the viewproviderSketcher
-    Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveView();
-    mdi->setFocus();
-
+    //Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveView();
+    //mdi->setFocus();
+    QMdiArea* mdi = qobject_cast<QMdiArea*>(Gui::MainWindow::getInstance()->centralWidget());
+    if (!mdi) return;
+    mdi->activeSubWindow()->widget()->setFocus();
 
     switch (toolSelected) {
         case 1://rectangle : DrawSketchHandlerBox

@@ -489,6 +489,67 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
         if (isInEditMode()) {
             if (!pressed && ctrlIsPressed) {
                 //copy the currently selected geometry.
+                // get the selection
+                std::vector<Gui::SelectionObject> selection = Gui::Command::getSelection().getSelectionEx();
+
+                // only one sketch with its subelements are allowed to be selected
+                if (selection.size() != 1) {
+                    QMessageBox::warning(Gui::getMainWindow(),
+                        QObject::tr("Wrong selection"),
+                        QObject::tr("Select elements from a single sketch."));
+                    return false;
+                }
+                // get the needed lists and objects
+                const std::vector<std::string>& SubNames = selection[0].getSubNames();
+                if (SubNames.empty()) {
+                    QMessageBox::warning(Gui::getMainWindow(),
+                        QObject::tr("Wrong selection"),
+                        QObject::tr("Select elements from a single sketch."));
+                    return;
+                }
+
+                Sketcher::SketchObject* Obj = static_cast<Sketcher::SketchObject*>(selection[0].getObject());
+                Gui::Command::getSelection().clearSelection();
+
+                std::vector<Part::Geometry> geovals;
+                std::vector<int> geoIds;
+
+                for (std::vector<std::string>::const_iterator it = SubNames.begin(); it != SubNames.end(); ++it) {
+                    int LastGeoId = 0;
+                    const Part::Geometry* LastGeo = 0;
+                    // only handle non-external edges
+                    if (it->size() > 4 && it->substr(0, 4) == "Edge") {
+                        LastGeoId = std::atoi(it->substr(4, 4000).c_str()) - 1;
+                        LastGeo = Obj->getGeometry(LastGeoId);
+                        // lines to copy
+                        if (LastGeoId >= 0) {
+                            geoIds.push_back(LastGeoId);
+                            geovals.push_back(&LastGeo.copy());
+                        }
+                    }
+                    else if (it->size() > 6 && it->substr(0, 6) == "Vertex") {
+                        // only if it is a GeomPoint
+                        int VtId = std::atoi(it->substr(6, 4000).c_str()) - 1;
+                        int GeoId;
+                        Sketcher::PointPos PosId;
+                        Obj->getGeoVertexIndex(VtId, GeoId, PosId);
+                        if (Obj->getGeometry(GeoId)->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+                            LastGeoId = GeoId;
+                            // points to copy
+                            if (LastGeoId >= 0) {
+                                geoIds.push_back(LastGeoId);
+                                geovals.push_back(&LastGeo);
+                            }
+                        }
+                    }
+                }
+                if (geoIds.size() < 1) {
+                    return false;
+                }
+
+
+
+
                 return getSketchObject()->copySelectedGeoToClipboard(0);
             }
         }

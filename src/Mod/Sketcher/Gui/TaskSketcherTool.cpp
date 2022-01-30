@@ -214,6 +214,7 @@ void SketcherToolWidget::setSettings(int toolSelected)
     ui->parameterThree->setVisible(0);
     ui->parameterFour->setVisible(0);
     ui->parameterFive->setVisible(0);
+    //sketchView->toolSettings->hideGroupBox();
 
     //Give the focus back to the viewproviderSketcher
     //Gui::MDIView* mdi = Gui::Application::Instance->activeDocument()->getActiveView();
@@ -589,13 +590,13 @@ TaskSketcherTool::TaskSketcherTool(ViewProviderSketch *sketchView)
     widget = new SketcherToolWidget(this, sketchView);
     this->groupLayout()->addWidget(widget);
 
-    widget->setSettings(0);
 
     Gui::Selection().Attach(this);
 
     Gui::Application* app = Gui::Application::Instance;
     changedSketchView = app->signalChangedObject.connect(boost::bind
         (&TaskSketcherTool::onChangedSketchView, this, bp::_1, bp::_2));
+    widget->setSettings(0);
 }
 
 TaskSketcherTool::~TaskSketcherTool()

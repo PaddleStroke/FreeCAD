@@ -530,8 +530,10 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
             if (!pressed && ctrlIsPressed) {
                 QClipboard* clipboard = QGuiApplication::clipboard();
                 QString importedData = clipboard->text();
-
-                return getSketchObject()->pasteGeometriesInClipboard(importedData);
+                bool isSomethingDone = getSketchObject()->pasteGeometriesInClipboard(importedData);
+                this->getSketchObject()->solve(true);
+                this->draw(false, false); // Redraw
+                return isSomethingDone;
             }
         }
         return false;

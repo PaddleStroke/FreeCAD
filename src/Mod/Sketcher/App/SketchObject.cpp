@@ -4109,47 +4109,20 @@ std::string SketchObject::exportSelectedAsString(std::vector<std::string> SubNam
     if (listOfGeoId.size() < 1) { return false; }
     else {
         Base::StringWriter writer;
+        Part::PropertyGeometryList geoToCopy;
+        std::vector< Part::Geometry* > newVals;
 
         for (int i = 0; i < listOfGeoId.size(); i++) {
             const Part::Geometry* Geo = this->getGeometry(listOfGeoId[i]);
-            if (Geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
-                const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(Geo);
-                circle->Save(writer);
-            }
-            else if (Geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
-                const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(Geo);
-                arcOfCircle->Save(writer);
-            }
-            else if (Geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
-                const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(Geo);
-                ellipse->Save(writer);
-            }
-            else if (Geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
-                const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(Geo);
-                arcOfEllipse->Save(writer);
-            }
-            else if (Geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
-                const Part::GeomArcOfParabola* arcOfParabola = static_cast<const Part::GeomArcOfParabola*>(Geo);
-                arcOfParabola->Save(writer);
-            }
-            else if (Geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
-                const Part::GeomBSplineCurve* bSplineCurve = static_cast<const Part::GeomBSplineCurve*>(Geo);
-                bSplineCurve->Save(writer);
-            }
-            else if (Geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
-                const Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<const Part::GeomArcOfHyperbola*>(Geo);
-                arcOfHyperbola->Save(writer);
-            }
-            else if (Geo->getTypeId() == Part::GeomPoint::getClassTypeId()) {
-                const Part::GeomPoint* point = static_cast<const Part::GeomPoint*>(Geo);
-                point->Save(writer);
-            }
-            else if (Geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
-                const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(Geo);
-                line->Save(writer);
-            }
+            Part::Geometry* geoNew = Geo->copy();
+            newVals.push_back(geoNew);
         }
+        geoToCopy.setValues(std::move(newVals));
+        geoToCopy.Save(writer);
+
         //add constraints to the stream string.
+        Sketcher::PropertyConstraintList constToCopy;
+        std::vector< Sketcher::Constraint* > newConstrVals;
         const std::vector< Sketcher::Constraint* >& vals = this->Constraints.getValues();
         for (std::vector< Sketcher::Constraint* >::const_iterator it = vals.begin(); it != vals.end(); ++it) {
             for (int i = 0; i < listOfGeoId.size(); i++) {
@@ -4198,32 +4171,79 @@ std::string SketchObject::exportSelectedAsString(std::vector<std::string> SubNam
                         for (int j = 0; j < listOfGeoId.size(); j++) {
                             if (temp->First == listOfGeoId[j] && !isFirstSet) {
                                 temp->First = j;
-                                isFirstSet = 1;
+                                isFirstSet = 1;//to prevent changing the value several times
                             }
-                            else if (temp->Second == listOfGeoId[j] && !isSecondSet) {
+                            if (temp->Second == listOfGeoId[j] && !isSecondSet) {
                                 temp->Second = j;
                                 isSecondSet = 1;
                             }
-                            else if (temp->Third == listOfGeoId[j] && !isThirdSet) {
+                            if (temp->Third == listOfGeoId[j] && !isThirdSet) {
                                 temp->Third = j;
                                 isThirdSet = 1;
                             }
                         }
-                        temp->Save(writer);
+                        newConstrVals.push_back(temp);
                     }
                     break;//don't want to copy twice a constraint if another geoID is involved.(and if notOk now it wont be later either)
                 }
             }
         }
+        constToCopy.setValues(std::move(newConstrVals));
+        constToCopy.Save(writer);
         return writer.getString();
     }
     return "";
 }
 
 bool SketchObject::pasteGeometriesInClipboard(QString Data) {
+    bool somethingHappenned = 0;
     std::string importedData = Data.toStdString();
-    Base::Console().Warning("ctrlV ");
-    return 1;
+    int importedFirstGeoId = getHighestCurveIndex()+1;
+
+    std::string geoString;
+    if (importedData.find("</GeometryList>", 0) != std::string::npos) {
+        geoString = importedData.substr(0, importedData.find("</GeometryList>", 0) + 16);
+    }
+    else {return false;}
+
+    std::istringstream istream(geoString);
+    Base::XMLReader reader("importingGeo", istream);
+    Part::PropertyGeometryList geoToCopy;
+    geoToCopy.Restore(reader);
+
+    const std::vector< Part::Geometry* >& vals = geoToCopy.getValues();
+    for (int i = 0; i < vals.size(); i++) {
+        Part::Geometry* geocopy = vals[i]->copy();
+        addGeometry(geocopy);
+    }
+
+    if (importedData.find("<ConstraintList", 0) != std::string::npos) {
+        std::string constrString;
+        constrString = importedData.substr(importedData.find("<ConstraintList", 0), importedData.size() - importedData.find("<ConstraintList", 0));
+        
+        std::istringstream istream2(constrString);
+        Base::XMLReader reader2("importingConstraints", istream2);
+        Sketcher::PropertyConstraintList constToCopy;
+        constToCopy.Restore(reader2);
+
+        const std::vector< Sketcher::Constraint* >& newConstrVals = constToCopy.getValuesForce();
+        
+        for (int i = 0; i < newConstrVals.size(); i++) {
+            Sketcher::Constraint* constraintToAdd = newConstrVals[i]->copy();
+            //update the geoIds of the constraints
+            if (constraintToAdd->First != GeoEnum::GeoUndef && constraintToAdd->First != GeoEnum::RtPnt && constraintToAdd->First != GeoEnum::VAxis && constraintToAdd->First != GeoEnum::HAxis) {
+                constraintToAdd->First += importedFirstGeoId;
+            }
+            if (constraintToAdd->Second != GeoEnum::GeoUndef && constraintToAdd->Second != GeoEnum::RtPnt && constraintToAdd->Second != GeoEnum::VAxis && constraintToAdd->Second != GeoEnum::HAxis) {
+            constraintToAdd->Second += importedFirstGeoId;
+            }
+            if (constraintToAdd->Third != GeoEnum::GeoUndef && constraintToAdd->Third != GeoEnum::RtPnt && constraintToAdd->Third != GeoEnum::VAxis && constraintToAdd->Third != GeoEnum::HAxis) {
+            constraintToAdd->Third += importedFirstGeoId;
+            }
+            addConstraint(constraintToAdd);
+        }
+    }
+    return somethingHappenned;
 }
 
 int SketchObject::addCopy(const std::vector<int> &geoIdList, const Base::Vector3d& displacement, bool moveonly /*=false*/,

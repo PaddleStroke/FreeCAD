@@ -228,3 +228,30 @@ void Constraint::substituteIndex(int fromGeoId, int toGeoId)
         this->Third = toGeoId;
     }
 }
+
+std::string Constraint::Export()
+{
+    std::string encodeName = encodeAttribute(Name);
+    std::stringstream stream;
+    stream << "<Constrain "
+        << "Name=\"" << encodeName << "\" "
+        << "Type=\"" << (int)Type << "\" ";
+    if (this->Type == InternalAlignment)
+        stream << "InternalAlignmentType=\"" << (int)AlignmentType << "\" "
+        << "InternalAlignmentIndex=\"" << InternalAlignmentIndex << "\" ";
+    stream
+        << "Value=\"" << Value << "\" "
+        << "First=\"" << First << "\" "
+        << "FirstPos=\"" << (int)FirstPos << "\" "
+        << "Second=\"" << Second << "\" "
+        << "SecondPos=\"" << (int)SecondPos << "\" "
+        << "Third=\"" << Third << "\" "
+        << "ThirdPos=\"" << (int)ThirdPos << "\" "
+        << "LabelDistance=\"" << LabelDistance << "\" "
+        << "LabelPosition=\"" << LabelPosition << "\" "
+        << "IsDriving=\"" << (int)isDriving << "\" "
+        << "IsInVirtualSpace=\"" << (int)isInVirtualSpace << "\" "
+        << "IsActive=\"" << (int)isActive << "\" />";
+
+        return stream.str();
+}

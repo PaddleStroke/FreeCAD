@@ -2602,18 +2602,18 @@ protected:
             }
             if ((*it)->Type == Sketcher::Horizontal) {
                 if ((*it)->First == GeoId1) {
-                    Base::Console().Warning("geo1IsHorizontal %i\n", geo1IsHorizontal);
+                    bool geo1IsHorizontal = 1;
                 }
                 else if ((*it)->First == GeoId2) {
-                    Base::Console().Warning("geo2IsHorizontal %i\n", geo2IsHorizontal);
+                    bool geo2IsHorizontal = 1;
                 }
             }
             else if ((*it)->Type == Sketcher::Vertical) {
                 if ((*it)->First == GeoId1) {
-                    Base::Console().Warning("geo1IsVertical %i\n", geo1IsVertical);
+                    bool geo1IsVertical = 1;
                 }
                 else if ((*it)->First == GeoId2) {
-                    Base::Console().Warning("geo2IsVertical %i\n", geo2IsVertical);
+                    bool geo2IsVertical = 1;
                 }
             }
         }

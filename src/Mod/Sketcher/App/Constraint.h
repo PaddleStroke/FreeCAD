@@ -102,6 +102,8 @@ public:
     virtual unsigned int getMemSize(void) const override;
     virtual void Save(Base::Writer &/*writer*/) const override;
     virtual void Restore(Base::XMLReader &/*reader*/) override;
+    
+    std::string Export();
 
     virtual PyObject *getPyObject(void) override;
 

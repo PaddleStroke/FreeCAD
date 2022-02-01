@@ -4077,19 +4077,153 @@ int SketchObject::addSymmetric(const std::vector<int> &geoIdList, int refGeoId, 
     return Geometry.getSize()-1;
 }
 
-bool SketchObject::copySelectedGeoToClipboard(bool copyZeroCutOne) {
-    if(copyZeroCutOne)
-        Base::Console().Warning("ctrlX ");
-    else
-        Base::Console().Warning("ctrlC ");
+std::string SketchObject::exportSelectedAsString(std::vector<std::string> SubNames) {
+    if (SubNames.empty()) { return ""; }
+    //First we need listOfGeoId and sort them.
+    std::vector<int> listOfGeoId;
+    for (std::vector<std::string>::const_iterator it = SubNames.begin(); it != SubNames.end(); ++it) {
+        int GeoId = -1;
+        // only handle non-external edges
+        if (it->size() > 4 && it->substr(0, 4) == "Edge") {
+            GeoId = std::atoi(it->substr(4, 4000).c_str()) - 1;
+            if (GeoId >= 0) {
+                listOfGeoId.push_back(GeoId);
+            }
+        }
+        else if (it->size() > 6 && it->substr(0, 6) == "Vertex") {
+            // only if it is a GeomPoint
+            int VtId = std::atoi(it->substr(6, 4000).c_str()) - 1;
+            Sketcher::PointPos PosId;
+            this->getGeoVertexIndex(VtId, GeoId, PosId);
+            if (this->getGeometry(GeoId)->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+                if (GeoId >= 0) {
+                    listOfGeoId.push_back(GeoId);
+                }
+            }
+        }
+    }
+    sort(listOfGeoId.begin(), listOfGeoId.end());
 
-    return 0;
+    //Export selected geometries as a formated string.
+
+    if (listOfGeoId.size() < 1) { return false; }
+    else {
+        Base::StringWriter writer;
+
+        for (int i = 0; i < listOfGeoId.size(); i++) {
+            const Part::Geometry* Geo = this->getGeometry(listOfGeoId[i]);
+            if (Geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(Geo);
+                circle->Save(writer);
+            }
+            else if (Geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(Geo);
+                arcOfCircle->Save(writer);
+            }
+            else if (Geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(Geo);
+                ellipse->Save(writer);
+            }
+            else if (Geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(Geo);
+                arcOfEllipse->Save(writer);
+            }
+            else if (Geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                const Part::GeomArcOfParabola* arcOfParabola = static_cast<const Part::GeomArcOfParabola*>(Geo);
+                arcOfParabola->Save(writer);
+            }
+            else if (Geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                const Part::GeomBSplineCurve* bSplineCurve = static_cast<const Part::GeomBSplineCurve*>(Geo);
+                bSplineCurve->Save(writer);
+            }
+            else if (Geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                const Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<const Part::GeomArcOfHyperbola*>(Geo);
+                arcOfHyperbola->Save(writer);
+            }
+            else if (Geo->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+                const Part::GeomPoint* point = static_cast<const Part::GeomPoint*>(Geo);
+                point->Save(writer);
+            }
+            else if (Geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(Geo);
+                line->Save(writer);
+            }
+        }
+        //add constraints to the stream string.
+        const std::vector< Sketcher::Constraint* >& vals = this->Constraints.getValues();
+        for (std::vector< Sketcher::Constraint* >::const_iterator it = vals.begin(); it != vals.end(); ++it) {
+            for (int i = 0; i < listOfGeoId.size(); i++) {
+                if ((*it)->First == listOfGeoId[i] || (*it)->Second == listOfGeoId[i] || (*it)->Third == listOfGeoId[i]) {
+                    //We need to check that all the geoId are from selected geometries or axis/root point.
+                    bool isFirstOk = 0;
+                    bool isSecondOk = 0;
+                    bool isThirdOk = 0;
+                    if ((*it)->First == listOfGeoId[i] || (*it)->First == GeoEnum::GeoUndef || (*it)->First == GeoEnum::RtPnt || (*it)->First == GeoEnum::VAxis || (*it)->First == GeoEnum::HAxis) {
+                        isFirstOk = 1;
+                    }
+                    else {
+                        for (int j = 0; j < listOfGeoId.size(); j++) {
+                            if ((*it)->First == listOfGeoId[j]) {
+                                isFirstOk = 1;
+                            }
+                        }
+                    }
+                    if ((*it)->Second == listOfGeoId[i] || (*it)->Second == GeoEnum::GeoUndef || (*it)->Second == GeoEnum::RtPnt || (*it)->Second == GeoEnum::VAxis || (*it)->Second == GeoEnum::HAxis) {
+                        isSecondOk = 1;
+                    }
+                    else {
+                        for (int j = 0; j < listOfGeoId.size(); j++) {
+                            if ((*it)->Second == listOfGeoId[j]) {
+                                isSecondOk = 1;
+                            }
+                        }
+                    }
+                    if ((*it)->Third == listOfGeoId[i] || (*it)->Third == GeoEnum::GeoUndef || (*it)->Third == GeoEnum::RtPnt || (*it)->Third == GeoEnum::VAxis || (*it)->Third == GeoEnum::HAxis) {
+                        isThirdOk = 1;
+                    }
+                    else {
+                        for (int j = 0; j < listOfGeoId.size(); j++) {
+                            if ((*it)->Third == listOfGeoId[j]) {
+                                isThirdOk = 1;
+                            }
+                        }
+                    }
+
+                    if (isFirstOk && isSecondOk && isThirdOk) {
+                        //make a copy of the constraint in order to change the geoIds. Because the exported geoId are lost and we'll use the index of the copied geometries
+                        Constraint* temp = (*it)->copy();
+                        bool isFirstSet = 0;
+                        bool isSecondSet = 0;
+                        bool isThirdSet = 0;
+                        for (int j = 0; j < listOfGeoId.size(); j++) {
+                            if (temp->First == listOfGeoId[j] && !isFirstSet) {
+                                temp->First = j;
+                                isFirstSet = 1;
+                            }
+                            else if (temp->Second == listOfGeoId[j] && !isSecondSet) {
+                                temp->Second = j;
+                                isSecondSet = 1;
+                            }
+                            else if (temp->Third == listOfGeoId[j] && !isThirdSet) {
+                                temp->Third = j;
+                                isThirdSet = 1;
+                            }
+                        }
+                        temp->Save(writer);
+                    }
+                    break;//don't want to copy twice a constraint if another geoID is involved.(and if notOk now it wont be later either)
+                }
+            }
+        }
+        return writer.getString();
+    }
+    return "";
 }
 
-bool SketchObject::pasteGeometriesInClipboard() {
-
+bool SketchObject::pasteGeometriesInClipboard(QString Data) {
+    std::string importedData = Data.toStdString();
     Base::Console().Warning("ctrlV ");
-    return 0;
+    return 1;
 }
 
 int SketchObject::addCopy(const std::vector<int> &geoIdList, const Base::Vector3d& displacement, bool moveonly /*=false*/,

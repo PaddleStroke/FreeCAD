@@ -730,6 +730,54 @@ void SketcherToolWidget::setSettings(int toolSelected)
             isWidgetActive = 1;
             break;
         }
+        case 18: //Scale
+        {
+            toolParameters.resize(3, 0);
+            isSettingSet.resize(3, 0);
+
+            ui->label->setVisible(1);
+            ui->label2->setVisible(1);
+            ui->label3->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_p1_scale", "x of reference point"));
+            ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_scale", "y of reference point"));
+            ui->label3->setText(QApplication::translate("TaskSketcherTool_p3_scale", "Scale factor"));
+
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+            ui->parameterTwo->setVisible(1);
+            ui->parameterTwo->setEnabled(1);
+            ui->parameterThree->setVisible(1);
+            ui->parameterThree->setEnabled(0);
+
+            ui->checkBoxTS2->setVisible(1);
+            ui->checkBoxTS2->setChecked(0);
+            ui->checkBoxTS2->setText(QApplication::translate("TaskSketcherTool_scale", "Keep original geometries"));
+
+            setLabel(QApplication::translate("Scale_1", "Select the reference point of the scale."), 6);
+
+            setParameterFocus(0);
+            isWidgetActive = 1;
+            break;
+        }
+        case 19: //Offset
+        {
+            toolParameters.resize(1, 0);
+            isSettingSet.resize(1, 0);
+
+            ui->label->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_p1_scale", "Offset length"));
+
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+
+            ui->checkBoxTS2->setVisible(1);
+            ui->checkBoxTS2->setChecked(0);
+            ui->checkBoxTS2->setText(QApplication::translate("TaskSketcherTool_scale", "Keep original geometries"));
+
+            setParameterFocus(0);
+            isWidgetActive = 1;
+            break;
+        }
 
     }
 

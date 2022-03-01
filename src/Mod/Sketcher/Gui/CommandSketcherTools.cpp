@@ -2198,7 +2198,7 @@ public:
                 setPositionText(centerPoint);
             }
 
-            if (toolSettings->widget->isSettingSet[0] + toolSettings->widget->isSettingSet[1] == 2) {
+            if (toolSettings->widget->isSettingSet[0] && toolSettings->widget->isSettingSet[1]) {
                 pressButton(onSketchPos);
                 releaseButton(onSketchPos);
             }
@@ -2239,7 +2239,7 @@ public:
             endAngle = (onSketchPos - centerPoint).Angle();
             Base::Vector2d endpoint = onSketchPos;
 
-            if (toolSettings->widget->isSettingSet[2] == 1) {
+            if (toolSettings->widget->isSettingSet[2]) {
                 totalAngle = toolSettings->widget->toolParameters[2];
                 endpoint = centerPoint + length * Base::Vector2d(cos(totalAngle + startAngle), sin(totalAngle + startAngle));
             }
@@ -2262,7 +2262,7 @@ public:
                 totalAngle = abs(angle1 - totalAngle) < abs(angle2 - totalAngle) ? angle1 : angle2;
             }
 
-            if (toolSettings->widget->isSettingSet[3] == 1) {
+            if (toolSettings->widget->isSettingSet[3]) {
                 numberOfCopies = floor(abs(toolSettings->widget->toolParameters[3]));
             }
 
@@ -2887,6 +2887,1256 @@ bool CmdSketcherRotate::isActive(void)
     return isSketcherAcceleratorActive(getActiveGuiDocument(), false);
 }
 
+// Scale tool =====================================================================
+
+class DrawSketchHandlerScale : public DrawSketchHandler
+{
+public:
+    DrawSketchHandlerScale(std::vector<int> listOfGeoIds)
+        : Mode(STATUS_SEEK_First)
+        , EditCurve(2)
+        , numberOfCopies(0)
+        , deleteOriginal(0)
+        , needUpdateGeos(1)
+        , snapMode(SnapMode::Free)
+        , listOfGeoIds(listOfGeoIds) {}
+    virtual ~DrawSketchHandlerScale() {}
+
+    enum SelectMode {
+        STATUS_SEEK_First,
+        STATUS_SEEK_Second,
+        STATUS_End
+    };
+
+    enum class SnapMode {
+        Free,
+        Snap
+    };
+
+    virtual void activated(ViewProviderSketch*)
+    {
+        toolSettings->widget->setSettings(18);
+        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Scale"));
+        firstCurveCreated = getHighestCurveIndex() + 1;
+
+
+        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+        previewEnabled = hGrp->GetBool("ScaleEnablePreview", true);
+
+        // Constrain icon size in px
+        qreal pixelRatio = devicePixelRatio();
+        const unsigned long defaultCrosshairColor = 0xFFFFFF;
+        unsigned long color = getCrosshairColor();
+        auto colorMapping = std::map<unsigned long, unsigned long>();
+        colorMapping[defaultCrosshairColor] = color;
+
+        qreal fullIconWidth = 32 * pixelRatio;
+        qreal iconWidth = 16 * pixelRatio;
+        QPixmap cursorPixmap = Gui::BitmapFactory().pixmapFromSvg("Sketcher_Crosshair", QSizeF(fullIconWidth, fullIconWidth), colorMapping),
+            icon = Gui::BitmapFactory().pixmapFromSvg("Sketcher_Scale", QSizeF(iconWidth, iconWidth));
+        QPainter cursorPainter;
+        cursorPainter.begin(&cursorPixmap);
+        cursorPainter.drawPixmap(16 * pixelRatio, 16 * pixelRatio, icon);
+        cursorPainter.end();
+        int hotX = 8;
+        int hotY = 8;
+        cursorPixmap.setDevicePixelRatio(pixelRatio);
+        // only X11 needs hot point coordinates to be scaled
+        if (qGuiApp->platformName() == QLatin1String("xcb")) {
+            hotX *= pixelRatio;
+            hotY *= pixelRatio;
+        }
+        setCursor(cursorPixmap, hotX, hotY, false);
+    }
+    virtual void deactivated(ViewProviderSketch*)
+    {
+        //delete created constrains if the tool is exited before validating by left clicking somewhere
+        Gui::Command::abortCommand();
+        sketchgui->getSketchObject()->solve(true);
+        sketchgui->draw(false, false); // Redraw
+    }
+
+    virtual void mouseMove(Base::Vector2d onSketchPos)
+    {
+        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+            snapMode = SnapMode::Snap;
+        else
+            snapMode = SnapMode::Free;
+
+        if (Mode == STATUS_SEEK_First) {
+            setPositionText(onSketchPos);
+            if (snapMode == SnapMode::Snap && getSnapPoint(referencePoint)) {
+                setPositionText(referencePoint);
+            }
+
+            if (toolSettings->widget->isSettingSet[0] && toolSettings->widget->isSettingSet[1]) {
+                pressButton(onSketchPos);
+                releaseButton(onSketchPos);
+            }
+        }
+        else if (Mode == STATUS_SEEK_Second) {
+            toolSettings->widget->setLabel(QApplication::translate("Scale_2", "Select a point where distance from this point to reference point represent the scale factor."), 6);
+            length = (onSketchPos - referencePoint).Length();
+
+            Base::Vector2d endpoint = onSketchPos;
+
+            if (snapMode == SnapMode::Snap) {
+                if (getSnapPoint(endpoint)) {
+                    length = (endpoint - referencePoint).Length();
+                }
+            }
+
+            if (toolSettings->widget->isSettingSet[2]) {
+                scaleFactor = toolSettings->widget->toolParameters[2];
+            }
+            else {
+                scaleFactor = length / sketchgui->GridSize.getValue();
+            }
+
+            SbString text;
+            text.sprintf(" (%.1f)", length);
+            setPositionText(endpoint, text);
+
+            //generate the copies
+            if (previewEnabled) {
+                generateScaledGeos(0);
+                sketchgui->draw(false, false); // Redraw
+            }
+
+            EditCurve[0] = endpoint;
+            EditCurve[1] = referencePoint;
+            drawEdit(EditCurve);
+
+            if (toolSettings->widget->isSettingSet[2]) {
+                pressButton(onSketchPos);
+                releaseButton(onSketchPos);
+            }
+        }
+        applyCursor();
+    }
+
+    virtual bool pressButton(Base::Vector2d onSketchPos)
+    {
+        if (Mode == STATUS_SEEK_First) {
+            if (!(snapMode == SnapMode::Snap && getSnapPoint(referencePoint))) {
+                //note: if getSnapPoint returns true, then centerPoint is modified already
+                referencePoint = onSketchPos;
+                if (toolSettings->widget->isSettingSet[0]) {
+                    referencePoint.x = toolSettings->widget->toolParameters[0];
+                }
+                if (toolSettings->widget->isSettingSet[1]) {
+                    referencePoint.y = toolSettings->widget->toolParameters[1];
+                }
+            }
+
+            EditCurve[0] = referencePoint;
+            toolSettings->widget->setParameterActive(0, 0);
+            toolSettings->widget->setParameterActive(0, 1);
+            toolSettings->widget->setParameterActive(1, 2);
+            toolSettings->widget->setParameterActive(1, 3);
+            toolSettings->widget->setParameterFocus(2);
+            Mode = STATUS_SEEK_Second;
+        }
+        else if (Mode == STATUS_SEEK_Second) {
+            Mode = STATUS_End;
+        }
+        return true;
+    }
+
+    virtual bool releaseButton(Base::Vector2d onSketchPos)
+    {
+        Q_UNUSED(onSketchPos);
+        if (Mode == STATUS_End) {
+            generateScaledGeos(1);
+
+            Gui::Command::commitCommand();
+
+            EditCurve.clear();
+            drawEdit(EditCurve);
+
+            sketchgui->getSketchObject()->solve(true);
+            sketchgui->draw(false, false); // Redraw
+
+            sketchgui->purgeHandler();
+        }
+        return true;
+    }
+protected:
+    SelectMode Mode;
+    SnapMode snapMode;
+    std::vector<int> listOfGeoIds;
+    Base::Vector2d referencePoint;
+    std::vector<Base::Vector2d> EditCurve;
+
+    bool deleteOriginal, previewEnabled, needUpdateGeos;
+    double length, scaleFactor;
+    int numberOfCopies, prevNumberOfCopies, firstCurveCreated;
+
+    void generateScaledGeos(bool onReleaseButton) {
+        if (toolSettings->widget->isCheckBoxChecked(2)) {
+            deleteOriginal = 0;
+            numberOfCopies = 2;
+        }
+        else {
+            deleteOriginal = 1;
+            numberOfCopies = 1;
+        }
+
+        if (prevNumberOfCopies != numberOfCopies) {
+            needUpdateGeos = 1;
+            prevNumberOfCopies = numberOfCopies;
+        }
+
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+
+        restartCommand(QT_TRANSLATE_NOOP("Command", "Scale"));
+        //Creates geos
+        std::stringstream stream;
+        stream << "geoList = []\n";
+        stream << "constrGeoList = []\n";
+        for (size_t j = 0; j < listOfGeoIds.size(); j++) {
+            const Part::Geometry* geo = Obj->getGeometry(listOfGeoIds[j]);
+            if (GeometryFacade::getConstruction(geo)) {
+                stream << "constrGeoList.";
+            }
+            else {
+                stream << "geoList.";
+            }
+            if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo);
+                Base::Vector3d scaledCenter = getScaledPoint(circle->getCenter(), referencePoint, scaleFactor);
+                stream << "append(Part.Circle(App.Vector(" << scaledCenter.x << "," << scaledCenter.y << ",0),App.Vector(0,0,1)," << circle->getRadius() * scaleFactor << "))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
+                Base::Vector3d scaledCenter = getScaledPoint(arcOfCircle->getCenter(), referencePoint, scaleFactor);
+                double arcStartAngle, arcEndAngle;
+                arcOfCircle->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                stream << "append(Part.ArcOfCircle(Part.Circle(App.Vector(" << scaledCenter.x << "," << scaledCenter.y << ",0),App.Vector(0,0,1)," << arcOfCircle->getRadius() * scaleFactor << "),"
+                    << arcStartAngle << "," << arcEndAngle << "))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
+                Base::Vector3d scaledStartPoint = getScaledPoint(line->getStartPoint(), referencePoint, scaleFactor);
+                Base::Vector3d scaledEndPoint = getScaledPoint(line->getEndPoint(), referencePoint, scaleFactor);
+                stream << "append(Part.LineSegment(App.Vector(" << scaledStartPoint.x << "," << scaledStartPoint.y << ",0),App.Vector(" << scaledEndPoint.x << "," << scaledEndPoint.y << ",0)))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(geo);
+                Base::Vector3d scaledCenterPoint = getScaledPoint(ellipse->getCenter(), referencePoint, scaleFactor);
+                Base::Vector3d ellipseAxis = ellipse->getMajorAxisDir();
+                Base::Vector3d periapsis = ellipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * ellipse->getMajorRadius();
+                periapsis = getScaledPoint(periapsis, referencePoint, scaleFactor);
+                Base::Vector3d ellipseMinorAxis;
+                ellipseMinorAxis.x = -ellipseAxis.y;
+                ellipseMinorAxis.y = ellipseAxis.x;
+                Base::Vector3d positiveB = ellipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * ellipse->getMinorRadius();
+                positiveB = getScaledPoint(positiveB, referencePoint, scaleFactor);
+                stream << "append(Part.Ellipse(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y << ",0),App.Vector(" << scaledCenterPoint.x << "," << scaledCenterPoint.y << ",0)))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo);
+                Base::Vector3d scaledCenterPoint = getScaledPoint(arcOfEllipse->getCenter(), referencePoint, scaleFactor);
+                Base::Vector3d ellipseAxis = arcOfEllipse->getMajorAxisDir();
+                Base::Vector3d periapsis = arcOfEllipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfEllipse->getMajorRadius();
+                periapsis = getScaledPoint(periapsis, referencePoint, scaleFactor);
+                Base::Vector3d ellipseMinorAxis;
+                ellipseMinorAxis.x = -ellipseAxis.y;
+                ellipseMinorAxis.y = ellipseAxis.x;
+                Base::Vector3d positiveB = arcOfEllipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfEllipse->getMinorRadius();
+                positiveB = getScaledPoint(positiveB, referencePoint, scaleFactor);
+                double arcStartAngle, arcEndAngle;
+                arcOfEllipse->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                stream << "append(Part.ArcOfEllipse(Part.Ellipse(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y
+                    << ",0),App.Vector(" << scaledCenterPoint.x << "," << scaledCenterPoint.y << ",0)),"
+                    << arcStartAngle  << "," << arcEndAngle << "))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+                const Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<const Part::GeomArcOfHyperbola*>(geo);
+                Base::Vector3d scaledCenterPoint = getScaledPoint(arcOfHyperbola->getCenter(), referencePoint, scaleFactor);
+                Base::Vector3d ellipseAxis = arcOfHyperbola->getMajorAxisDir();
+                Base::Vector3d periapsis = arcOfHyperbola->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfHyperbola->getMajorRadius();
+                periapsis = getScaledPoint(periapsis, referencePoint, scaleFactor);
+                Base::Vector3d ellipseMinorAxis;
+                ellipseMinorAxis.x = -ellipseAxis.y;
+                ellipseMinorAxis.y = ellipseAxis.x;
+                Base::Vector3d positiveB = arcOfHyperbola->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfHyperbola->getMinorRadius();
+                positiveB = getScaledPoint(positiveB, referencePoint, scaleFactor);
+                double arcStartAngle, arcEndAngle;
+                arcOfHyperbola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                stream << "append(Part.ArcOfHyperbola(Part.Hyperbola(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y
+                    << ",0),App.Vector(" << scaledCenterPoint.x << "," << scaledCenterPoint.y << ",0)),"
+                    << arcStartAngle << "," << arcEndAngle << "))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                const Part::GeomArcOfParabola* arcOfParabola = static_cast<const Part::GeomArcOfParabola*>(geo);
+                Base::Vector3d scaledFocusPoint = getScaledPoint(arcOfParabola->getFocus(), referencePoint, scaleFactor);
+                Base::Vector3d scaledCenterPoint = getScaledPoint(arcOfParabola->getCenter(), referencePoint, scaleFactor);
+                double arcStartAngle, arcEndAngle;
+                arcOfParabola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                stream << "append(Part.ArcOfParabola(Part.Parabola(App.Vector(" << scaledFocusPoint.x << "," << scaledFocusPoint.y << ",0),App.Vector(" << scaledCenterPoint.x << "," << scaledCenterPoint.y
+                    << ",0),App.Vector(0,0,1)),"
+                    << arcStartAngle << "," << arcEndAngle << "))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                /*//try 1 : Doesn't work since I added these circles. But before it worked only with numberOfCopies = 0.
+                const Part::GeomBSplineCurve* bSpline = static_cast<const Part::GeomBSplineCurve*>(geo);
+                std::vector<Base::Vector3d> bSplineCtrlPoints = bSpline->getPoles();
+                std::vector<double> bSplineWeights = bSpline->getWeights();
+                std::stringstream stream;
+                int FirstPoleGeoId = getHighestCurveIndex()+1;
+                for (size_t k = 0; k < bSplineCtrlPoints.size(); k++) {
+                    Base::Vector3d scaledControlPoint = getScaledPoint(bSplineCtrlPoints[k], centerPoint, individualAngle * i);
+                    stream << "App.Vector(" << scaledControlPoint.x << "," << scaledControlPoint.y << "),";
+                    //Add pole
+                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.Circle(App.Vector(%f,%f,0),App.Vector(0,0,1),10),True)",
+                        scaledControlPoint.x, scaledControlPoint.y);
+                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Weight',%d,%f)) ",
+                        getHighestCurveIndex(), bSplineWeights[k]);
+                }
+                std::string controlpoints = stream.str();
+                // remove last comma and add brackets
+                int index = controlpoints.rfind(',');
+                controlpoints.resize(index);
+                controlpoints.insert(0, 1, '[');
+                controlpoints.append(1, ']');
+                Base::Console().Warning("%s\n", controlpoints.c_str());
+                Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.BSplineCurve(%s,None,None,%s,3,None,False),%s)",
+                    controlpoints.c_str(),
+                    bSpline->isPeriodic() ? "True" : "False",
+                    GeometryFacade::getConstruction(geo) ? "True" : "False");
+                Base::Console().Warning("hello 3\n");
+                // Constraint pole circles to B-spline.
+                std::stringstream cstream;
+                cstream << "conList = []\n";
+                for (size_t k = 0; k < bSplineCtrlPoints.size(); k++) {
+                    Base::Console().Warning("hello 4\n");
+                    cstream << "conList.append(Sketcher.Constraint('InternalAlignment:Sketcher::BSplineControlPoint'," << FirstPoleGeoId + k
+                        << "," << static_cast<int>(Sketcher::PointPos::mid) << "," << getHighestCurveIndex() << "," << k << "))\n";
+                }
+                cstream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
+                cstream << "del conList\n";
+                Gui::Command::doCommand(Gui::Command::Doc, cstream.str().c_str());
+                // for showing the knots on creation
+                Gui::cmdAppObjectArgs(sketchgui->getObject(), "exposeInternalGeometry(%d)", getHighestCurveIndex());*/
+
+                /*//try 2 : Works with only numberOfCopies = 0...
+                Part::GeomBSplineCurve* geobsp = static_cast<Part::GeomBSplineCurve*>(geo->copy());
+
+                std::vector<Base::Vector3d> poles = geobsp->getPoles();
+
+                for (std::vector<Base::Vector3d>::iterator jt = poles.begin(); jt != poles.end(); ++jt) {
+
+                    (*jt) = getScaledPoint((*jt), centerPoint, individualAngle * i);
+                }
+
+                geobsp->setPoles(poles);
+                sketchgui->getSketchObject()->addGeometry(geobsp, GeometryFacade::getConstruction(geo));*/
+            }
+        }
+        stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addGeometry(geoList,False)\n";
+        stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addGeometry(constrGeoList,True)\n";
+        stream << "del geoList\n";
+        stream << "del constrGeoList\n";
+        Gui::Command::doCommand(Gui::Command::Doc, stream.str().c_str());
+        /*if (needUpdateGeos || onReleaseButton) {
+        * Idea is to move geos rather than delete and recreate to reduce crashes. But it's not sure it's better and it's not working.
+            needUpdateGeos = 0;
+            prevNumberOfCopies = numberOfCopies;
+            sketchgui->draw(false, false); // Redraw
+            sketchgui->getSketchObject()->solve(true);
+
+            int lastCurve = getHighestCurveIndex();
+            for (int i = firstCurveCreated; i <= lastCurve; i++) {
+                const Part::Geometry* geo = Obj->getGeometry(i);
+                if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                    Obj->initTemporaryMove(i, PointPos::mid, false);
+                }
+            }
+        }
+        else {
+            scaleGeos();
+            sketchgui->draw(false, false); // Redraw
+        }*/
+
+        //Create constraints
+        if (onReleaseButton) {
+            //stream << "conList = []\n"; //not sure this way would be better
+            const std::vector< Sketcher::Constraint* >& vals = Obj->Constraints.getValues();
+            std::vector< Constraint* > newconstrVals(vals);
+            std::vector<int> geoIdsWhoAlreadyHasEqual = {}; //avoid applying equal several times if cloning distanceX and distanceY of the same part.
+
+            std::vector< Sketcher::Constraint* >::const_iterator itEnd = vals.end(); //we need vals.end before adding any constraints
+            for (std::vector< Sketcher::Constraint* >::const_iterator it = vals.begin(); it != itEnd; ++it) {
+                int firstIndex = indexInVec(listOfGeoIds, (*it)->First);
+                int secondIndex = indexInVec(listOfGeoIds, (*it)->Second);
+                int thirdIndex = indexInVec(listOfGeoIds, (*it)->Third);
+
+                if (((*it)->Type == Sketcher::Symmetric
+                    || (*it)->Type == Sketcher::Tangent
+                    || (*it)->Type == Sketcher::Perpendicular)
+                    && firstIndex >= 0 && secondIndex >= 0 && thirdIndex >= 0) {
+                    Constraint* constNew = (*it)->copy();
+                    constNew->First = firstCurveCreated + firstIndex;
+                    constNew->Second = firstCurveCreated + secondIndex;
+                    constNew->Third = firstCurveCreated + thirdIndex;
+                    newconstrVals.push_back(constNew);
+                }
+                else if (((*it)->Type == Sketcher::Coincident
+                    || (*it)->Type == Sketcher::Tangent
+                    || (*it)->Type == Sketcher::Symmetric
+                    || (*it)->Type == Sketcher::Perpendicular
+                    || (*it)->Type == Sketcher::Parallel
+                    || (*it)->Type == Sketcher::Equal
+                    || (*it)->Type == Sketcher::PointOnObject)
+                    && firstIndex >= 0 && secondIndex >= 0 && thirdIndex == GeoEnum::GeoUndef) {
+                    Constraint* constNew = (*it)->copy();
+                    constNew->First = firstCurveCreated + firstIndex;
+                    constNew->Second = firstCurveCreated + secondIndex;
+                    newconstrVals.push_back(constNew);
+                }
+                else if (((*it)->Type == Sketcher::Radius
+                    || (*it)->Type == Sketcher::Diameter)
+                    && firstIndex >= 0) {
+                    Constraint* constNew = (*it)->copy();
+                    constNew->First = firstCurveCreated + firstIndex;
+                    constNew->setValue(constNew->getValue() * scaleFactor);
+                    newconstrVals.push_back(constNew);
+                }
+                else if (((*it)->Type == Sketcher::Distance
+                    || (*it)->Type == Sketcher::DistanceX
+                    || (*it)->Type == Sketcher::DistanceY)
+                    && firstIndex >= 0 && secondIndex >= 0) {
+                    Constraint* constNew = (*it)->copy();
+                    constNew->First = firstCurveCreated + firstIndex;
+                    constNew->Second = firstCurveCreated + secondIndex;
+                    constNew->setValue(constNew->getValue()* scaleFactor);
+                    newconstrVals.push_back(constNew);
+                }
+            }
+            if (newconstrVals.size() > vals.size())
+                Obj->Constraints.setValues(std::move(newconstrVals));
+            //stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
+            //stream << "del conList\n";
+        }
+
+        if (deleteOriginal) {
+            std::stringstream stream;
+            for (size_t j = 0; j < listOfGeoIds.size() - 1; j++) {
+                stream << listOfGeoIds[j] << ",";
+            }
+            stream << listOfGeoIds[listOfGeoIds.size() - 1];
+            try {
+                Gui::cmdAppObjectArgs(sketchgui->getObject(), "delGeometries([%s])", stream.str().c_str());
+            }
+            catch (const Base::Exception& e) {
+                Base::Console().Error("%s\n", e.what());
+            }
+        }
+    }
+
+    bool getSnapPoint(Base::Vector2d& snapPoint) {
+        int pointGeoId = GeoEnum::GeoUndef;
+        Sketcher::PointPos pointPosId = Sketcher::PointPos::none;
+        int VtId = getPreselectPoint();
+        int CrsId = getPreselectCross();
+        if (CrsId == 0) {
+            pointGeoId = Sketcher::GeoEnum::RtPnt;
+            pointPosId = Sketcher::PointPos::start;
+        }
+        else if (VtId >= 0) {
+            sketchgui->getSketchObject()->getGeoVertexIndex(VtId, pointGeoId, pointPosId);
+        }
+        if (pointGeoId != GeoEnum::GeoUndef && pointGeoId < firstCurveCreated) {
+            //don't want to snap to the point of a geometry which is being previewed!
+            auto sk = static_cast<Sketcher::SketchObject*>(sketchgui->getObject());
+            snapPoint.x = sk->getPoint(pointGeoId, pointPosId).x;
+            snapPoint.y = sk->getPoint(pointGeoId, pointPosId).y;
+            return true;
+        }
+        return false;
+    }
+
+    int indexInVec(std::vector<int> vec, int elem)
+    {
+        if (elem == GeoEnum::GeoUndef) {
+            return GeoEnum::GeoUndef;
+        }
+        for (size_t i = 0; i < vec.size(); i++)
+        {
+            if (vec[i] == elem)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    Base::Vector3d getScaledPoint(Base::Vector3d pointToScale, Base::Vector2d referencePoint, double scaleFactor) {
+        Base::Vector2d pointToScale2D;
+        pointToScale2D.x = pointToScale.x;
+        pointToScale2D.y = pointToScale.y;
+        pointToScale2D = (pointToScale2D - referencePoint) * scaleFactor + referencePoint;
+
+        pointToScale.x = pointToScale2D.x;
+        pointToScale.y = pointToScale2D.y;
+
+        return pointToScale;
+    }
+
+    void restartCommand(const char* cstrName) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        Gui::Command::abortCommand();
+        Obj->solve(true);
+        sketchgui->draw(false, false); // Redraw
+        Gui::Command::openCommand(cstrName);
+    }
+};
+
+DEF_STD_CMD_A(CmdSketcherScale)
+
+CmdSketcherScale::CmdSketcherScale()
+    : Command("Sketcher_Scale")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Scale geometries");
+    sToolTipText = QT_TR_NOOP("Scale selected geometries.");
+    sWhatsThis = "Sketcher_Scale";
+    sStatusTip = sToolTipText;
+    sPixmap = "Sketcher_Scale";
+    sAccel = "S";
+    eType = ForEdit;
+}
+
+void CmdSketcherScale::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    std::vector<int> listOfGeoIds = {};
+
+    // get the selection
+    std::vector<Gui::SelectionObject> selection;
+    selection = getSelection().getSelectionEx(0, Sketcher::SketchObject::getClassTypeId());
+
+    // only one sketch with its subelements are allowed to be selected
+    if (selection.size() != 1) {
+        QMessageBox::warning(Gui::getMainWindow(),
+            QObject::tr("Wrong selection"),
+            QObject::tr("Select elements from a single sketch."));
+        return;
+    }
+
+    // get the needed lists and objects
+    const std::vector<std::string>& SubNames = selection[0].getSubNames();
+    if (!SubNames.empty()) {
+        Sketcher::SketchObject* Obj = static_cast<Sketcher::SketchObject*>(selection[0].getObject());
+
+        for (std::vector<std::string>::const_iterator it = SubNames.begin(); it != SubNames.end(); ++it) {
+            // only handle non-external edges
+            if (it->size() > 4 && it->substr(0, 4) == "Edge") {
+                int geoId = std::atoi(it->substr(4, 4000).c_str()) - 1;
+                if (geoId >= 0) {
+                    listOfGeoIds.push_back(geoId);
+                }
+            }
+            else if (it->size() > 6 && it->substr(0, 6) == "Vertex") {
+                // only if it is a GeomPoint
+                int VtId = std::atoi(it->substr(6, 4000).c_str()) - 1;
+                int geoId;
+                Sketcher::PointPos PosId;
+                Obj->getGeoVertexIndex(VtId, geoId, PosId);
+                if (Obj->getGeometry(geoId)->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+                    if (geoId >= 0) {
+                        listOfGeoIds.push_back(geoId);
+                    }
+                }
+            }
+        }
+    }
+
+    getSelection().clearSelection();
+
+    ActivateAcceleratorHandler(getActiveGuiDocument(), new DrawSketchHandlerScale(listOfGeoIds));
+}
+
+bool CmdSketcherScale::isActive(void)
+{
+    return isSketcherAcceleratorActive(getActiveGuiDocument(), false);
+}
+
+// Offset tool =====================================================================
+
+class DrawSketchHandlerOffset : public DrawSketchHandler
+{
+public:
+    DrawSketchHandlerOffset(std::vector<int> listOfGeoIds)
+        : Mode(STATUS_SEEK_First)
+        , numberOfCopies(0)
+        , deleteOriginal(0)
+        , needUpdateGeos(1)
+        , snapMode(SnapMode::Free)
+        , listOfGeoIds(listOfGeoIds) {}
+    virtual ~DrawSketchHandlerOffset() {}
+
+    enum SelectMode {
+        STATUS_SEEK_First,
+        STATUS_End
+    };
+
+    enum class SnapMode {
+        Free,
+        Snap
+    };
+
+    virtual void activated(ViewProviderSketch*)
+    {
+        toolSettings->widget->setSettings(19);
+        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Offset"));
+        firstCurveCreated = getHighestCurveIndex() + 1;
+
+        //generate vecOfContinuousCurves
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        for (size_t i = 0; i < listOfGeoIds.size(); i++) {
+            std::vector<int> vecOfGeoIds;
+            const Part::Geometry* geo = Obj->getGeometry(listOfGeoIds[i]);
+            if (geo->getTypeId() == Part::GeomCircle::getClassTypeId() 
+                || geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                vecOfGeoIds.push_back(listOfGeoIds[i]);
+                vecOfContinuousCurves.push_back(vecOfGeoIds);
+            }
+            else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
+                || geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()
+                || geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()
+                || geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()
+                || geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()
+                || geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                bool inserted = 0;
+                int insertedIn = -1;
+                for (size_t j = 0; j < vecOfContinuousCurves.size(); j++) {
+                    for (size_t k = 0; k < vecOfContinuousCurves[j].size(); k++) {
+                        Sketcher::PointPos pointPosOfCoincidence = checkForCoincidence(listOfGeoIds[i], vecOfContinuousCurves[j][k]);
+                        if (pointPosOfCoincidence != Sketcher::PointPos::none) {
+                            if (inserted) {
+                                //if it's already inserted in another continuous curve then we need to merge both curves together.
+                                vecOfContinuousCurves[insertedIn].insert(vecOfContinuousCurves[insertedIn].end(), vecOfContinuousCurves[j].begin(), vecOfContinuousCurves[j].end());
+                                vecOfContinuousCurves.erase(vecOfContinuousCurves.begin() + j);
+                            }
+                            else {
+                                //we need to get the curves in the correct order.
+                                if (k == vecOfContinuousCurves[j].size() - 1) {
+                                    vecOfContinuousCurves[j].push_back(listOfGeoIds[i]);
+                                }
+                                else {
+                                    vecOfContinuousCurves[j].insert(vecOfContinuousCurves[j].begin() + k, listOfGeoIds[i]);
+                                }
+                                insertedIn = j;
+                                inserted = 1;
+                            }
+                            break;
+                        }
+                    }
+                }
+                if (!inserted) {
+                    vecOfGeoIds.push_back(listOfGeoIds[i]);
+                    vecOfContinuousCurves.push_back(vecOfGeoIds);
+                }
+            }
+        }
+
+        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+        previewEnabled = hGrp->GetBool("OffsetEnablePreview", true);
+
+        // Constrain icon size in px
+        qreal pixelRatio = devicePixelRatio();
+        const unsigned long defaultCrosshairColor = 0xFFFFFF;
+        unsigned long color = getCrosshairColor();
+        auto colorMapping = std::map<unsigned long, unsigned long>();
+        colorMapping[defaultCrosshairColor] = color;
+
+        qreal fullIconWidth = 32 * pixelRatio;
+        qreal iconWidth = 16 * pixelRatio;
+        QPixmap cursorPixmap = Gui::BitmapFactory().pixmapFromSvg("Sketcher_Crosshair", QSizeF(fullIconWidth, fullIconWidth), colorMapping),
+            icon = Gui::BitmapFactory().pixmapFromSvg("Sketcher_Offset", QSizeF(iconWidth, iconWidth));
+        QPainter cursorPainter;
+        cursorPainter.begin(&cursorPixmap);
+        cursorPainter.drawPixmap(16 * pixelRatio, 16 * pixelRatio, icon);
+        cursorPainter.end();
+        int hotX = 8;
+        int hotY = 8;
+        cursorPixmap.setDevicePixelRatio(pixelRatio);
+        // only X11 needs hot point coordinates to be offsetd
+        if (qGuiApp->platformName() == QLatin1String("xcb")) {
+            hotX *= pixelRatio;
+            hotY *= pixelRatio;
+        }
+        setCursor(cursorPixmap, hotX, hotY, false);
+    }
+    virtual void deactivated(ViewProviderSketch*)
+    {
+        Gui::Command::abortCommand();
+        sketchgui->getSketchObject()->solve(true);
+        sketchgui->draw(false, false); // Redraw
+    }
+
+    virtual void mouseMove(Base::Vector2d onSketchPos)
+    {
+        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+            snapMode = SnapMode::Snap;
+        else
+            snapMode = SnapMode::Free;
+
+        if (Mode == STATUS_SEEK_First) {
+            Base::Vector2d endpoint = onSketchPos;
+            if (snapMode == SnapMode::Snap) {
+                getSnapPoint(endpoint);
+            }
+
+            if (toolSettings->widget->isSettingSet[0]) {
+                offsetLength = toolSettings->widget->toolParameters[0];
+            }
+            else {
+                //find projectedPoint
+                offsetLength = 1000000000000;
+                Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+                for (size_t i = 0; i < vecOfContinuousCurves.size(); i++) {
+                    for (size_t j = 0; j < vecOfContinuousCurves[i].size(); j++) {
+                        Base::Vector2d currentProjectedPoint;
+                        const Part::Geometry* geo = Obj->getGeometry(vecOfContinuousCurves[i][j]);
+                        if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                            const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo); 
+                            Base::Vector2d centerPoint;
+                            centerPoint.x = circle->getCenter().x;
+                            centerPoint.y = circle->getCenter().y;
+                            offsetLength = min(circle->getRadius() - (endpoint - centerPoint).Length(), offsetLength);
+                        }
+                        else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                            const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
+                            Base::Vector3d offsetdCenter = getOffsetdPoint(arcOfCircle->getCenter(), referencePoint, offsetFactor);
+                            double arcStartAngle, arcEndAngle;
+                            arcOfCircle->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                        }
+                        else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                            const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
+                            Base::Vector3d offsetdStartPoint = getOffsetdPoint(line->getStartPoint(), referencePoint, offsetFactor);
+                            Base::Vector3d offsetdEndPoint = getOffsetdPoint(line->getEndPoint(), referencePoint, offsetFactor);
+                        }
+                        else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                            const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(geo);
+                            Base::Vector3d offsetdCenterPoint = getOffsetdPoint(ellipse->getCenter(), referencePoint, offsetFactor);
+                            Base::Vector3d ellipseAxis = ellipse->getMajorAxisDir();
+                            Base::Vector3d periapsis = ellipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * ellipse->getMajorRadius();
+                            periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
+                            Base::Vector3d ellipseMinorAxis;
+                            ellipseMinorAxis.x = -ellipseAxis.y;
+                            ellipseMinorAxis.y = ellipseAxis.x;
+                            Base::Vector3d positiveB = ellipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * ellipse->getMinorRadius();
+                            positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
+                        }
+                        else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                            const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo);
+                            Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfEllipse->getCenter(), referencePoint, offsetFactor);
+                            Base::Vector3d ellipseAxis = arcOfEllipse->getMajorAxisDir();
+                            Base::Vector3d periapsis = arcOfEllipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfEllipse->getMajorRadius();
+                            periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
+                            Base::Vector3d ellipseMinorAxis;
+                            ellipseMinorAxis.x = -ellipseAxis.y;
+                            ellipseMinorAxis.y = ellipseAxis.x;
+                            Base::Vector3d positiveB = arcOfEllipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfEllipse->getMinorRadius();
+                            positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
+                            double arcStartAngle, arcEndAngle;
+                            arcOfEllipse->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                        }
+                        else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+                            const Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<const Part::GeomArcOfHyperbola*>(geo);
+                            Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfHyperbola->getCenter(), referencePoint, offsetFactor);
+                            Base::Vector3d ellipseAxis = arcOfHyperbola->getMajorAxisDir();
+                            Base::Vector3d periapsis = arcOfHyperbola->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfHyperbola->getMajorRadius();
+                            periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
+                            Base::Vector3d ellipseMinorAxis;
+                            ellipseMinorAxis.x = -ellipseAxis.y;
+                            ellipseMinorAxis.y = ellipseAxis.x;
+                            Base::Vector3d positiveB = arcOfHyperbola->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfHyperbola->getMinorRadius();
+                            positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
+                            double arcStartAngle, arcEndAngle;
+                            arcOfHyperbola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                        }
+                        else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                            const Part::GeomArcOfParabola* arcOfParabola = static_cast<const Part::GeomArcOfParabola*>(geo);
+                            Base::Vector3d offsetdFocusPoint = getOffsetdPoint(arcOfParabola->getFocus(), referencePoint, offsetFactor);
+                            Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfParabola->getCenter(), referencePoint, offsetFactor);
+                            double arcStartAngle, arcEndAngle;
+                            arcOfParabola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                        }
+                        else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                        }
+                    }
+                }
+                offsetLength = (endpoint - projectedPoint).Length();
+            }
+
+            SbString text;
+            text.sprintf(" (%.1f)", offsetLength);
+            setPositionText(endpoint, text);
+
+            //generate the copies
+            if (previewEnabled) {
+                generateOffsetGeos(0);
+                sketchgui->draw(false, false); // Redraw
+            }
+
+            if (toolSettings->widget->isSettingSet[0]) {
+                pressButton(onSketchPos);
+                releaseButton(onSketchPos);
+            }
+        }
+        applyCursor();
+    }
+
+    virtual bool pressButton(Base::Vector2d onSketchPos)
+    {
+        if (Mode == STATUS_SEEK_First) {
+            Mode = STATUS_End;
+        }
+        return true;
+    }
+
+    virtual bool releaseButton(Base::Vector2d onSketchPos)
+    {
+        Q_UNUSED(onSketchPos);
+        if (Mode == STATUS_End) {
+            generateOffsetGeos(1);
+
+            Gui::Command::commitCommand();
+
+            sketchgui->getSketchObject()->solve(true);
+            sketchgui->draw(false, false); // Redraw
+
+            sketchgui->purgeHandler();
+        }
+        return true;
+    }
+protected:
+    SelectMode Mode;
+    SnapMode snapMode;
+    std::vector<int> listOfGeoIds;
+    std::vector<std::vector<int>> vecOfContinuousCurves;
+    Base::Vector2d projectedPoint;
+
+    bool deleteOriginal, previewEnabled, needUpdateGeos;
+    double offsetLength;
+    int numberOfCopies, prevNumberOfCopies, firstCurveCreated;
+
+    void generateOffsetGeos(bool onReleaseButton) {
+        if (toolSettings->widget->isCheckBoxChecked(2)) {
+            deleteOriginal = 0;
+            numberOfCopies = 2;
+        }
+        else {
+            deleteOriginal = 1;
+            numberOfCopies = 1;
+        }
+
+        if (prevNumberOfCopies != numberOfCopies) {
+            needUpdateGeos = 1;
+            prevNumberOfCopies = numberOfCopies;
+        }
+
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+
+        restartCommand(QT_TRANSLATE_NOOP("Command", "Offset"));
+        //Creates geos
+        std::stringstream stream;
+        stream << "geoList = []\n";
+        stream << "constrGeoList = []\n";
+        for (size_t j = 0; j < listOfGeoIds.size(); j++) {
+            const Part::Geometry* geo = Obj->getGeometry(listOfGeoIds[j]);
+            if (GeometryFacade::getConstruction(geo)) {
+                stream << "constrGeoList.";
+            }
+            else {
+                stream << "geoList.";
+            }
+            if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo);
+                Base::Vector3d offsetdCenter = getOffsetdPoint(circle->getCenter(), referencePoint, offsetFactor);
+                stream << "append(Part.Circle(App.Vector(" << offsetdCenter.x << "," << offsetdCenter.y << ",0),App.Vector(0,0,1)," << circle->getRadius() * offsetFactor << "))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
+                Base::Vector3d offsetdCenter = getOffsetdPoint(arcOfCircle->getCenter(), referencePoint, offsetFactor);
+                double arcStartAngle, arcEndAngle;
+                arcOfCircle->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                stream << "append(Part.ArcOfCircle(Part.Circle(App.Vector(" << offsetdCenter.x << "," << offsetdCenter.y << ",0),App.Vector(0,0,1)," << arcOfCircle->getRadius() * offsetFactor << "),"
+                    << arcStartAngle << "," << arcEndAngle << "))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
+                Base::Vector3d offsetdStartPoint = getOffsetdPoint(line->getStartPoint(), referencePoint, offsetFactor);
+                Base::Vector3d offsetdEndPoint = getOffsetdPoint(line->getEndPoint(), referencePoint, offsetFactor);
+                stream << "append(Part.LineSegment(App.Vector(" << offsetdStartPoint.x << "," << offsetdStartPoint.y << ",0),App.Vector(" << offsetdEndPoint.x << "," << offsetdEndPoint.y << ",0)))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(geo);
+                Base::Vector3d offsetdCenterPoint = getOffsetdPoint(ellipse->getCenter(), referencePoint, offsetFactor);
+                Base::Vector3d ellipseAxis = ellipse->getMajorAxisDir();
+                Base::Vector3d periapsis = ellipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * ellipse->getMajorRadius();
+                periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
+                Base::Vector3d ellipseMinorAxis;
+                ellipseMinorAxis.x = -ellipseAxis.y;
+                ellipseMinorAxis.y = ellipseAxis.x;
+                Base::Vector3d positiveB = ellipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * ellipse->getMinorRadius();
+                positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
+                stream << "append(Part.Ellipse(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y << ",0),App.Vector(" << offsetdCenterPoint.x << "," << offsetdCenterPoint.y << ",0)))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo);
+                Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfEllipse->getCenter(), referencePoint, offsetFactor);
+                Base::Vector3d ellipseAxis = arcOfEllipse->getMajorAxisDir();
+                Base::Vector3d periapsis = arcOfEllipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfEllipse->getMajorRadius();
+                periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
+                Base::Vector3d ellipseMinorAxis;
+                ellipseMinorAxis.x = -ellipseAxis.y;
+                ellipseMinorAxis.y = ellipseAxis.x;
+                Base::Vector3d positiveB = arcOfEllipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfEllipse->getMinorRadius();
+                positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
+                double arcStartAngle, arcEndAngle;
+                arcOfEllipse->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                stream << "append(Part.ArcOfEllipse(Part.Ellipse(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y
+                    << ",0),App.Vector(" << offsetdCenterPoint.x << "," << offsetdCenterPoint.y << ",0)),"
+                    << arcStartAngle << "," << arcEndAngle << "))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+                const Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<const Part::GeomArcOfHyperbola*>(geo);
+                Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfHyperbola->getCenter(), referencePoint, offsetFactor);
+                Base::Vector3d ellipseAxis = arcOfHyperbola->getMajorAxisDir();
+                Base::Vector3d periapsis = arcOfHyperbola->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfHyperbola->getMajorRadius();
+                periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
+                Base::Vector3d ellipseMinorAxis;
+                ellipseMinorAxis.x = -ellipseAxis.y;
+                ellipseMinorAxis.y = ellipseAxis.x;
+                Base::Vector3d positiveB = arcOfHyperbola->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfHyperbola->getMinorRadius();
+                positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
+                double arcStartAngle, arcEndAngle;
+                arcOfHyperbola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                stream << "append(Part.ArcOfHyperbola(Part.Hyperbola(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y
+                    << ",0),App.Vector(" << offsetdCenterPoint.x << "," << offsetdCenterPoint.y << ",0)),"
+                    << arcStartAngle << "," << arcEndAngle << "))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                const Part::GeomArcOfParabola* arcOfParabola = static_cast<const Part::GeomArcOfParabola*>(geo);
+                Base::Vector3d offsetdFocusPoint = getOffsetdPoint(arcOfParabola->getFocus(), referencePoint, offsetFactor);
+                Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfParabola->getCenter(), referencePoint, offsetFactor);
+                double arcStartAngle, arcEndAngle;
+                arcOfParabola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                stream << "append(Part.ArcOfParabola(Part.Parabola(App.Vector(" << offsetdFocusPoint.x << "," << offsetdFocusPoint.y << ",0),App.Vector(" << offsetdCenterPoint.x << "," << offsetdCenterPoint.y
+                    << ",0),App.Vector(0,0,1)),"
+                    << arcStartAngle << "," << arcEndAngle << "))\n";
+            }
+            else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                /*//try 1 : Doesn't work since I added these circles. But before it worked only with numberOfCopies = 0.
+                const Part::GeomBSplineCurve* bSpline = static_cast<const Part::GeomBSplineCurve*>(geo);
+                std::vector<Base::Vector3d> bSplineCtrlPoints = bSpline->getPoles();
+                std::vector<double> bSplineWeights = bSpline->getWeights();
+                std::stringstream stream;
+                int FirstPoleGeoId = getHighestCurveIndex()+1;
+                for (size_t k = 0; k < bSplineCtrlPoints.size(); k++) {
+                    Base::Vector3d offsetdControlPoint = getOffsetdPoint(bSplineCtrlPoints[k], centerPoint, individualAngle * i);
+                    stream << "App.Vector(" << offsetdControlPoint.x << "," << offsetdControlPoint.y << "),";
+                    //Add pole
+                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.Circle(App.Vector(%f,%f,0),App.Vector(0,0,1),10),True)",
+                        offsetdControlPoint.x, offsetdControlPoint.y);
+                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Weight',%d,%f)) ",
+                        getHighestCurveIndex(), bSplineWeights[k]);
+                }
+                std::string controlpoints = stream.str();
+                // remove last comma and add brackets
+                int index = controlpoints.rfind(',');
+                controlpoints.resize(index);
+                controlpoints.insert(0, 1, '[');
+                controlpoints.append(1, ']');
+                Base::Console().Warning("%s\n", controlpoints.c_str());
+                Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.BSplineCurve(%s,None,None,%s,3,None,False),%s)",
+                    controlpoints.c_str(),
+                    bSpline->isPeriodic() ? "True" : "False",
+                    GeometryFacade::getConstruction(geo) ? "True" : "False");
+                Base::Console().Warning("hello 3\n");
+                // Constraint pole circles to B-spline.
+                std::stringstream cstream;
+                cstream << "conList = []\n";
+                for (size_t k = 0; k < bSplineCtrlPoints.size(); k++) {
+                    Base::Console().Warning("hello 4\n");
+                    cstream << "conList.append(Sketcher.Constraint('InternalAlignment:Sketcher::BSplineControlPoint'," << FirstPoleGeoId + k
+                        << "," << static_cast<int>(Sketcher::PointPos::mid) << "," << getHighestCurveIndex() << "," << k << "))\n";
+                }
+                cstream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
+                cstream << "del conList\n";
+                Gui::Command::doCommand(Gui::Command::Doc, cstream.str().c_str());
+                // for showing the knots on creation
+                Gui::cmdAppObjectArgs(sketchgui->getObject(), "exposeInternalGeometry(%d)", getHighestCurveIndex());*/
+
+                /*//try 2 : Works with only numberOfCopies = 0...
+                Part::GeomBSplineCurve* geobsp = static_cast<Part::GeomBSplineCurve*>(geo->copy());
+
+                std::vector<Base::Vector3d> poles = geobsp->getPoles();
+
+                for (std::vector<Base::Vector3d>::iterator jt = poles.begin(); jt != poles.end(); ++jt) {
+
+                    (*jt) = getOffsetdPoint((*jt), centerPoint, individualAngle * i);
+                }
+
+                geobsp->setPoles(poles);
+                sketchgui->getSketchObject()->addGeometry(geobsp, GeometryFacade::getConstruction(geo));*/
+            }
+        }
+        stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addGeometry(geoList,False)\n";
+        stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addGeometry(constrGeoList,True)\n";
+        stream << "del geoList\n";
+        stream << "del constrGeoList\n";
+        Gui::Command::doCommand(Gui::Command::Doc, stream.str().c_str());
+        /*if (needUpdateGeos || onReleaseButton) {
+        * Idea is to move geos rather than delete and recreate to reduce crashes. But it's not sure it's better and it's not working.
+            needUpdateGeos = 0;
+            prevNumberOfCopies = numberOfCopies;
+            sketchgui->draw(false, false); // Redraw
+            sketchgui->getSketchObject()->solve(true);
+
+            int lastCurve = getHighestCurveIndex();
+            for (int i = firstCurveCreated; i <= lastCurve; i++) {
+                const Part::Geometry* geo = Obj->getGeometry(i);
+                if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                    Obj->initTemporaryMove(i, PointPos::mid, false);
+                }
+            }
+        }
+        else {
+            offsetGeos();
+            sketchgui->draw(false, false); // Redraw
+        }*/
+
+        //Create constraints
+        if (onReleaseButton) {
+            //stream << "conList = []\n"; //not sure this way would be better
+            const std::vector< Sketcher::Constraint* >& vals = Obj->Constraints.getValues();
+            std::vector< Constraint* > newconstrVals(vals);
+            std::vector<int> geoIdsWhoAlreadyHasEqual = {}; //avoid applying equal several times if cloning distanceX and distanceY of the same part.
+
+            std::vector< Sketcher::Constraint* >::const_iterator itEnd = vals.end(); //we need vals.end before adding any constraints
+            for (std::vector< Sketcher::Constraint* >::const_iterator it = vals.begin(); it != itEnd; ++it) {
+                int firstIndex = indexInVec(listOfGeoIds, (*it)->First);
+                int secondIndex = indexInVec(listOfGeoIds, (*it)->Second);
+                int thirdIndex = indexInVec(listOfGeoIds, (*it)->Third);
+
+                if (((*it)->Type == Sketcher::Symmetric
+                    || (*it)->Type == Sketcher::Tangent
+                    || (*it)->Type == Sketcher::Perpendicular)
+                    && firstIndex >= 0 && secondIndex >= 0 && thirdIndex >= 0) {
+                    Constraint* constNew = (*it)->copy();
+                    constNew->First = firstCurveCreated + firstIndex;
+                    constNew->Second = firstCurveCreated + secondIndex;
+                    constNew->Third = firstCurveCreated + thirdIndex;
+                    newconstrVals.push_back(constNew);
+                }
+                else if (((*it)->Type == Sketcher::Coincident
+                    || (*it)->Type == Sketcher::Tangent
+                    || (*it)->Type == Sketcher::Symmetric
+                    || (*it)->Type == Sketcher::Perpendicular
+                    || (*it)->Type == Sketcher::Parallel
+                    || (*it)->Type == Sketcher::Equal
+                    || (*it)->Type == Sketcher::PointOnObject)
+                    && firstIndex >= 0 && secondIndex >= 0 && thirdIndex == GeoEnum::GeoUndef) {
+                    Constraint* constNew = (*it)->copy();
+                    constNew->First = firstCurveCreated + firstIndex;
+                    constNew->Second = firstCurveCreated + secondIndex;
+                    newconstrVals.push_back(constNew);
+                }
+                else if (((*it)->Type == Sketcher::Radius
+                    || (*it)->Type == Sketcher::Diameter)
+                    && firstIndex >= 0) {
+                    Constraint* constNew = (*it)->copy();
+                    constNew->First = firstCurveCreated + firstIndex;
+                    constNew->setValue(constNew->getValue() * offsetFactor);
+                    newconstrVals.push_back(constNew);
+                }
+                else if (((*it)->Type == Sketcher::Distance
+                    || (*it)->Type == Sketcher::DistanceX
+                    || (*it)->Type == Sketcher::DistanceY)
+                    && firstIndex >= 0 && secondIndex >= 0) {
+                    Constraint* constNew = (*it)->copy();
+                    constNew->First = firstCurveCreated + firstIndex;
+                    constNew->Second = firstCurveCreated + secondIndex;
+                    constNew->setValue(constNew->getValue() * offsetFactor);
+                    newconstrVals.push_back(constNew);
+                }
+            }
+            if (newconstrVals.size() > vals.size())
+                Obj->Constraints.setValues(std::move(newconstrVals));
+            //stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
+            //stream << "del conList\n";
+        }
+
+        if (deleteOriginal) {
+            std::stringstream stream;
+            for (size_t j = 0; j < listOfGeoIds.size() - 1; j++) {
+                stream << listOfGeoIds[j] << ",";
+            }
+            stream << listOfGeoIds[listOfGeoIds.size() - 1];
+            try {
+                Gui::cmdAppObjectArgs(sketchgui->getObject(), "delGeometries([%s])", stream.str().c_str());
+            }
+            catch (const Base::Exception& e) {
+                Base::Console().Error("%s\n", e.what());
+            }
+        }
+    }
+
+    bool getSnapPoint(Base::Vector2d& snapPoint) {
+        int pointGeoId = GeoEnum::GeoUndef;
+        Sketcher::PointPos pointPosId = Sketcher::PointPos::none;
+        int VtId = getPreselectPoint();
+        int CrsId = getPreselectCross();
+        if (CrsId == 0) {
+            pointGeoId = Sketcher::GeoEnum::RtPnt;
+            pointPosId = Sketcher::PointPos::start;
+        }
+        else if (VtId >= 0) {
+            sketchgui->getSketchObject()->getGeoVertexIndex(VtId, pointGeoId, pointPosId);
+        }
+        if (pointGeoId != GeoEnum::GeoUndef && pointGeoId < firstCurveCreated) {
+            //don't want to snap to the point of a geometry which is being previewed!
+            auto sk = static_cast<Sketcher::SketchObject*>(sketchgui->getObject());
+            snapPoint.x = sk->getPoint(pointGeoId, pointPosId).x;
+            snapPoint.y = sk->getPoint(pointGeoId, pointPosId).y;
+            return true;
+        }
+        return false;
+    }
+
+    int indexInVec(std::vector<int> vec, int elem)
+    {
+        if (elem == GeoEnum::GeoUndef) {
+            return GeoEnum::GeoUndef;
+        }
+        for (size_t i = 0; i < vec.size(); i++)
+        {
+            if (vec[i] == elem)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    Base::Vector3d getOffsetdPoint(Base::Vector3d pointToOffset, Base::Vector2d referencePoint, double offsetFactor) {
+        Base::Vector2d pointToOffset2D;
+        pointToOffset2D.x = pointToOffset.x;
+        pointToOffset2D.y = pointToOffset.y;
+        pointToOffset2D = (pointToOffset2D - referencePoint) * offsetFactor + referencePoint;
+
+        pointToOffset.x = pointToOffset2D.x;
+        pointToOffset.y = pointToOffset2D.y;
+
+        return pointToOffset;
+    }
+
+    Sketcher::PointPos checkForCoincidence(int GeoId1, int GeoId2) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        const std::vector< Sketcher::Constraint* >& vals = Obj->Constraints.getValues();
+
+        for (std::vector< Sketcher::Constraint* >::const_iterator it = vals.begin(); it != vals.end(); ++it) {
+            if ((*it)->Type == Sketcher::Coincident) {
+                if ((*it)->First == GeoId1 && (*it)->FirstPos != Sketcher::PointPos::mid 
+                    && (*it)->Second == GeoId2 && (*it)->SecondPos != Sketcher::PointPos::mid) {
+                    return (*it)->FirstPos;
+                }
+                else if ((*it)->First == GeoId2 && (*it)->FirstPos != Sketcher::PointPos::mid
+                    && (*it)->Second == GeoId1 && (*it)->SecondPos != Sketcher::PointPos::mid) {
+                    return (*it)->SecondPos;
+                }
+            }
+        }
+        return Sketcher::PointPos::none;
+    }
+
+    void restartCommand(const char* cstrName) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        Gui::Command::abortCommand();
+        Obj->solve(true);
+        sketchgui->draw(false, false); // Redraw
+        Gui::Command::openCommand(cstrName);
+    }
+};
+
+DEF_STD_CMD_A(CmdSketcherOffset)
+
+CmdSketcherOffset::CmdSketcherOffset()
+    : Command("Sketcher_Offset")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Offset geometries");
+    sToolTipText = QT_TR_NOOP("Offset selected geometries.");
+    sWhatsThis = "Sketcher_Offset";
+    sStatusTip = sToolTipText;
+    sPixmap = "Sketcher_Offset";
+    sAccel = "S";
+    eType = ForEdit;
+}
+
+void CmdSketcherOffset::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    std::vector<int> listOfGeoIds = {};
+
+    // get the selection
+    std::vector<Gui::SelectionObject> selection;
+    selection = getSelection().getSelectionEx(0, Sketcher::SketchObject::getClassTypeId());
+
+    // only one sketch with its subelements are allowed to be selected
+    if (selection.size() != 1) {
+        QMessageBox::warning(Gui::getMainWindow(),
+            QObject::tr("Wrong selection"),
+            QObject::tr("Select elements from a single sketch."));
+        return;
+    }
+
+    // get the needed lists and objects
+    const std::vector<std::string>& SubNames = selection[0].getSubNames();
+    if (!SubNames.empty()) {
+        Sketcher::SketchObject* Obj = static_cast<Sketcher::SketchObject*>(selection[0].getObject());
+
+        for (std::vector<std::string>::const_iterator it = SubNames.begin(); it != SubNames.end(); ++it) {
+            // only handle non-external edges
+            if (it->size() > 4 && it->substr(0, 4) == "Edge") {
+                int geoId = std::atoi(it->substr(4, 4000).c_str()) - 1;
+                if (geoId >= 0) {
+                    listOfGeoIds.push_back(geoId);
+                }
+            }
+            else if (it->size() > 6 && it->substr(0, 6) == "Vertex") {
+                // only if it is a GeomPoint
+                int VtId = std::atoi(it->substr(6, 4000).c_str()) - 1;
+                int geoId;
+                Sketcher::PointPos PosId;
+                Obj->getGeoVertexIndex(VtId, geoId, PosId);
+                if (Obj->getGeometry(geoId)->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+                    if (geoId >= 0) {
+                        listOfGeoIds.push_back(geoId);
+                    }
+                }
+            }
+        }
+    }
+
+    getSelection().clearSelection();
+
+    ActivateAcceleratorHandler(getActiveGuiDocument(), new DrawSketchHandlerOffset(listOfGeoIds));
+}
+
+bool CmdSketcherOffset::isActive(void)
+{
+    return isSketcherAcceleratorActive(getActiveGuiDocument(), false);
+}
+
 // ================================================================================
 
 DEF_STD_CMD_A(CmdSketcherDeleteAllGeometry)
@@ -3158,4 +4408,6 @@ void CreateSketcherCommandsConstraintAccel(void)
     rcCmdMgr.addCommand(new CmdSketcherDeleteAllConstraints());
     rcCmdMgr.addCommand(new CmdSketcherRemoveAxesAlignment());
     rcCmdMgr.addCommand(new CmdSketcherRotate());
+    rcCmdMgr.addCommand(new CmdSketcherScale());
+    rcCmdMgr.addCommand(new CmdSketcherOffset());
 }

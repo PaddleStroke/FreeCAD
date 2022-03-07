@@ -3474,6 +3474,10 @@ public:
         , numberOfCopies(0)
         , deleteOriginal(0)
         , needUpdateGeos(1)
+        , offsetLength(1)
+        , prevOffsetLength(1)
+        , offsetCurveUsed(0)
+        , continuousCurveOfCurvedUsed(0)
         , snapMode(SnapMode::Free)
         , listOfGeoIds(listOfGeoIds) {}
     virtual ~DrawSketchHandlerOffset() {}
@@ -3481,7 +3485,7 @@ public:
     enum SelectMode {
         STATUS_SEEK_First,
         STATUS_End
-    };
+    }; 
 
     enum class SnapMode {
         Free,
@@ -3494,54 +3498,7 @@ public:
         Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Offset"));
         firstCurveCreated = getHighestCurveIndex() + 1;
 
-        //generate vecOfContinuousCurves
-        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
-        for (size_t i = 0; i < listOfGeoIds.size(); i++) {
-            std::vector<int> vecOfGeoIds;
-            const Part::Geometry* geo = Obj->getGeometry(listOfGeoIds[i]);
-            if (geo->getTypeId() == Part::GeomCircle::getClassTypeId() 
-                || geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
-                vecOfGeoIds.push_back(listOfGeoIds[i]);
-                vecOfContinuousCurves.push_back(vecOfGeoIds);
-            }
-            else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
-                || geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()
-                || geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()
-                || geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()
-                || geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()
-                || geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
-                bool inserted = 0;
-                int insertedIn = -1;
-                for (size_t j = 0; j < vecOfContinuousCurves.size(); j++) {
-                    for (size_t k = 0; k < vecOfContinuousCurves[j].size(); k++) {
-                        Sketcher::PointPos pointPosOfCoincidence = checkForCoincidence(listOfGeoIds[i], vecOfContinuousCurves[j][k]);
-                        if (pointPosOfCoincidence != Sketcher::PointPos::none) {
-                            if (inserted) {
-                                //if it's already inserted in another continuous curve then we need to merge both curves together.
-                                vecOfContinuousCurves[insertedIn].insert(vecOfContinuousCurves[insertedIn].end(), vecOfContinuousCurves[j].begin(), vecOfContinuousCurves[j].end());
-                                vecOfContinuousCurves.erase(vecOfContinuousCurves.begin() + j);
-                            }
-                            else {
-                                //we need to get the curves in the correct order.
-                                if (k == vecOfContinuousCurves[j].size() - 1) {
-                                    vecOfContinuousCurves[j].push_back(listOfGeoIds[i]);
-                                }
-                                else {
-                                    vecOfContinuousCurves[j].insert(vecOfContinuousCurves[j].begin() + k, listOfGeoIds[i]);
-                                }
-                                insertedIn = j;
-                                inserted = 1;
-                            }
-                            break;
-                        }
-                    }
-                }
-                if (!inserted) {
-                    vecOfGeoIds.push_back(listOfGeoIds[i]);
-                    vecOfContinuousCurves.push_back(vecOfGeoIds);
-                }
-            }
-        }
+        generateVecOfCC();
 
         ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
         previewEnabled = hGrp->GetBool("OffsetEnablePreview", true);
@@ -3586,92 +3543,19 @@ public:
             snapMode = SnapMode::Free;
 
         if (Mode == STATUS_SEEK_First) {
-            Base::Vector2d endpoint = onSketchPos;
+            endpoint = onSketchPos;
             if (snapMode == SnapMode::Snap) {
                 getSnapPoint(endpoint);
             }
 
             if (toolSettings->widget->isSettingSet[0]) {
                 offsetLength = toolSettings->widget->toolParameters[0];
+                pressButton(onSketchPos);
+                releaseButton(onSketchPos);
+                return;
             }
             else {
-                //find projectedPoint
-                offsetLength = 1000000000000;
-                Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
-                for (size_t i = 0; i < vecOfContinuousCurves.size(); i++) {
-                    for (size_t j = 0; j < vecOfContinuousCurves[i].size(); j++) {
-                        Base::Vector2d currentProjectedPoint;
-                        const Part::Geometry* geo = Obj->getGeometry(vecOfContinuousCurves[i][j]);
-                        if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
-                            const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo); 
-                            Base::Vector2d centerPoint;
-                            centerPoint.x = circle->getCenter().x;
-                            centerPoint.y = circle->getCenter().y;
-                            offsetLength = min(circle->getRadius() - (endpoint - centerPoint).Length(), offsetLength);
-                        }
-                        else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
-                            const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
-                            Base::Vector3d offsetdCenter = getOffsetdPoint(arcOfCircle->getCenter(), referencePoint, offsetFactor);
-                            double arcStartAngle, arcEndAngle;
-                            arcOfCircle->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                        }
-                        else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
-                            const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
-                            Base::Vector3d offsetdStartPoint = getOffsetdPoint(line->getStartPoint(), referencePoint, offsetFactor);
-                            Base::Vector3d offsetdEndPoint = getOffsetdPoint(line->getEndPoint(), referencePoint, offsetFactor);
-                        }
-                        else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
-                            const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(geo);
-                            Base::Vector3d offsetdCenterPoint = getOffsetdPoint(ellipse->getCenter(), referencePoint, offsetFactor);
-                            Base::Vector3d ellipseAxis = ellipse->getMajorAxisDir();
-                            Base::Vector3d periapsis = ellipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * ellipse->getMajorRadius();
-                            periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
-                            Base::Vector3d ellipseMinorAxis;
-                            ellipseMinorAxis.x = -ellipseAxis.y;
-                            ellipseMinorAxis.y = ellipseAxis.x;
-                            Base::Vector3d positiveB = ellipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * ellipse->getMinorRadius();
-                            positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
-                        }
-                        else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
-                            const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo);
-                            Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfEllipse->getCenter(), referencePoint, offsetFactor);
-                            Base::Vector3d ellipseAxis = arcOfEllipse->getMajorAxisDir();
-                            Base::Vector3d periapsis = arcOfEllipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfEllipse->getMajorRadius();
-                            periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
-                            Base::Vector3d ellipseMinorAxis;
-                            ellipseMinorAxis.x = -ellipseAxis.y;
-                            ellipseMinorAxis.y = ellipseAxis.x;
-                            Base::Vector3d positiveB = arcOfEllipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfEllipse->getMinorRadius();
-                            positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
-                            double arcStartAngle, arcEndAngle;
-                            arcOfEllipse->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                        }
-                        else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
-                            const Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<const Part::GeomArcOfHyperbola*>(geo);
-                            Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfHyperbola->getCenter(), referencePoint, offsetFactor);
-                            Base::Vector3d ellipseAxis = arcOfHyperbola->getMajorAxisDir();
-                            Base::Vector3d periapsis = arcOfHyperbola->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfHyperbola->getMajorRadius();
-                            periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
-                            Base::Vector3d ellipseMinorAxis;
-                            ellipseMinorAxis.x = -ellipseAxis.y;
-                            ellipseMinorAxis.y = ellipseAxis.x;
-                            Base::Vector3d positiveB = arcOfHyperbola->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfHyperbola->getMinorRadius();
-                            positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
-                            double arcStartAngle, arcEndAngle;
-                            arcOfHyperbola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                        }
-                        else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
-                            const Part::GeomArcOfParabola* arcOfParabola = static_cast<const Part::GeomArcOfParabola*>(geo);
-                            Base::Vector3d offsetdFocusPoint = getOffsetdPoint(arcOfParabola->getFocus(), referencePoint, offsetFactor);
-                            Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfParabola->getCenter(), referencePoint, offsetFactor);
-                            double arcStartAngle, arcEndAngle;
-                            arcOfParabola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                        }
-                        else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
-                        }
-                    }
-                }
-                offsetLength = (endpoint - projectedPoint).Length();
+                findOffsetLength();
             }
 
             SbString text;
@@ -3679,14 +3563,13 @@ public:
             setPositionText(endpoint, text);
 
             //generate the copies
-            if (previewEnabled) {
+            if (previewEnabled && offsetLength != 0 && offsetLength != prevOffsetLength) {
+                prevOffsetLength = offsetLength;
+                findOffsetDirections();
                 generateOffsetGeos(0);
+                Base::Console().Warning("offsetLength %f\n", offsetLength);
                 sketchgui->draw(false, false); // Redraw
-            }
-
-            if (toolSettings->widget->isSettingSet[0]) {
-                pressButton(onSketchPos);
-                releaseButton(onSketchPos);
+                Base::Console().Warning("Hello7\n");
             }
         }
         applyCursor();
@@ -3704,10 +3587,14 @@ public:
     {
         Q_UNUSED(onSketchPos);
         if (Mode == STATUS_End) {
-            generateOffsetGeos(1);
+            if (offsetLength != 0) {
+                generateOffsetGeos(1);
 
-            Gui::Command::commitCommand();
-
+                Gui::Command::commitCommand();
+            }
+            else {
+                Gui::Command::abortCommand();
+            }
             sketchgui->getSketchObject()->solve(true);
             sketchgui->draw(false, false); // Redraw
 
@@ -3716,15 +3603,182 @@ public:
         return true;
     }
 protected:
+    class ContinuousCurveElement
+    {
+    public:
+        ContinuousCurveElement(int geoId)
+            : geoId(geoId)
+            , separatingVectorSign(0)
+            , separatingVectorToPrevSign(0)
+            , offsetDirectionSign(1)
+            , separatingVector(Base::Vector2d(0., 0.))
+            , separatingVectorToPrev(Base::Vector2d(0., 0.))
+            , pointToNext(Base::Vector2d(0., 0.))
+            , pointToPrevious(Base::Vector2d(0., 0.))
+            , pointPosToNext(Sketcher::PointPos::none)
+            , pointPosToPrev(Sketcher::PointPos::none) {}
+
+        int geoId;
+        int separatingVectorSign;
+        int separatingVectorToPrevSign;
+        int offsetDirectionSign;
+        Base::Vector2d separatingVector;
+        Base::Vector2d separatingVectorToPrev;
+        Base::Vector2d pointToNext;
+        Base::Vector2d pointToPrevious;
+        Sketcher::PointPos pointPosToNext;
+        Sketcher::PointPos pointPosToPrev;
+        
+        void printCce() {
+            Base::Console().Warning("geoId: %d\n", geoId);
+            Base::Console().Warning("separatingVectorSign: %d\n", separatingVectorSign);
+            Base::Console().Warning("separatingVectorToPrevSign: %d\n", separatingVectorToPrevSign);
+            Base::Console().Warning("offsetDirectionSign: %d\n", offsetDirectionSign);
+            Base::Console().Warning("separatingVector: %f %f\n", separatingVector.x, separatingVector.y);
+            Base::Console().Warning("separatingVectorToPrev: %f %f\n", separatingVectorToPrev.x, separatingVectorToPrev.y);
+            Base::Console().Warning("pointToNext: %f %f\n", pointToNext.x, pointToNext.y);
+            Base::Console().Warning("pointToPrevious: %f %f\n", pointToPrevious.x, pointToPrevious.y);
+            Base::Console().Warning("pointPosToNext: %d\n", pointPosToNext);
+            Base::Console().Warning("pointPosToPrev: %d\n", pointPosToPrev);
+        }
+    };
+
+    class CoincidencePointPos
+    {
+    public:
+        Sketcher::PointPos FirstGeoPos;
+        Sketcher::PointPos SecondGeoPos;
+        Sketcher::PointPos SecondCoincidenceFirstGeoPos;
+        Sketcher::PointPos SecondCoincidenceSecondGeoPos;
+    };
+
     SelectMode Mode;
     SnapMode snapMode;
     std::vector<int> listOfGeoIds;
-    std::vector<std::vector<int>> vecOfContinuousCurves;
-    Base::Vector2d projectedPoint;
+    std::vector<std::vector<ContinuousCurveElement>> vecOfCC;
+    Base::Vector2d projectedPoint, endpoint;
 
     bool deleteOriginal, previewEnabled, needUpdateGeos;
-    double offsetLength;
-    int numberOfCopies, prevNumberOfCopies, firstCurveCreated;
+    double offsetLength, prevOffsetLength;
+    int numberOfCopies, prevNumberOfCopies, firstCurveCreated, offsetCurveUsed, continuousCurveOfCurvedUsed;
+
+    void getDirectionOfCurve(ContinuousCurveElement reference, ContinuousCurveElement toUpdate, bool toNext) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        Base::Vector2d pointAtSeparatingVector;
+        int signOfPointToRef = 1;
+        int signOfPointToUpdate = 1;
+        bool signReversed = false;
+        if (toNext)
+            pointAtSeparatingVector = reference.pointToNext + reference.separatingVector;
+        else
+            pointAtSeparatingVector = reference.pointToPrevious + reference.separatingVectorToPrev;
+        
+        const Part::Geometry* geo = Obj->getGeometry(reference.geoId);
+        if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+            const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
+            signOfPointToRef = getPointSideOfVector(pointAtSeparatingVector, vec3dTo2d(line->getEndPoint() - line->getStartPoint()), vec3dTo2d(line->getStartPoint()));
+        }
+        else if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+            const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo);
+            int distanceToCurve = circle->getRadius() - (pointAtSeparatingVector - vec3dTo2d(circle->getCenter())).Length();
+            signOfPointToRef = Sign(1, distanceToCurve);
+        }
+        else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+            const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
+            int distanceToCurve = arcOfCircle->getRadius() - (pointAtSeparatingVector - vec3dTo2d(arcOfCircle->getCenter())).Length();
+            signOfPointToRef = Sign(1, distanceToCurve);
+        }
+        else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+            const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(geo);
+            Base::Vector2d centerPoint = vec3dTo2d(ellipse->getCenter());
+            Base::Vector2d ellipseAxis = vec3dTo2d(ellipse->getMajorAxisDir());
+            double angleToMajorAxis = (pointAtSeparatingVector - centerPoint).Angle() - ellipseAxis.Angle();
+            double radiusAtAngle = abs(cos(angleToMajorAxis)) * ellipse->getMajorRadius() + abs(sin(angleToMajorAxis)) * ellipse->getMinorRadius();
+            int distanceToCurve = radiusAtAngle - (pointAtSeparatingVector - centerPoint).Length();
+            signOfPointToRef = Sign(1, distanceToCurve);
+        }
+        else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+            const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo);
+            Base::Vector2d centerPoint = vec3dTo2d(arcOfEllipse->getCenter());
+            Base::Vector2d ellipseAxis = vec3dTo2d(arcOfEllipse->getMajorAxisDir());
+            double angleToMajorAxis = (pointAtSeparatingVector - centerPoint).Angle() - ellipseAxis.Angle();
+            double radiusAtAngle = abs(cos(angleToMajorAxis)) * arcOfEllipse->getMajorRadius() + abs(sin(angleToMajorAxis)) * arcOfEllipse->getMinorRadius();
+            int distanceToCurve = radiusAtAngle - (pointAtSeparatingVector - centerPoint).Length();
+            signOfPointToRef = Sign(1, distanceToCurve);
+        }
+        else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+        }
+        else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+        }
+        else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+        }
+
+        if (signOfPointToRef != reference.offsetDirectionSign)
+            signReversed = true;
+
+
+        const Part::Geometry* geo2 = Obj->getGeometry(toUpdate.geoId);
+        if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+            const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
+            signOfPointToUpdate = getPointSideOfVector(pointAtSeparatingVector, vec3dTo2d(line->getEndPoint() - line->getStartPoint()), vec3dTo2d(line->getStartPoint()));
+        }
+        else if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+            const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo);
+            int distanceToCurve = circle->getRadius() - (pointAtSeparatingVector - vec3dTo2d(circle->getCenter())).Length();
+            signOfPointToUpdate = Sign(1, distanceToCurve);
+        }
+        else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+            const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
+            int distanceToCurve = arcOfCircle->getRadius() - (pointAtSeparatingVector - vec3dTo2d(arcOfCircle->getCenter())).Length();
+            signOfPointToUpdate = Sign(1, distanceToCurve);
+        }
+        else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+            const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(geo);
+            Base::Vector2d centerPoint = vec3dTo2d(ellipse->getCenter());
+            Base::Vector2d ellipseAxis = vec3dTo2d(ellipse->getMajorAxisDir());
+            double angleToMajorAxis = (pointAtSeparatingVector - centerPoint).Angle() - ellipseAxis.Angle();
+            double radiusAtAngle = abs(cos(angleToMajorAxis)) * ellipse->getMajorRadius() + abs(sin(angleToMajorAxis)) * ellipse->getMinorRadius();
+            int distanceToCurve = radiusAtAngle - (pointAtSeparatingVector - centerPoint).Length();
+            signOfPointToUpdate = Sign(1, distanceToCurve);
+        }
+        else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+            const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo);
+            Base::Vector2d centerPoint = vec3dTo2d(arcOfEllipse->getCenter());
+            Base::Vector2d ellipseAxis = vec3dTo2d(arcOfEllipse->getMajorAxisDir());
+            double angleToMajorAxis = (pointAtSeparatingVector - centerPoint).Angle() - ellipseAxis.Angle();
+            double radiusAtAngle = abs(cos(angleToMajorAxis)) * arcOfEllipse->getMajorRadius() + abs(sin(angleToMajorAxis)) * arcOfEllipse->getMinorRadius();
+            int distanceToCurve = radiusAtAngle - (pointAtSeparatingVector - centerPoint).Length();
+            signOfPointToUpdate = Sign(1, distanceToCurve);
+        }
+        else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+        }
+        else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+        }
+        else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+        }
+
+        if (signReversed)
+            toUpdate.offsetDirectionSign = -signOfPointToUpdate;
+        else
+            toUpdate.offsetDirectionSign = signOfPointToUpdate;
+    }
+
+    void findOffsetDirections() {
+
+        for (size_t i = 0; i < vecOfCC.size(); i++) {
+            int curveToUse = 0;
+            if (i == continuousCurveOfCurvedUsed) {
+                curveToUse = offsetCurveUsed;
+            }
+
+            for (size_t j = curveToUse + 1; j < vecOfCC[i].size(); j++) {
+                getDirectionOfCurve(vecOfCC[i][curveToUse], vecOfCC[i][j], true);
+            }
+            for (size_t j = 0; j < curveToUse; j++) {
+                getDirectionOfCurve(vecOfCC[i][curveToUse], vecOfCC[i][j], false);
+            }
+        }
+    }
 
     void generateOffsetGeos(bool onReleaseButton) {
         if (toolSettings->widget->isCheckBoxChecked(2)) {
@@ -3748,150 +3802,91 @@ protected:
         std::stringstream stream;
         stream << "geoList = []\n";
         stream << "constrGeoList = []\n";
-        for (size_t j = 0; j < listOfGeoIds.size(); j++) {
-            const Part::Geometry* geo = Obj->getGeometry(listOfGeoIds[j]);
-            if (GeometryFacade::getConstruction(geo)) {
-                stream << "constrGeoList.";
-            }
-            else {
-                stream << "geoList.";
-            }
-            if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
-                const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo);
-                Base::Vector3d offsetdCenter = getOffsetdPoint(circle->getCenter(), referencePoint, offsetFactor);
-                stream << "append(Part.Circle(App.Vector(" << offsetdCenter.x << "," << offsetdCenter.y << ",0),App.Vector(0,0,1)," << circle->getRadius() * offsetFactor << "))\n";
-            }
-            else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
-                const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
-                Base::Vector3d offsetdCenter = getOffsetdPoint(arcOfCircle->getCenter(), referencePoint, offsetFactor);
-                double arcStartAngle, arcEndAngle;
-                arcOfCircle->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                stream << "append(Part.ArcOfCircle(Part.Circle(App.Vector(" << offsetdCenter.x << "," << offsetdCenter.y << ",0),App.Vector(0,0,1)," << arcOfCircle->getRadius() * offsetFactor << "),"
-                    << arcStartAngle << "," << arcEndAngle << "))\n";
-            }
-            else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
-                const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
-                Base::Vector3d offsetdStartPoint = getOffsetdPoint(line->getStartPoint(), referencePoint, offsetFactor);
-                Base::Vector3d offsetdEndPoint = getOffsetdPoint(line->getEndPoint(), referencePoint, offsetFactor);
-                stream << "append(Part.LineSegment(App.Vector(" << offsetdStartPoint.x << "," << offsetdStartPoint.y << ",0),App.Vector(" << offsetdEndPoint.x << "," << offsetdEndPoint.y << ",0)))\n";
-            }
-            else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
-                const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(geo);
-                Base::Vector3d offsetdCenterPoint = getOffsetdPoint(ellipse->getCenter(), referencePoint, offsetFactor);
-                Base::Vector3d ellipseAxis = ellipse->getMajorAxisDir();
-                Base::Vector3d periapsis = ellipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * ellipse->getMajorRadius();
-                periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
-                Base::Vector3d ellipseMinorAxis;
-                ellipseMinorAxis.x = -ellipseAxis.y;
-                ellipseMinorAxis.y = ellipseAxis.x;
-                Base::Vector3d positiveB = ellipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * ellipse->getMinorRadius();
-                positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
-                stream << "append(Part.Ellipse(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y << ",0),App.Vector(" << offsetdCenterPoint.x << "," << offsetdCenterPoint.y << ",0)))\n";
-            }
-            else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
-                const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo);
-                Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfEllipse->getCenter(), referencePoint, offsetFactor);
-                Base::Vector3d ellipseAxis = arcOfEllipse->getMajorAxisDir();
-                Base::Vector3d periapsis = arcOfEllipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfEllipse->getMajorRadius();
-                periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
-                Base::Vector3d ellipseMinorAxis;
-                ellipseMinorAxis.x = -ellipseAxis.y;
-                ellipseMinorAxis.y = ellipseAxis.x;
-                Base::Vector3d positiveB = arcOfEllipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfEllipse->getMinorRadius();
-                positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
-                double arcStartAngle, arcEndAngle;
-                arcOfEllipse->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                stream << "append(Part.ArcOfEllipse(Part.Ellipse(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y
-                    << ",0),App.Vector(" << offsetdCenterPoint.x << "," << offsetdCenterPoint.y << ",0)),"
-                    << arcStartAngle << "," << arcEndAngle << "))\n";
-            }
-            else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
-                const Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<const Part::GeomArcOfHyperbola*>(geo);
-                Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfHyperbola->getCenter(), referencePoint, offsetFactor);
-                Base::Vector3d ellipseAxis = arcOfHyperbola->getMajorAxisDir();
-                Base::Vector3d periapsis = arcOfHyperbola->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfHyperbola->getMajorRadius();
-                periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
-                Base::Vector3d ellipseMinorAxis;
-                ellipseMinorAxis.x = -ellipseAxis.y;
-                ellipseMinorAxis.y = ellipseAxis.x;
-                Base::Vector3d positiveB = arcOfHyperbola->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfHyperbola->getMinorRadius();
-                positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
-                double arcStartAngle, arcEndAngle;
-                arcOfHyperbola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                stream << "append(Part.ArcOfHyperbola(Part.Hyperbola(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y
-                    << ",0),App.Vector(" << offsetdCenterPoint.x << "," << offsetdCenterPoint.y << ",0)),"
-                    << arcStartAngle << "," << arcEndAngle << "))\n";
-            }
-            else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
-                const Part::GeomArcOfParabola* arcOfParabola = static_cast<const Part::GeomArcOfParabola*>(geo);
-                Base::Vector3d offsetdFocusPoint = getOffsetdPoint(arcOfParabola->getFocus(), referencePoint, offsetFactor);
-                Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfParabola->getCenter(), referencePoint, offsetFactor);
-                double arcStartAngle, arcEndAngle;
-                arcOfParabola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                stream << "append(Part.ArcOfParabola(Part.Parabola(App.Vector(" << offsetdFocusPoint.x << "," << offsetdFocusPoint.y << ",0),App.Vector(" << offsetdCenterPoint.x << "," << offsetdCenterPoint.y
-                    << ",0),App.Vector(0,0,1)),"
-                    << arcStartAngle << "," << arcEndAngle << "))\n";
-            }
-            else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
-                /*//try 1 : Doesn't work since I added these circles. But before it worked only with numberOfCopies = 0.
-                const Part::GeomBSplineCurve* bSpline = static_cast<const Part::GeomBSplineCurve*>(geo);
-                std::vector<Base::Vector3d> bSplineCtrlPoints = bSpline->getPoles();
-                std::vector<double> bSplineWeights = bSpline->getWeights();
-                std::stringstream stream;
-                int FirstPoleGeoId = getHighestCurveIndex()+1;
-                for (size_t k = 0; k < bSplineCtrlPoints.size(); k++) {
-                    Base::Vector3d offsetdControlPoint = getOffsetdPoint(bSplineCtrlPoints[k], centerPoint, individualAngle * i);
-                    stream << "App.Vector(" << offsetdControlPoint.x << "," << offsetdControlPoint.y << "),";
-                    //Add pole
-                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.Circle(App.Vector(%f,%f,0),App.Vector(0,0,1),10),True)",
-                        offsetdControlPoint.x, offsetdControlPoint.y);
-                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Weight',%d,%f)) ",
-                        getHighestCurveIndex(), bSplineWeights[k]);
+        for (size_t i = 0; i < vecOfCC.size(); i++) {
+            for (size_t j = 0; j < vecOfCC[i].size(); j++) {
+                const Part::Geometry* geo = Obj->getGeometry(vecOfCC[i][j].geoId);
+                if (GeometryFacade::getConstruction(geo)) {
+                    stream << "constrGeoList.";
                 }
-                std::string controlpoints = stream.str();
-                // remove last comma and add brackets
-                int index = controlpoints.rfind(',');
-                controlpoints.resize(index);
-                controlpoints.insert(0, 1, '[');
-                controlpoints.append(1, ']');
-                Base::Console().Warning("%s\n", controlpoints.c_str());
-                Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.BSplineCurve(%s,None,None,%s,3,None,False),%s)",
-                    controlpoints.c_str(),
-                    bSpline->isPeriodic() ? "True" : "False",
-                    GeometryFacade::getConstruction(geo) ? "True" : "False");
-                Base::Console().Warning("hello 3\n");
-                // Constraint pole circles to B-spline.
-                std::stringstream cstream;
-                cstream << "conList = []\n";
-                for (size_t k = 0; k < bSplineCtrlPoints.size(); k++) {
-                    Base::Console().Warning("hello 4\n");
-                    cstream << "conList.append(Sketcher.Constraint('InternalAlignment:Sketcher::BSplineControlPoint'," << FirstPoleGeoId + k
-                        << "," << static_cast<int>(Sketcher::PointPos::mid) << "," << getHighestCurveIndex() << "," << k << "))\n";
+                else {
+                    stream << "geoList.";
                 }
-                cstream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
-                cstream << "del conList\n";
-                Gui::Command::doCommand(Gui::Command::Doc, cstream.str().c_str());
-                // for showing the knots on creation
-                Gui::cmdAppObjectArgs(sketchgui->getObject(), "exposeInternalGeometry(%d)", getHighestCurveIndex());*/
-
-                /*//try 2 : Works with only numberOfCopies = 0...
-                Part::GeomBSplineCurve* geobsp = static_cast<Part::GeomBSplineCurve*>(geo->copy());
-
-                std::vector<Base::Vector3d> poles = geobsp->getPoles();
-
-                for (std::vector<Base::Vector3d>::iterator jt = poles.begin(); jt != poles.end(); ++jt) {
-
-                    (*jt) = getOffsetdPoint((*jt), centerPoint, individualAngle * i);
+                if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                    const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo);
+                    stream << "append(Part.Circle(App.Vector(" << circle->getCenter().x << "," << circle->getCenter().y << ",0),App.Vector(0,0,1)," << circle->getRadius() + vecOfCC[i][j].offsetDirectionSign * offsetLength << "))\n";
                 }
+                else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                    const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
+                    double arcStartAngle, arcEndAngle;
+                    arcOfCircle->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                    stream << "append(Part.ArcOfCircle(Part.Circle(App.Vector(" << arcOfCircle->getCenter().x << "," << arcOfCircle->getCenter().y 
+                        << ",0),App.Vector(0,0,1)," << arcOfCircle->getRadius() + vecOfCC[i][j].offsetDirectionSign * offsetLength << "),"
+                        << arcStartAngle << "," << arcEndAngle << "))\n";
 
-                geobsp->setPoles(poles);
-                sketchgui->getSketchObject()->addGeometry(geobsp, GeometryFacade::getConstruction(geo));*/
+                    //for debug
+                    Base::Vector2d point1;
+                    if (vecOfCC[i][j].pointPosToNext == PointPos::start)
+                        point1 = vec3dTo2d(arcOfCircle->getStartPoint());
+                    else
+                        point1 = vec3dTo2d(arcOfCircle->getEndPoint());
+
+                    stream << "constrGeoList.append(Part.LineSegment(App.Vector(" << (point1).x << "," << (point1).y
+                        << ",0),App.Vector(" << (point1 + vecOfCC[i][j].separatingVector*20).x << "," << (point1 + vecOfCC[i][j].separatingVector*20).y << ",0)))\n";
+                }
+                else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                    const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
+                    Base::Vector3d offsetVector;
+                    offsetVector.x = -(line->getStartPoint() - line->getEndPoint()).y;
+                    offsetVector.y = (line->getStartPoint() - line->getEndPoint()).x;
+                    offsetVector = offsetVector / offsetVector.Length() * vecOfCC[i][j].offsetDirectionSign * offsetLength;
+                    stream << "append(Part.LineSegment(App.Vector(" << (line->getStartPoint() + offsetVector).x << "," << (line->getStartPoint() + offsetVector).y
+                        << ",0),App.Vector(" << (line->getEndPoint() + offsetVector).x << "," << (line->getEndPoint() + offsetVector).y << ",0)))\n";
+
+                    //for debug
+                    Base::Vector2d point1;
+                    if (vecOfCC[i][j].pointPosToNext == PointPos::start)
+                        point1 = vec3dTo2d(line->getStartPoint());
+                    else
+                        point1 = vec3dTo2d(line->getEndPoint());
+
+                    stream << "constrGeoList.append(Part.LineSegment(App.Vector(" << (point1).x << "," << (point1).y
+                        << ",0),App.Vector(" << (point1 + vecOfCC[i][j].separatingVector*20).x << "," << (point1 + vecOfCC[i][j].separatingVector*20).y << ",0)))\n";
+                }
+                else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                    const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(geo);
+                    Base::Vector3d ellipseAxis = ellipse->getMajorAxisDir();
+                    Base::Vector3d periapsis = ellipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * (ellipse->getMajorRadius() + vecOfCC[i][j].offsetDirectionSign * offsetLength);
+                    Base::Vector3d ellipseMinorAxis;
+                    ellipseMinorAxis.x = -ellipseAxis.y;
+                    ellipseMinorAxis.y = ellipseAxis.x;
+                    Base::Vector3d positiveB = ellipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * (ellipse->getMinorRadius() + vecOfCC[i][j].offsetDirectionSign * offsetLength);
+                    stream << "append(Part.Ellipse(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y << ",0),App.Vector(" 
+                        << ellipse->getCenter().x << "," << ellipse->getCenter().y << ",0)))\n";
+                }
+                else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                    const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo);
+                    Base::Vector3d ellipseAxis = arcOfEllipse->getMajorAxisDir();
+                    Base::Vector3d periapsis = arcOfEllipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * (arcOfEllipse->getMajorRadius() + vecOfCC[i][j].offsetDirectionSign * offsetLength);
+                    Base::Vector3d ellipseMinorAxis;
+                    ellipseMinorAxis.x = -ellipseAxis.y;
+                    ellipseMinorAxis.y = ellipseAxis.x;
+                    Base::Vector3d positiveB = arcOfEllipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * (arcOfEllipse->getMinorRadius() + vecOfCC[i][j].offsetDirectionSign * offsetLength);
+                    double arcStartAngle, arcEndAngle;
+                    arcOfEllipse->getRange(arcStartAngle, arcEndAngle, true);
+                    stream << "append(Part.ArcOfEllipse(Part.Ellipse(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y
+                        << ",0),App.Vector(" << arcOfEllipse->getCenter().x << "," << arcOfEllipse->getCenter().y << ",0)),"
+                        << arcStartAngle << "," << arcEndAngle << "))\n";
+                }
+                else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {}
+                else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {}
+                else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {}
             }
         }
         stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addGeometry(geoList,False)\n";
         stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addGeometry(constrGeoList,True)\n";
         stream << "del geoList\n";
         stream << "del constrGeoList\n";
+        //Base::Console().Warning(stream.str().c_str());
         Gui::Command::doCommand(Gui::Command::Doc, stream.str().c_str());
         /*if (needUpdateGeos || onReleaseButton) {
         * Idea is to move geos rather than delete and recreate to reduce crashes. But it's not sure it's better and it's not working.
@@ -3954,7 +3949,7 @@ protected:
                     && firstIndex >= 0) {
                     Constraint* constNew = (*it)->copy();
                     constNew->First = firstCurveCreated + firstIndex;
-                    constNew->setValue(constNew->getValue() * offsetFactor);
+                    constNew->setValue(constNew->getValue() );
                     newconstrVals.push_back(constNew);
                 }
                 else if (((*it)->Type == Sketcher::Distance
@@ -3964,7 +3959,7 @@ protected:
                     Constraint* constNew = (*it)->copy();
                     constNew->First = firstCurveCreated + firstIndex;
                     constNew->Second = firstCurveCreated + secondIndex;
-                    constNew->setValue(constNew->getValue() * offsetFactor);
+                    constNew->setValue(constNew->getValue() );
                     newconstrVals.push_back(constNew);
                 }
             }
@@ -3986,6 +3981,21 @@ protected:
             catch (const Base::Exception& e) {
                 Base::Console().Error("%s\n", e.what());
             }
+        }
+    }
+
+    int getPointSideOfVector(Base::Vector2d pointToCheck, Base::Vector2d separatingVector, Base::Vector2d pointOnVector) {
+        Base::Vector2d secondPointOnVec = pointOnVector + separatingVector;
+        double d = (pointToCheck.x - pointOnVector.x) * (secondPointOnVec.y - pointOnVector.y)
+            - (pointToCheck.y - pointOnVector.y) * (secondPointOnVec.x - pointOnVector.x);
+        if (abs(d) < Precision::Confusion()) {
+            return 0;
+        }
+        else if (d < 0) {
+            return -1;
+        }
+        else {
+            return 1;
         }
     }
 
@@ -4026,35 +4036,480 @@ protected:
         return -1;
     }
 
-    Base::Vector3d getOffsetdPoint(Base::Vector3d pointToOffset, Base::Vector2d referencePoint, double offsetFactor) {
-        Base::Vector2d pointToOffset2D;
-        pointToOffset2D.x = pointToOffset.x;
-        pointToOffset2D.y = pointToOffset.y;
-        pointToOffset2D = (pointToOffset2D - referencePoint) * offsetFactor + referencePoint;
-
-        pointToOffset.x = pointToOffset2D.x;
-        pointToOffset.y = pointToOffset2D.y;
-
-        return pointToOffset;
-    }
-
-    Sketcher::PointPos checkForCoincidence(int GeoId1, int GeoId2) {
+    CoincidencePointPos checkForCoincidence(int GeoId1, int GeoId2) {
         Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
         const std::vector< Sketcher::Constraint* >& vals = Obj->Constraints.getValues();
-
+        CoincidencePointPos positions;
+        positions.FirstGeoPos = Sketcher::PointPos::none;
+        positions.SecondGeoPos = Sketcher::PointPos::none;
+        positions.SecondCoincidenceFirstGeoPos = Sketcher::PointPos::none;
+        positions.SecondCoincidenceSecondGeoPos = Sketcher::PointPos::none;
+        bool firstCoincidenceFound = 0;
         for (std::vector< Sketcher::Constraint* >::const_iterator it = vals.begin(); it != vals.end(); ++it) {
             if ((*it)->Type == Sketcher::Coincident) {
                 if ((*it)->First == GeoId1 && (*it)->FirstPos != Sketcher::PointPos::mid 
                     && (*it)->Second == GeoId2 && (*it)->SecondPos != Sketcher::PointPos::mid) {
-                    return (*it)->FirstPos;
+                    if (!firstCoincidenceFound) {
+                        positions.FirstGeoPos = (*it)->FirstPos;
+                        positions.SecondGeoPos = (*it)->SecondPos;
+                        firstCoincidenceFound = 1;
+                    }
+                    else {
+                        positions.SecondCoincidenceFirstGeoPos = (*it)->FirstPos;
+                        positions.SecondCoincidenceSecondGeoPos = (*it)->SecondPos;
+                    }
                 }
                 else if ((*it)->First == GeoId2 && (*it)->FirstPos != Sketcher::PointPos::mid
                     && (*it)->Second == GeoId1 && (*it)->SecondPos != Sketcher::PointPos::mid) {
-                    return (*it)->SecondPos;
+                    if (!firstCoincidenceFound) {
+                        positions.FirstGeoPos = (*it)->SecondPos;
+                        positions.SecondGeoPos = (*it)->FirstPos;
+                        firstCoincidenceFound = 1;
+                    }
+                    else {
+                        positions.SecondCoincidenceFirstGeoPos = (*it)->SecondPos;
+                        positions.SecondCoincidenceSecondGeoPos = (*it)->FirstPos;
+                    }
                 }
             }
         }
-        return Sketcher::PointPos::none;
+        return positions;
+    }
+
+    void generateVecOfCC() {
+        //This function separates all the selected geometries into continuous curves.
+        //vecOfCC is a vector of geometries vectors. Each geometry vector being continuous geoID ordered.
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        for (size_t i = 0; i < listOfGeoIds.size(); i++) {
+            std::vector<ContinuousCurveElement> vecOfGeoIds;
+            ContinuousCurveElement cce(listOfGeoIds[i]);
+            const Part::Geometry* geo = Obj->getGeometry(listOfGeoIds[i]);
+            if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()
+                || geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                vecOfGeoIds.push_back(cce);
+                vecOfCC.push_back(vecOfGeoIds);
+            }
+            else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()
+                || geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
+                || geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()
+                || geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()
+                || geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()
+                || geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                bool inserted = 0;
+                int insertedIn = -1;
+                for (size_t j = 0; j < vecOfCC.size(); j++) {
+                    for (size_t k = 0; k < vecOfCC[j].size(); k++) {
+                        CoincidencePointPos pointPosOfCoincidence = checkForCoincidence(listOfGeoIds[i], vecOfCC[j][k].geoId);
+                        if (pointPosOfCoincidence.FirstGeoPos != Sketcher::PointPos::none) {
+                            if (inserted && insertedIn != j) {
+                                //if it's already inserted in another continuous curve then we need to merge both curves together.
+                                vecOfCC[insertedIn].insert(vecOfCC[insertedIn].end(), vecOfCC[j].begin(), vecOfCC[j].end());
+                                vecOfCC.erase(vecOfCC.begin() + j);
+                            }
+                            else {
+                                //we need to get the curves in the correct order.
+                                if (k == vecOfCC[j].size() - 1) {
+                                    cce.pointPosToPrev = pointPosOfCoincidence.FirstGeoPos;
+                                    cce.pointPosToNext = (cce.pointPosToPrev == Sketcher::PointPos::start) ? Sketcher::PointPos::end : Sketcher::PointPos::start;
+                                    vecOfCC[j][k].pointPosToNext = pointPosOfCoincidence.SecondGeoPos;
+                                    vecOfCC[j][k].pointPosToPrev = (pointPosOfCoincidence.SecondGeoPos == Sketcher::PointPos::start) ? Sketcher::PointPos::end : Sketcher::PointPos::start;
+                                    vecOfCC[j].push_back(cce);
+                                }
+                                else {
+                                    cce.pointPosToNext = pointPosOfCoincidence.FirstGeoPos;
+                                    cce.pointPosToPrev = (cce.pointPosToNext == Sketcher::PointPos::start) ? Sketcher::PointPos::end : Sketcher::PointPos::start;
+                                    vecOfCC[j][k].pointPosToPrev = pointPosOfCoincidence.SecondGeoPos;
+                                    vecOfCC[j].insert(vecOfCC[j].begin() + k, cce);
+                                }
+                                insertedIn = j;
+                                inserted = 1;
+                            }
+                            break;
+                        }
+                    }
+                }
+                if (!inserted) {
+                    vecOfGeoIds.push_back(cce);
+                    vecOfCC.push_back(vecOfGeoIds);
+                }
+            }
+        }
+
+        //Calculate the vectors that separate each segment of the continuous curve 'areas of influence'.
+        for (size_t i = 0; i < vecOfCC.size(); i++) {
+            //Check if curve is closed
+            bool isCurveClosed = 0;
+            if (vecOfCC[i].size() > 2) {
+                CoincidencePointPos cpp = checkForCoincidence(vecOfCC[i][0].geoId, vecOfCC[i][vecOfCC[i].size() - 1].geoId);
+                if (cpp.FirstGeoPos != Sketcher::PointPos::none)
+                    isCurveClosed = 1;
+            }
+            else if (vecOfCC[i].size() == 2) {
+                //if only 2 elements, we need to check that they don't close end to end.
+                CoincidencePointPos cpp = checkForCoincidence(vecOfCC[i][0].geoId, vecOfCC[i][vecOfCC[i].size() - 1].geoId);
+                if (cpp.FirstGeoPos != Sketcher::PointPos::none) {
+                    if (cpp.SecondCoincidenceFirstGeoPos != Sketcher::PointPos::none) {
+                        isCurveClosed = 1;
+                    }
+                }
+            }
+            if(isCurveClosed)
+                Base::Console().Warning("Curve CLOSED\n");
+
+            if (vecOfCC[i].size() > 1) {
+                for (size_t j = 0; j < vecOfCC[i].size(); j++) {
+                    Base::Vector2d vector1 = Base::Vector2d(0., 0.);
+                    Base::Vector2d vector2 = Base::Vector2d(0., 0.);
+                    Base::Vector2d vector1bis = Base::Vector2d(0., 0.);
+                    Base::Vector2d vector2bis = Base::Vector2d(0., 0.);
+                    Base::Vector2d referencePointForSign;
+                    size_t jplus1;
+                    if (j + 1 < vecOfCC[i].size())
+                        jplus1 = j + 1;
+                    else
+                        jplus1 = 0;
+
+                    if (j + 1 < vecOfCC[i].size() || isCurveClosed) {
+                        const Part::Geometry* geo = Obj->getGeometry(vecOfCC[i][j].geoId);
+                        int signForVecDir1 = getSignForVecDirection(geo, vecOfCC[i][j].pointPosToNext);
+                        if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                            const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
+                            if (vecOfCC[i][j].pointPosToNext == Sketcher::PointPos::start) {
+                                vecOfCC[i][j].pointToNext = vec3dTo2d(line->getStartPoint());
+                                vecOfCC[i][j].pointToPrevious = vec3dTo2d(line->getEndPoint());
+                                vector1 = vec3dTo2d(line->getEndPoint() - line->getStartPoint());
+                                referencePointForSign = vec3dTo2d(line->getEndPoint());
+                                vector1bis.x = - (line->getEndPoint() - line->getStartPoint()).y;
+                                vector1bis.y = (line->getEndPoint() - line->getStartPoint()).x;
+                            }
+                            else if (vecOfCC[i][j].pointPosToNext == Sketcher::PointPos::end) {
+                                vecOfCC[i][j].pointToNext = vec3dTo2d(line->getEndPoint());
+                                vecOfCC[i][j].pointToPrevious = vec3dTo2d(line->getStartPoint());
+                                vector1 = vec3dTo2d(line->getStartPoint() - line->getEndPoint());
+                                referencePointForSign = vec3dTo2d(line->getStartPoint());
+                                vector1bis.x = - (line->getStartPoint() - line->getEndPoint()).y;
+                                vector1bis.y = (line->getStartPoint() - line->getEndPoint()).x;
+                            }
+                        }
+                        else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                            const Part::GeomArcOfConic* arcOfCircle = static_cast<const Part::GeomArcOfConic*>(geo);
+                            if (vecOfCC[i][j].pointPosToNext == Sketcher::PointPos::start) {
+                                vecOfCC[i][j].pointToNext = vec3dTo2d(arcOfCircle->getStartPoint());
+                                vecOfCC[i][j].pointToPrevious = vec3dTo2d(arcOfCircle->getEndPoint());
+                                vector1.x = -signForVecDir1 * (arcOfCircle->getCenter() - arcOfCircle->getStartPoint()).y;
+                                vector1.y = signForVecDir1 * (arcOfCircle->getCenter() - arcOfCircle->getStartPoint()).x;
+                                referencePointForSign = vec3dTo2d(arcOfCircle->getStartPoint()) + vector1;
+                            }
+                            else if (vecOfCC[i][j].pointPosToNext == Sketcher::PointPos::end) {
+                                vecOfCC[i][j].pointToNext = vec3dTo2d(arcOfCircle->getEndPoint());
+                                vecOfCC[i][j].pointToPrevious = vec3dTo2d(arcOfCircle->getStartPoint());
+                                vector1.x = -signForVecDir1 * (arcOfCircle->getCenter() - arcOfCircle->getEndPoint()).y;
+                                vector1.y = signForVecDir1 * (arcOfCircle->getCenter() - arcOfCircle->getEndPoint()).x;
+                                referencePointForSign = vec3dTo2d(arcOfCircle->getEndPoint()) + vector1;
+                            }
+                        }
+
+                        const Part::Geometry* geo2 = Obj->getGeometry(vecOfCC[i][jplus1].geoId);
+                        int signForVecDir2 = getSignForVecDirection(geo2, vecOfCC[i][jplus1].pointPosToPrev);
+                        if (geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                            const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo2);
+                            if (vecOfCC[i][jplus1].pointPosToPrev == Sketcher::PointPos::start) {
+                                vector2 = vec3dTo2d(line->getEndPoint() - line->getStartPoint());
+                                vector2bis.x = -(line->getEndPoint() - line->getStartPoint()).y;
+                                vector2bis.y = (line->getEndPoint() - line->getStartPoint()).x;
+                            }
+                            else if (vecOfCC[i][jplus1].pointPosToPrev == Sketcher::PointPos::end) {
+                                vector2 = vec3dTo2d(line->getStartPoint() - line->getEndPoint());
+                                vector2bis.x = -(line->getStartPoint() - line->getEndPoint()).y;
+                                vector2bis.y = (line->getStartPoint() - line->getEndPoint()).x;
+                            }
+                        }
+                        else if (geo2->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                            const Part::GeomArcOfConic* arcOfCircle = static_cast<const Part::GeomArcOfConic*>(geo2);
+                            if (vecOfCC[i][jplus1].pointPosToPrev == Sketcher::PointPos::start) {
+                                vector2.x = -signForVecDir2 * (arcOfCircle->getCenter() - arcOfCircle->getStartPoint()).y;
+                                vector2.y = signForVecDir2 * (arcOfCircle->getCenter() - arcOfCircle->getStartPoint()).x;
+                            }
+                            else if (vecOfCC[i][jplus1].pointPosToPrev == Sketcher::PointPos::end) {
+                                vector2.x = -signForVecDir2 * (arcOfCircle->getCenter() - arcOfCircle->getEndPoint()).y;
+                                vector2.y = signForVecDir2 * (arcOfCircle->getCenter() - arcOfCircle->getEndPoint()).x;
+                            }
+                        }
+
+                        //Get the bisecting vector.
+                        if (vector1.Length() != 0 && vector2.Length() != 0) {
+                            vecOfCC[i][j].separatingVector = vector1 / vector1.Length() + vector2 / vector2.Length();
+                            vecOfCC[i][jplus1].separatingVectorToPrev = vecOfCC[i][j].separatingVector;
+                            if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                                if (vecOfCC[i][j].separatingVector.Angle() - vector1.Angle() < M_PI / 2 && -M_PI / 2 < vecOfCC[i][j].separatingVector.Angle() - vector1.Angle()) {
+                                    if (vector1bis.Angle() - vector1.Angle() < M_PI / 2 && -M_PI / 2 < vector1bis.Angle() - vector1.Angle()) {
+                                        vecOfCC[i][j].separatingVector = vector1bis;
+                                    }
+                                    else {
+                                        vecOfCC[i][j].separatingVector = -vector1bis;
+                                    }
+                                }
+                            }
+                            if (geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                                if (vecOfCC[i][jplus1].separatingVectorToPrev.Angle() - vector2.Angle() < M_PI / 2 && -M_PI / 2 < vecOfCC[i][jplus1].separatingVectorToPrev.Angle() - vector2.Angle()) {
+                                    if (vector2bis.Angle() - vector2.Angle() < M_PI / 2 && -M_PI / 2 < vector2bis.Angle() - vector2.Angle()) {
+                                        vecOfCC[i][j].separatingVector = vector2bis;
+                                    }
+                                    else {
+                                        vecOfCC[i][j].separatingVector = -vector2bis;
+                                    }
+                                }
+                            }
+                            vecOfCC[i][j].separatingVectorSign = getPointSideOfVector(referencePointForSign, vecOfCC[i][j].separatingVector, vecOfCC[i][j].pointToNext);
+                            vecOfCC[i][jplus1].separatingVectorToPrevSign = -vecOfCC[i][j].separatingVectorSign;
+                        }
+                    }
+                    else {
+                        //Case of open curve last geoId. We need to get n+1 separating vectors instead of n. The n+1 is the left of the 0.
+                        const Part::Geometry* geo = Obj->getGeometry(vecOfCC[i][j].geoId);
+                        int signForVecDir1 = getSignForVecDirection(geo, vecOfCC[i][j].pointPosToNext);
+                        if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                            const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
+                            if (vecOfCC[i][j].pointPosToPrev == Sketcher::PointPos::start) {
+                                vecOfCC[i][j].pointToNext = vec3dTo2d(line->getEndPoint());
+                                vecOfCC[i][j].pointToPrevious = vec3dTo2d(line->getStartPoint());
+                                vector1.x = -(line->getStartPoint() - line->getEndPoint()).y;
+                                vector1.y = (line->getStartPoint() - line->getEndPoint()).x;
+                                referencePointForSign = vec3dTo2d(line->getStartPoint());
+                            }
+                            else if (vecOfCC[i][j].pointPosToPrev == Sketcher::PointPos::end) {
+                                vecOfCC[i][j].pointToNext = vec3dTo2d(line->getStartPoint());
+                                vecOfCC[i][j].pointToPrevious = vec3dTo2d(line->getEndPoint());
+                                vector1.x = -(line->getEndPoint() - line->getStartPoint()).y;
+                                vector1.y = (line->getEndPoint() - line->getStartPoint()).x;
+                                referencePointForSign = vec3dTo2d(line->getEndPoint());
+                            }
+                        }
+                        else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                            const Part::GeomArcOfConic* arcOfCircle = static_cast<const Part::GeomArcOfConic*>(geo);
+                            if (vecOfCC[i][j].pointPosToPrev == Sketcher::PointPos::start) {
+                                vecOfCC[i][j].pointToNext = vec3dTo2d(arcOfCircle->getEndPoint());
+                                vecOfCC[i][j].pointToPrevious = vec3dTo2d(arcOfCircle->getStartPoint());
+                                vector1.x = (arcOfCircle->getCenter() - arcOfCircle->getEndPoint()).x;
+                                vector1.y = (arcOfCircle->getCenter() - arcOfCircle->getEndPoint()).y;
+                                Base::Vector2d vector3;
+                                vector3.x = -signForVecDir1 * vector1.y;
+                                vector3.y = signForVecDir1 * vector1.x;
+                                referencePointForSign = vec3dTo2d(arcOfCircle->getEndPoint()) + vector3;
+                            }
+                            else if (vecOfCC[i][j].pointPosToPrev == Sketcher::PointPos::end) {
+                                vecOfCC[i][j].pointToNext = vec3dTo2d(arcOfCircle->getStartPoint());
+                                vecOfCC[i][j].pointToPrevious = vec3dTo2d(arcOfCircle->getEndPoint());
+                                vector1.x = (arcOfCircle->getCenter() - arcOfCircle->getStartPoint()).x;
+                                vector1.y = (arcOfCircle->getCenter() - arcOfCircle->getStartPoint()).y;
+                                Base::Vector2d vector3;
+                                vector3.x = -signForVecDir1 * vector1.y;
+                                vector3.y = signForVecDir1 * vector1.x;
+                                referencePointForSign = vec3dTo2d(arcOfCircle->getStartPoint()) + vector3;
+                            }
+                        }
+                        if (vector1.Length() != 0) {
+                            vecOfCC[i][j].separatingVector = vector1 / vector1.Length();
+                            vecOfCC[i][j].separatingVectorSign = getPointSideOfVector(referencePointForSign, vecOfCC[i][j].separatingVector, vecOfCC[i][j].pointToNext);
+                        }
+
+                        const Part::Geometry* geo2 = Obj->getGeometry(vecOfCC[i][0].geoId);
+                        int signForVecDir2 = getSignForVecDirection(geo2, vecOfCC[i][0].pointPosToPrev);
+                        if (geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                            const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo2);
+                            if (vecOfCC[i][0].pointPosToNext == Sketcher::PointPos::start) {
+                                vector2.x = -(line->getStartPoint() - line->getEndPoint()).y;
+                                vector2.y = (line->getStartPoint() - line->getEndPoint()).x;
+                                referencePointForSign = vec3dTo2d(line->getStartPoint());
+                            }
+                            else if (vecOfCC[i][0].pointPosToNext == Sketcher::PointPos::end) {
+                                vector2.x = -(line->getEndPoint() - line->getStartPoint()).y;
+                                vector2.y = (line->getEndPoint() - line->getStartPoint()).x;
+                                referencePointForSign = vec3dTo2d(line->getEndPoint());
+                            }
+                        }
+                        else if (geo2->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()
+                            || geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                            const Part::GeomArcOfConic* arcOfCircle = static_cast<const Part::GeomArcOfConic*>(geo2);
+                            if (vecOfCC[i][0].pointPosToNext == Sketcher::PointPos::start) {
+                                vector2 = vec3dTo2d(arcOfCircle->getCenter() - arcOfCircle->getEndPoint());
+                                Base::Vector2d vector3;
+                                vector3.x = -signForVecDir1 * vector1.y;
+                                vector3.y = signForVecDir1 * vector1.x;
+                                referencePointForSign = vec3dTo2d(arcOfCircle->getEndPoint()) + vector3;
+                            }
+                            else if (vecOfCC[i][0].pointPosToNext == Sketcher::PointPos::end) {
+                                vector2 = vec3dTo2d(arcOfCircle->getCenter() - arcOfCircle->getStartPoint());
+                                Base::Vector2d vector3;
+                                vector3.x = -signForVecDir1 * vector1.y;
+                                vector3.y = signForVecDir1 * vector1.x;
+                                referencePointForSign = vec3dTo2d(arcOfCircle->getStartPoint()) + vector3;
+                            }
+                        }
+                        if (vector2.Length() != 0) {
+                            vecOfCC[i][0].separatingVectorToPrev = vector2 / vector2.Length();
+                            vecOfCC[i][0].separatingVectorToPrevSign = getPointSideOfVector(referencePointForSign, vecOfCC[i][0].separatingVectorToPrev, vecOfCC[i][0].pointToPrevious);
+                            //Base::Console().Warning("i - j: %d - %d\n", i, 0);
+                            //vecOfCC[i][0].printCce();
+                        }
+                    }
+                    //Base::Console().Warning("i - j: %d - %d\n", i,j);
+                    //vecOfCC[i][j].printCce();
+                }
+            }
+        }
+
+    }
+    
+    int getSignForVecDirection(const Part::Geometry* geo, Sketcher::PointPos pointPos) {
+        if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
+            || geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()
+            || geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()
+            || geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+            const Part::GeomArcOfConic* arcOfCircle = static_cast<const Part::GeomArcOfConic*>(geo);
+            double totalAngle, startAngle, endAngle;
+            arcOfCircle->getRange(startAngle, endAngle, true);
+            totalAngle = endAngle - startAngle;
+            if (pointPos == Sketcher::PointPos::start) {
+                if (totalAngle > 0)
+                    return -1;
+                else
+                    return 1;
+            }
+            else if (pointPos == Sketcher::PointPos::end) {
+                if (totalAngle > 0)
+                    return 1;
+                else
+                    return -1;
+            }
+        }
+        return 1;
+    }
+
+    Base::Vector2d vec3dTo2d(Base::Vector3d pointToProcess) {
+        Base::Vector2d pointToReturn;
+        pointToReturn.x = pointToProcess.x;
+        pointToReturn.y = pointToProcess.y;
+        return pointToReturn;
+    }
+
+    void findOffsetLength() {
+        int newOffsetCurveUsed = listOfGeoIds[0];
+        int newContinuousCurveOfCurvedUsed = 0;
+        double newOffsetLength = 1000000000000;
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+
+        for (size_t i = 0; i < vecOfCC.size(); i++) {
+            int curveUsed = listOfGeoIds[0];
+            double distanceToContinuousCurve = 1000000000000;
+            for (size_t j = 0; j < vecOfCC[i].size(); j++) {
+                //First we see if we are in area of Influence for that geoID. If only one element then we are automatically.
+                bool inInfluenceArea = false;
+                double distanceToCurve = listOfGeoIds[0];
+                if (vecOfCC[i].size() == 1) {
+                    inInfluenceArea = true;
+                }
+                else {
+                    if (getPointSideOfVector(endpoint, vecOfCC[i][j].separatingVector, vecOfCC[i][j].pointToNext) == vecOfCC[i][j].separatingVectorSign
+                        && getPointSideOfVector(endpoint, vecOfCC[i][j].separatingVectorToPrev, vecOfCC[i][j].pointToPrevious) == vecOfCC[i][j].separatingVectorToPrevSign) {
+                        inInfluenceArea = true;
+                    }
+                }
+                Base::Console().Warning("%d%d.inInfluenceArea: %d\n", i,j, inInfluenceArea);
+                if (inInfluenceArea) {
+                    Base::Vector2d currentProjectedPoint;
+                    const Part::Geometry* geo = Obj->getGeometry(vecOfCC[i][j].geoId);
+                    
+                    if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                        const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
+                        currentProjectedPoint.ProjectToLine(endpoint - vec3dTo2d(line->getStartPoint()), vec3dTo2d(line->getEndPoint() - line->getStartPoint()) );
+                        currentProjectedPoint = vec3dTo2d(line->getStartPoint()) + currentProjectedPoint;
+                        distanceToCurve = (endpoint - currentProjectedPoint).Length();
+                        vecOfCC[i][j].offsetDirectionSign = getPointSideOfVector(endpoint, vec3dTo2d(line->getEndPoint() - line->getStartPoint()), vec3dTo2d(line->getStartPoint()));
+                    }
+                    else if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                        const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo);
+                        distanceToCurve = circle->getRadius() - (endpoint - vec3dTo2d(circle->getCenter())).Length();
+                        vecOfCC[i][j].offsetDirectionSign = Sign(1, distanceToCurve);
+                    }
+                    else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                        const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
+                        distanceToCurve = arcOfCircle->getRadius() - (endpoint - vec3dTo2d(arcOfCircle->getCenter())).Length();
+                        vecOfCC[i][j].offsetDirectionSign = Sign(1, distanceToCurve);
+                    }
+                    else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                        const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(geo);
+                        Base::Vector2d centerPoint = vec3dTo2d(ellipse->getCenter());
+                        Base::Vector2d ellipseAxis = vec3dTo2d(ellipse->getMajorAxisDir());
+                        double angleToMajorAxis = (endpoint - centerPoint).Angle() - ellipseAxis.Angle();
+                        double radiusAtAngle = abs(cos(angleToMajorAxis)) * ellipse->getMajorRadius() + abs(sin(angleToMajorAxis)) * ellipse->getMinorRadius();
+                        distanceToCurve = radiusAtAngle - (endpoint - centerPoint).Length();
+                        vecOfCC[i][j].offsetDirectionSign = Sign(1, distanceToCurve);
+                    }
+                    else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                        const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo);
+                        Base::Vector2d centerPoint = vec3dTo2d(arcOfEllipse->getCenter());
+                        Base::Vector2d ellipseAxis = vec3dTo2d(arcOfEllipse->getMajorAxisDir());
+                        double angleToMajorAxis = (endpoint - centerPoint).Angle() - ellipseAxis.Angle();
+                        double radiusAtAngle = abs(cos(angleToMajorAxis)) * arcOfEllipse->getMajorRadius() + abs(sin(angleToMajorAxis)) * arcOfEllipse->getMinorRadius();
+                        distanceToCurve = radiusAtAngle - (endpoint - centerPoint).Length();
+                        vecOfCC[i][j].offsetDirectionSign = Sign(1, distanceToCurve);
+                    }
+                    else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+                        /*const Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<const Part::GeomArcOfHyperbola*>(geo);
+                        Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfHyperbola->getCenter(), referencePoint, offsetFactor);
+                        Base::Vector3d ellipseAxis = arcOfHyperbola->getMajorAxisDir();
+                        Base::Vector3d periapsis = arcOfHyperbola->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfHyperbola->getMajorRadius();
+                        periapsis = getOffsetdPoint(periapsis, referencePoint, offsetFactor);
+                        Base::Vector3d ellipseMinorAxis;
+                        ellipseMinorAxis.x = -ellipseAxis.y;
+                        ellipseMinorAxis.y = ellipseAxis.x;
+                        Base::Vector3d positiveB = arcOfHyperbola->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfHyperbola->getMinorRadius();
+                        positiveB = getOffsetdPoint(positiveB, referencePoint, offsetFactor);
+                        double arcStartAngle, arcEndAngle;
+                        arcOfHyperbola->getRange(arcStartAngle, arcEndAngle, true);*/
+                    }
+                    else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                        const Part::GeomArcOfParabola* arcOfParabola = static_cast<const Part::GeomArcOfParabola*>(geo);
+                        //Base::Vector3d offsetdFocusPoint = getOffsetdPoint(arcOfParabola->getFocus(), referencePoint, offsetFactor);
+                        //Base::Vector3d offsetdCenterPoint = getOffsetdPoint(arcOfParabola->getCenter(), referencePoint, offsetFactor);
+                        double arcStartAngle, arcEndAngle;
+                        arcOfParabola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                    }
+                    else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                    }
+
+                    distanceToCurve = abs(distanceToCurve);
+                    if (distanceToCurve == min(distanceToCurve, distanceToContinuousCurve)) {
+                        curveUsed = j;
+                        distanceToContinuousCurve = distanceToCurve;
+                    }
+                }
+            }
+            if (distanceToContinuousCurve == min(distanceToContinuousCurve, newOffsetLength)) {
+                newOffsetCurveUsed = curveUsed;
+                newContinuousCurveOfCurvedUsed = i;
+                newOffsetLength = distanceToContinuousCurve;
+            }
+        }
+        if (newOffsetLength != 1000000000000) {
+            offsetLength = newOffsetLength;
+        }
+        if (newOffsetCurveUsed != listOfGeoIds[0]) {
+            offsetCurveUsed = newOffsetCurveUsed;
+            continuousCurveOfCurvedUsed = newContinuousCurveOfCurvedUsed;
+        }
     }
 
     void restartCommand(const char* cstrName) {

@@ -61,9 +61,11 @@
 #if OCC_VERSION_HEX < 0x070600
 #include <BRepAdaptor_HCurve.hxx>
 #endif
+#include <BRepClass_FaceClassifier.hxx>
 #include <Mod/Part/App/BRepOffsetAPI_MakeOffsetFix.h>
 #include <BRepBuilderAPI_Copy.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI.hxx>
 
 
@@ -3582,10 +3584,8 @@ public:
                 findOffsetLength();
             }
 
-            if (toolSettings->widget->isCheckBoxChecked(3)) {
-                Base::Console().Warning("arc join \n");
+            if (toolSettings->widget->isCheckBoxChecked(3))
                 joinMode = JoinMode::Arc;
-            }
             else
                 joinMode = JoinMode::Intersection;
 
@@ -3902,7 +3902,6 @@ protected:
         return false;
     }
 
-    //custom engine
     void generatevCC() {
         //This function separates all the selected geometries into continuous curves.
         //vCC is a vector of geometries vectors. Each geometry vector being continuous geoID ordered.
@@ -4365,8 +4364,21 @@ protected:
     }
 
     void findOffsetDirections() {
-
-        for (size_t i = 0; i < vCC.size(); i++) {
+        //If curve is closed, then direction is -1 if point is inside curve, 1 if outside.
+        //If curve is opened, in pipe mode it doesn't matter, but in skin it'd matter. Though how is determined direction in that case?
+        //Also skin is very buggy and unreliable. So I suggest we keep pipe as default.
+        offsetDirection = 1;
+        if (BRep_Tool::IsClosed(sourceWires[continuousCurveOfCurvedUsed])) {
+            TopoDS_Face aFace = BRepBuilderAPI_MakeFace(sourceWires[continuousCurveOfCurvedUsed]);
+            gp_Pnt pointToCheck;
+            pointToCheck.SetX(endpoint.x);
+            pointToCheck.SetY(endpoint.y);
+            pointToCheck.SetZ(0.);
+            BRepClass_FaceClassifier checkPoint(aFace, pointToCheck, Precision::Confusion());
+            if(checkPoint.State() == TopAbs_IN)
+                offsetDirection = -1;
+        }
+        /*for (size_t i = 0; i < vCC.size(); i++) {
             int curveToUse = 0;
             if (i == continuousCurveOfCurvedUsed) {
                 curveToUse = offsetCurveUsed;
@@ -4378,7 +4390,7 @@ protected:
             for (int j = curveToUse - 1; 0 <= j; j--) {
                 getDirectionOfCurve(vCC[i][j + 1], vCC[i][j], false);
             }
-        }
+        }*/
     }
 
     void getDirectionOfCurve(ContinuousCurveElement& reference, ContinuousCurveElement& toUpdate, bool toNext) {
@@ -4742,63 +4754,6 @@ protected:
 
         //Create constraints
         if (onReleaseButton) {
-            //stream << "conList = []\n"; //not sure this way would be better
-            const std::vector< Sketcher::Constraint* >& vals = Obj->Constraints.getValues();
-            std::vector< Constraint* > newconstrVals(vals);
-            std::vector<int> geoIdsWhoAlreadyHasEqual = {}; //avoid applying equal several times if cloning distanceX and distanceY of the same part.
-
-            std::vector< Sketcher::Constraint* >::const_iterator itEnd = vals.end(); //we need vals.end before adding any constraints
-            for (std::vector< Sketcher::Constraint* >::const_iterator it = vals.begin(); it != itEnd; ++it) {
-                int firstIndex = indexInVec(listOfGeoIds, (*it)->First);
-                int secondIndex = indexInVec(listOfGeoIds, (*it)->Second);
-                int thirdIndex = indexInVec(listOfGeoIds, (*it)->Third);
-
-                if (((*it)->Type == Sketcher::Symmetric
-                    || (*it)->Type == Sketcher::Tangent
-                    || (*it)->Type == Sketcher::Perpendicular)
-                    && firstIndex >= 0 && secondIndex >= 0 && thirdIndex >= 0) {
-                    Constraint* constNew = (*it)->copy();
-                    constNew->First = firstCurveCreated + firstIndex;
-                    constNew->Second = firstCurveCreated + secondIndex;
-                    constNew->Third = firstCurveCreated + thirdIndex;
-                    newconstrVals.push_back(constNew);
-                }
-                else if (((*it)->Type == Sketcher::Coincident
-                    || (*it)->Type == Sketcher::Tangent
-                    || (*it)->Type == Sketcher::Symmetric
-                    || (*it)->Type == Sketcher::Perpendicular
-                    || (*it)->Type == Sketcher::Parallel
-                    || (*it)->Type == Sketcher::Equal
-                    || (*it)->Type == Sketcher::PointOnObject)
-                    && firstIndex >= 0 && secondIndex >= 0 && thirdIndex == GeoEnum::GeoUndef) {
-                    Constraint* constNew = (*it)->copy();
-                    constNew->First = firstCurveCreated + firstIndex;
-                    constNew->Second = firstCurveCreated + secondIndex;
-                    newconstrVals.push_back(constNew);
-                }
-                else if (((*it)->Type == Sketcher::Radius
-                    || (*it)->Type == Sketcher::Diameter)
-                    && firstIndex >= 0) {
-                    Constraint* constNew = (*it)->copy();
-                    constNew->First = firstCurveCreated + firstIndex;
-                    constNew->setValue(constNew->getValue() );
-                    newconstrVals.push_back(constNew);
-                }
-                else if (((*it)->Type == Sketcher::Distance
-                    || (*it)->Type == Sketcher::DistanceX
-                    || (*it)->Type == Sketcher::DistanceY)
-                    && firstIndex >= 0 && secondIndex >= 0) {
-                    Constraint* constNew = (*it)->copy();
-                    constNew->First = firstCurveCreated + firstIndex;
-                    constNew->Second = firstCurveCreated + secondIndex;
-                    constNew->setValue(constNew->getValue() );
-                    newconstrVals.push_back(constNew);
-                }
-            }
-            if (newconstrVals.size() > vals.size())
-                Obj->Constraints.setValues(std::move(newconstrVals));
-            //stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
-            //stream << "del conList\n";
         }
 
         if (deleteOriginal) {
@@ -4851,21 +4806,6 @@ protected:
             return true;
         }
         return false;
-    }
-
-    int indexInVec(std::vector<int> vec, int elem)
-    {
-        if (elem == GeoEnum::GeoUndef) {
-            return GeoEnum::GeoUndef;
-        }
-        for (size_t i = 0; i < vec.size(); i++)
-        {
-            if (vec[i] == elem)
-            {
-                return i;
-            }
-        }
-        return -1;
     }
 
     CoincidencePointPos checkForCoincidence(int GeoId1, int GeoId2) {

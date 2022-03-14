@@ -3518,14 +3518,10 @@ public:
     virtual void activated(ViewProviderSketch*)
     {
         toolSettings->widget->setSettings(19);
-        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Offset"));
         firstCurveCreated = getHighestCurveIndex() + 1;
 
         generatevCC();
         generateSourceWires();
-
-        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
-        previewEnabled = hGrp->GetBool("OffsetEnablePreview", true);
 
         // Constrain icon size in px
         qreal pixelRatio = devicePixelRatio();
@@ -3592,9 +3588,8 @@ public:
             setPositionText(endpoint, text);
 
             //generate the copies
-            if (previewEnabled && fabs(offsetLength) > Precision::Confusion()) {
+            if (fabs(offsetLength) > Precision::Confusion()) {
                 makeOffset(static_cast<int>(joinMode), false, false);
-                sketchgui->draw(false, false);
             }
         }
         applyCursor();
@@ -3631,10 +3626,6 @@ public:
 
             if (fabs(offsetLength) > Precision::Confusion()) {
                 makeOffset(static_cast<int>(joinMode), false, true);
-                Gui::Command::commitCommand();
-            }
-            else {
-                Gui::Command::abortCommand();
             }
 
             sketchgui->getSketchObject()->solve(true);
@@ -3662,7 +3653,7 @@ protected:
     Base::Vector2d endpoint;
     std::vector<TopoDS_Wire> sourceWires;
 
-    bool deleteOriginal, previewEnabled;
+    bool deleteOriginal;
     double offsetLength;
     int firstCurveCreated;
 
@@ -3774,12 +3765,17 @@ protected:
             }
         }
 
-        //Creates geos
-        restartCommand(QT_TRANSLATE_NOOP("Command", "Offset"));
-        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
-        Obj->addGeometry(std::move(geometriesToAdd));
 
-        if (onReleaseButton) {
+        if (!onReleaseButton) {
+            //Draw geos
+            drawEdit(geometriesToAdd);
+        }
+        else {
+            //Create geos
+            Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Offset"));
+            Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+            Obj->addGeometry(std::move(geometriesToAdd));
+
             //Create constraints
             std::stringstream stream;
             stream << "conList = []\n";
@@ -3822,6 +3818,8 @@ protected:
                     Base::Console().Error("%s\n", e.what());
                 }
             }
+
+            Gui::Command::commitCommand();
         }
     }
 
@@ -4037,14 +4035,6 @@ protected:
         pointToReturn.x = pointToProcess.x;
         pointToReturn.y = pointToProcess.y;
         return pointToReturn;
-    }
-
-    void restartCommand(const char* cstrName) {
-        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
-        Gui::Command::abortCommand();
-        Obj->solve(true);
-        sketchgui->draw(false, false); // Redraw
-        Gui::Command::openCommand(cstrName);
     }
 
     void printCCeVec() {

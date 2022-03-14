@@ -41,6 +41,33 @@ namespace SketcherGui {
 
 class ViewProviderSketch;
 
+
+
+/**
+ * Class to convert Part::Geometry to Vector2d based collections
+ */
+class CurveConverter final : public ParameterGrp::ObserverType {
+
+public:
+    CurveConverter();
+
+    ~CurveConverter();
+
+    std::vector<Base::Vector2d> toVector2D(const Part::Geometry * geometry);
+
+    std::list<std::vector<Base::Vector2d>> toVector2DList(const std::vector<Part::Geometry *> &geometries);
+
+private:
+    void updateCurvedEdgeCountSegmentsParameter();
+
+    /** Observer for parameter group. */
+    virtual void OnChange(Base::Subject<const char*> &rCaller, const char * sReason) override;
+
+private:
+    int curvedEdgeCountSegments;
+};
+
+
 /**
  * In order to enforce a certain degree of encapsulation and promote a not
  * too tight coupling, while still allowing well defined collaboration,
@@ -52,6 +79,7 @@ private:
     static inline void setPositionText(ViewProviderSketch &vp, const Base::Vector2d &Pos);
     static inline void resetPositionText(ViewProviderSketch &vp);
     static inline void drawEdit(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditCurve);
+    static inline void drawEdit(ViewProviderSketch &vp, const std::list<std::vector<Base::Vector2d>> &list);
     static inline void drawEditMarkers(ViewProviderSketch &vp, const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
     static inline void setAxisPickStyle(ViewProviderSketch &vp, bool on);
 
@@ -61,7 +89,6 @@ private:
 
     friend class DrawSketchHandler;
 };
-
 
 // A Simple data type to hold basic information for suggested constraints
 struct AutoConstraint
@@ -150,6 +177,8 @@ protected:
     bool distanceXYorPointOnObject(bool distanceXZeroYOne, int geoId, Sketcher::PointPos PosId, double distance);
 
     void drawEdit(const std::vector<Base::Vector2d> &EditCurve);
+    void drawEdit(const std::list<std::vector<Base::Vector2d>> &list);
+    void drawEdit(const std::vector<Part::Geometry *> &geometries);
     void drawEditMarkers(const std::vector<Base::Vector2d> &EditMarkers, unsigned int augmentationlevel = 0);
     void setAxisPickStyle(bool on);
 

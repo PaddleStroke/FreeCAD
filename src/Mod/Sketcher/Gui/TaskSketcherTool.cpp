@@ -219,6 +219,15 @@ bool SketcherToolWidget::isCheckBoxChecked(int i) {
     else if (i == 2) {
         return ui->checkBoxTS2->isChecked();
     }
+    else if (i == 3) {
+        return ui->checkBoxTS3->isChecked();
+    }
+    else if (i == 4) {
+        return ui->checkBoxTS4->isChecked();
+    }
+    else if (i == 5) {
+        return ui->checkBoxTS5->isChecked();
+    }
     return 0;
 }
 
@@ -258,6 +267,9 @@ void SketcherToolWidget::setSettings(int toolSelected)
     ui->parameterSix->setVisible(0);
     ui->checkBoxPreserveFilletChamferCorner->setVisible(0);
     ui->checkBoxTS2->setVisible(0);
+    ui->checkBoxTS3->setVisible(0);
+    ui->checkBoxTS4->setVisible(0);
+    ui->checkBoxTS5->setVisible(0);
     //sketchView->toolSettings->hideGroupBox();
 
     //Give the focus back to the viewproviderSketcher
@@ -771,8 +783,12 @@ void SketcherToolWidget::setSettings(int toolSelected)
             ui->parameterOne->setEnabled(1);
 
             ui->checkBoxTS2->setVisible(1);
-            ui->checkBoxTS2->setChecked(0);
+            ui->checkBoxTS2->setChecked(1);
             ui->checkBoxTS2->setText(QApplication::translate("TaskSketcherTool_scale", "Keep original geometries"));
+
+            ui->checkBoxTS3->setVisible(1);
+            ui->checkBoxTS3->setChecked(1);
+            ui->checkBoxTS3->setText(QApplication::translate("TaskSketcherTool_scale", "Arc join type"));
 
             setParameterFocus(0);
             isWidgetActive = 1;

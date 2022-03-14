@@ -200,6 +200,54 @@
      </property>
     </widget>
    </item>
+   <item>
+    <widget class="Gui::PrefCheckBox" name="checkBoxTS3">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="toolTip">
+      <string>Checkbox toolTip</string>
+     </property>
+     <property name="text">
+      <string>Checkbox 3</string>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="Gui::PrefCheckBox" name="checkBoxTS4">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="toolTip">
+      <string>Checkbox toolTip</string>
+     </property>
+     <property name="text">
+      <string>Checkbox 4</string>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="Gui::PrefCheckBox" name="checkBoxTS5">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="toolTip">
+      <string>Checkbox toolTip</string>
+     </property>
+     <property name="text">
+      <string>Checkbox 5</string>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
    
   </layout>
  </widget>

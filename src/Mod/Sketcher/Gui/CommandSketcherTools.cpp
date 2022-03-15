@@ -2139,7 +2139,6 @@ public:
         , EditCurve(3)
         , numberOfCopies(0)
         , deleteOriginal(0)
-        , needUpdateGeos(1)
         , snapMode(SnapMode::Free)
         , listOfGeoIds(listOfGeoIds) {}
     virtual ~DrawSketchHandlerRotate() {}
@@ -2159,13 +2158,8 @@ public:
     virtual void activated(ViewProviderSketch*)
     {
         toolSettings->widget->setSettings(17);
-        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Rotate"));
         toolSettings->widget->setLabel(QApplication::translate("Rotate_1", "Select the center of the rotation."), 6);
         firstCurveCreated = getHighestCurveIndex() + 1;
-
-
-        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/General");
-        previewEnabled = hGrp->GetBool("RotateEnablePreview", true);
 
         // Constrain icon size in px
         qreal pixelRatio = devicePixelRatio();
@@ -2192,13 +2186,7 @@ public:
         }
         setCursor(cursorPixmap, hotX, hotY, false);
     }
-    virtual void deactivated(ViewProviderSketch*)
-    {
-        //delete created constrains if the tool is exited before validating by left clicking somewhere
-        Gui::Command::abortCommand();
-        sketchgui->getSketchObject()->solve(true);
-        sketchgui->draw(false, false); // Redraw
-    }
+    virtual void deactivated(ViewProviderSketch*){}
 
     virtual void mouseMove(Base::Vector2d onSketchPos)
     {
@@ -2223,25 +2211,25 @@ public:
             length = (onSketchPos - centerPoint).Length();
             startAngle = (onSketchPos - centerPoint).Angle();
 
-            Base::Vector2d endpoint = onSketchPos;
+            startPoint = onSketchPos;
 
             if (snapMode == SnapMode::Snap5Degree) {
-                if (getSnapPoint(endpoint)) {
-                    startAngle = (endpoint - centerPoint).Angle();
+                if (getSnapPoint(startPoint)) {
+                    startAngle = (startPoint - centerPoint).Angle();
                 }
                 else {
                     startAngle = round(startAngle / (M_PI / 36)) * M_PI / 36;
-                    endpoint = centerPoint + length * Base::Vector2d(cos(startAngle), sin(startAngle));
+                    startPoint = centerPoint + length * Base::Vector2d(cos(startAngle), sin(startAngle));
                 }
             }
 
             SbString text;
             text.sprintf(" (%.1f, %.1fdeg)", length, startAngle * 180 / M_PI);
-            setPositionText(endpoint, text);
+            setPositionText(startPoint, text);
 
-            EditCurve[0] = endpoint;
+            EditCurve[0] = startPoint;
             EditCurve[1] = centerPoint;
-            EditCurve[2] = endpoint;
+            EditCurve[2] = startPoint;
             drawEdit(EditCurve);
 
             if (toolSettings->widget->isSettingSet[2] == 1) {
@@ -2252,7 +2240,7 @@ public:
         else if (Mode == STATUS_SEEK_Third) {
             toolSettings->widget->setLabel(QApplication::translate("Rotate_2", "Select the second point that will determine the rotation angle."), 6);
             endAngle = (onSketchPos - centerPoint).Angle();
-            Base::Vector2d endpoint = onSketchPos;
+            endpoint = onSketchPos;
 
             if (toolSettings->widget->isSettingSet[2]) {
                 totalAngle = toolSettings->widget->toolParameters[2];
@@ -2277,22 +2265,19 @@ public:
                 totalAngle = abs(angle1 - totalAngle) < abs(angle2 - totalAngle) ? angle1 : angle2;
             }
 
+            EditCurve[2] = endpoint;
+
             if (toolSettings->widget->isSettingSet[3]) {
                 numberOfCopies = floor(abs(toolSettings->widget->toolParameters[3]));
             }
 
             //generate the copies
-            if (previewEnabled) {
-                generateRotatedGeos(0);
-                sketchgui->draw(false, false); // Redraw
-            }
+            generateRotatedGeos(0);
+            sketchgui->draw(false, false); // Redraw
 
             SbString text;
             text.sprintf(" (%d copies, %.1fdeg)", numberOfCopies, totalAngle * 180 / M_PI);
             setPositionText(endpoint, text);
-
-            EditCurve[2] = endpoint;
-            drawEdit(EditCurve);
 
             if (toolSettings->widget->isSettingSet[2] + toolSettings->widget->isSettingSet[3] == 2) {
                 pressButton(onSketchPos);
@@ -2339,14 +2324,6 @@ public:
         if (Mode == STATUS_End) {
             generateRotatedGeos(1);
 
-            Gui::Command::commitCommand();
-
-            EditCurve.clear();
-            drawEdit(EditCurve);
-
-            sketchgui->getSketchObject()->solve(true);
-            sketchgui->draw(false, false); // Redraw
-
             sketchgui->purgeHandler();
         }
         return true;
@@ -2355,12 +2332,12 @@ protected:
     SelectMode Mode;
     SnapMode snapMode;
     std::vector<int> listOfGeoIds;
-    Base::Vector2d centerPoint;
+    Base::Vector2d centerPoint, startPoint, endpoint;
     std::vector<Base::Vector2d> EditCurve;
 
-    bool deleteOriginal, previewEnabled, needUpdateGeos;
+    bool deleteOriginal;
     double length, startAngle, endAngle, totalAngle, individualAngle;
-    int numberOfCopies, prevNumberOfCopies, firstCurveCreated;
+    int numberOfCopies, firstCurveCreated;
 
     void generateRotatedGeos(bool onReleaseButton) {
         int numberOfCopiesToMake = numberOfCopies;
@@ -2372,231 +2349,97 @@ protected:
             deleteOriginal = 0;
         }
 
-        if (prevNumberOfCopies != numberOfCopies) {
-            needUpdateGeos = 1;
-        }
-
         individualAngle = totalAngle / numberOfCopiesToMake;
 
         Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
 
-
-        restartCommand(QT_TRANSLATE_NOOP("Command", "Rotate"));
-        //Creates geos
-        std::stringstream stream;
-        stream << "geoList = []\n";
-        stream << "constrGeoList = []\n";
+        //Generate geos
+        std::vector<Part::Geometry*> geometriesToAdd;
         for (size_t i = 1; i <= numberOfCopiesToMake; i++) {
             for (size_t j = 0; j < listOfGeoIds.size(); j++) {
-                const Part::Geometry* geo = Obj->getGeometry(listOfGeoIds[j]);
-                if (GeometryFacade::getConstruction(geo)) {
-                    stream << "constrGeoList.";
-                }
-                else {
-                    stream << "geoList.";
-                }
+                Part::Geometry* geo = Obj->getGeometry(listOfGeoIds[j])->copy();
+                GeometryFacade::setConstruction(geo, GeometryFacade::getConstruction(Obj->getGeometry(listOfGeoIds[j])));
                 if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
-                    const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo);
-                    Base::Vector3d rotatedCenter = getRotatedPoint(circle->getCenter(), centerPoint, individualAngle * i);
-                    stream << "append(Part.Circle(App.Vector(" << rotatedCenter.x << "," << rotatedCenter.y << ",0),App.Vector(0,0,1)," << circle->getRadius() << "))\n";
-
-                    /*Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.Circle(App.Vector(%f,%f,0),App.Vector(0,0,1),%f),%s)",
-                        rotatedCenter.x, rotatedCenter.y, circle->getRadius(),
-                        GeometryFacade::getConstruction(geo) ? "True" : "False");*/
+                    Part::GeomCircle* circle = static_cast<Part::GeomCircle*>(geo);
+                    circle->setCenter(getRotatedPoint(circle->getCenter(), centerPoint, individualAngle* i));
+                    geometriesToAdd.push_back(circle);
                 }
                 else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
-                    const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
-                    Base::Vector3d rotatedCenter = getRotatedPoint(arcOfCircle->getCenter(), centerPoint, individualAngle * i);
+                    Part::GeomArcOfCircle* arcOfCircle = static_cast<Part::GeomArcOfCircle*>(geo);
+                    arcOfCircle->setCenter(getRotatedPoint(arcOfCircle->getCenter(), centerPoint, individualAngle* i));
                     double arcStartAngle, arcEndAngle;
                     arcOfCircle->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                    stream << "append(Part.ArcOfCircle(Part.Circle(App.Vector(" << rotatedCenter.x << "," << rotatedCenter.y << ",0),App.Vector(0,0,1)," << arcOfCircle->getRadius() << "),"
-                        << arcStartAngle + individualAngle * i << "," << arcEndAngle + individualAngle * i << "))\n";
-
-                    /*Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.ArcOfCircle(Part.Circle(App.Vector(%f,%f,0),App.Vector(0,0,1),%f),%f,%f),%s)",
-                        rotatedCenter.x, rotatedCenter.y, arcOfCircle->getRadius(),
-                        arcStartAngle + individualAngle * i, arcEndAngle + individualAngle * i,
-                        GeometryFacade::getConstruction(geo) ? "True" : "False");*/
+                    arcOfCircle->setRange(arcStartAngle + individualAngle * i, arcEndAngle + individualAngle * i, /*emulateCCWXY=*/true);
+                    geometriesToAdd.push_back(arcOfCircle);
                 }
                 else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
-                    const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
-                    Base::Vector3d rotatedStartPoint = getRotatedPoint(line->getStartPoint(), centerPoint, individualAngle * i);
-                    Base::Vector3d rotatedEndPoint = getRotatedPoint(line->getEndPoint(), centerPoint, individualAngle * i);
-                    stream << "append(Part.LineSegment(App.Vector(" << rotatedStartPoint.x << "," << rotatedStartPoint.y << ",0),App.Vector(" << rotatedEndPoint.x << "," << rotatedEndPoint.y << ",0)))\n";
-
-                    /*Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.LineSegment(App.Vector(%f,%f,0),App.Vector(%f,%f,0)),%s)",
-                        rotatedStartPoint.x, rotatedStartPoint.y, rotatedEndPoint.x, rotatedEndPoint.y,
-                        GeometryFacade::getConstruction(geo) ? "True" : "False");*/
+                    Part::GeomLineSegment* line = static_cast<Part::GeomLineSegment*>(geo);
+                    line->setPoints(getRotatedPoint(line->getStartPoint(), centerPoint, individualAngle* i),
+                        getRotatedPoint(line->getEndPoint(), centerPoint, individualAngle* i));
+                    geometriesToAdd.push_back(line);
                 }
                 else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
-                    const Part::GeomEllipse* ellipse = static_cast<const Part::GeomEllipse*>(geo);
-                    Base::Vector3d rotatedCenterPoint = getRotatedPoint(ellipse->getCenter(), centerPoint, individualAngle * i);
-                    Base::Vector3d ellipseAxis = ellipse->getMajorAxisDir();
-                    Base::Vector3d periapsis = ellipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * ellipse->getMajorRadius();
-                    periapsis = getRotatedPoint(periapsis, centerPoint, individualAngle * i);
-                    Base::Vector3d ellipseMinorAxis;
-                    ellipseMinorAxis.x = -ellipseAxis.y;
-                    ellipseMinorAxis.y = ellipseAxis.x;
-                    Base::Vector3d positiveB = ellipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * ellipse->getMinorRadius();
-                    positiveB = getRotatedPoint(positiveB, centerPoint, individualAngle * i);
-                    stream << "append(Part.Ellipse(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y << ",0),App.Vector(" << rotatedCenterPoint.x << "," << rotatedCenterPoint.y << ",0)))\n";
-                    /*Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.Ellipse(App.Vector(%f,%f,0),App.Vector(%f,%f,0),App.Vector(%f,%f,0)),%s)",
-                        periapsis.x, periapsis.y,
-                        positiveB.x, positiveB.y,
-                        rotatedCenterPoint.x, rotatedCenterPoint.y,
-                        GeometryFacade::getConstruction(geo) ? "True" : "False");*/
+                    Part::GeomEllipse* ellipse = static_cast<Part::GeomEllipse*>(geo);
+                    ellipse->setCenter(getRotatedPoint(ellipse->getCenter(), centerPoint, individualAngle* i));
+                    ellipse->setMajorAxisDir(getRotatedPoint(ellipse->getMajorAxisDir(), Base::Vector2d(0.,0.), individualAngle* i));
+                    geometriesToAdd.push_back(ellipse);
                 }
                 else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
-                    const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo);
-                    Base::Vector3d rotatedCenterPoint = getRotatedPoint(arcOfEllipse->getCenter(), centerPoint, individualAngle * i);
-                    Base::Vector3d ellipseAxis = arcOfEllipse->getMajorAxisDir();
-                    Base::Vector3d periapsis = arcOfEllipse->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfEllipse->getMajorRadius();
-                    periapsis = getRotatedPoint(periapsis, centerPoint, individualAngle * i);
-                    Base::Vector3d ellipseMinorAxis;
-                    ellipseMinorAxis.x = -ellipseAxis.y;
-                    ellipseMinorAxis.y = ellipseAxis.x;
-                    Base::Vector3d positiveB = arcOfEllipse->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfEllipse->getMinorRadius();
-                    positiveB = getRotatedPoint(positiveB, centerPoint, individualAngle * i);
-                    double arcStartAngle, arcEndAngle;
-                    arcOfEllipse->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                    stream << "append(Part.ArcOfEllipse(Part.Ellipse(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y
-                        << ",0),App.Vector(" << rotatedCenterPoint.x << "," << rotatedCenterPoint.y << ",0)),"
-                        << arcStartAngle + individualAngle * i << "," << arcEndAngle + individualAngle * i << "))\n";
-
-                    /*Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.ArcOfEllipse"
-                        "(Part.Ellipse(App.Vector(%f,%f,0),App.Vector(%f,%f,0),App.Vector(%f,%f,0)),%f,%f),%s)",
-                        periapsis.x, periapsis.y,
-                        positiveB.x, positiveB.y,
-                        rotatedCenterPoint.x, rotatedCenterPoint.y,
-                        arcStartAngle + individualAngle * i, arcEndAngle + individualAngle * i,
-                        GeometryFacade::getConstruction(geo) ? "True" : "False");*/
+                    Part::GeomArcOfEllipse* arcOfEllipse = static_cast<Part::GeomArcOfEllipse*>(geo);
+                    arcOfEllipse->setCenter(getRotatedPoint(arcOfEllipse->getCenter(), centerPoint, individualAngle* i));
+                    arcOfEllipse->setMajorAxisDir(getRotatedPoint(arcOfEllipse->getMajorAxisDir(), Base::Vector2d(0., 0.), individualAngle* i));
+                    /*double arcStartAngle, arcEndAngle; //apparantly not needed.
+                    arcOfEllipse->getRange(arcStartAngle, arcEndAngle, true);
+                    arcOfEllipse->setRange(arcStartAngle + individualAngle * i, arcEndAngle + individualAngle * i, true);*/
+                    geometriesToAdd.push_back(arcOfEllipse);
                 }
                 else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
-                    const Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<const Part::GeomArcOfHyperbola*>(geo);
-                    Base::Vector3d rotatedCenterPoint = getRotatedPoint(arcOfHyperbola->getCenter(), centerPoint, individualAngle * i);
-                    Base::Vector3d ellipseAxis = arcOfHyperbola->getMajorAxisDir();
-                    Base::Vector3d periapsis = arcOfHyperbola->getCenter() + (ellipseAxis / ellipseAxis.Length()) * arcOfHyperbola->getMajorRadius();
-                    periapsis = getRotatedPoint(periapsis, centerPoint, individualAngle * i);
-                    Base::Vector3d ellipseMinorAxis;
-                    ellipseMinorAxis.x = -ellipseAxis.y;
-                    ellipseMinorAxis.y = ellipseAxis.x;
-                    Base::Vector3d positiveB = arcOfHyperbola->getCenter() + (ellipseMinorAxis / ellipseMinorAxis.Length()) * arcOfHyperbola->getMinorRadius();
-                    positiveB = getRotatedPoint(positiveB, centerPoint, individualAngle * i);
-                    double arcStartAngle, arcEndAngle;
-                    arcOfHyperbola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
-                    stream << "append(Part.ArcOfHyperbola(Part.Hyperbola(App.Vector(" << periapsis.x << "," << periapsis.y << ",0),App.Vector(" << positiveB.x << "," << positiveB.y
-                        << ",0),App.Vector(" << rotatedCenterPoint.x << "," << rotatedCenterPoint.y << ",0)),"
-                        << arcStartAngle << "," << arcEndAngle << "))\n";
-
-                    /*Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.ArcOfHyperbola"
-                        "(Part.Hyperbola(App.Vector(%f,%f,0),App.Vector(%f,%f,0),App.Vector(%f,%f,0)),%f,%f),%s)",
-                        periapsis.x, periapsis.y,
-                        positiveB.x, positiveB.y,
-                        rotatedCenterPoint.x, rotatedCenterPoint.y,
-                        arcStartAngle, arcEndAngle,
-                        GeometryFacade::getConstruction(geo) ? "True" : "False");*/
+                    Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<Part::GeomArcOfHyperbola*>(geo);
+                    arcOfHyperbola->setCenter(getRotatedPoint(arcOfHyperbola->getCenter(), centerPoint, individualAngle* i));
+                    arcOfHyperbola->setMajorAxisDir(getRotatedPoint(arcOfHyperbola->getMajorAxisDir(), Base::Vector2d(0., 0.), individualAngle* i));
+                    geometriesToAdd.push_back(arcOfHyperbola);
                 }
                 else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
-                    const Part::GeomArcOfParabola* arcOfParabola = static_cast<const Part::GeomArcOfParabola*>(geo);
-                    Base::Vector3d rotatedFocusPoint = getRotatedPoint(arcOfParabola->getFocus(), centerPoint, individualAngle * i);
-                    Base::Vector3d rotatedCenterPoint = getRotatedPoint(arcOfParabola->getCenter(), centerPoint, individualAngle * i);
+                    Part::GeomArcOfParabola* arcOfParabola = static_cast<Part::GeomArcOfParabola*>(geo);
+                    
+                    arcOfParabola->setCenter(getRotatedPoint(arcOfParabola->getCenter(), centerPoint, individualAngle* i));
+                    geometriesToAdd.push_back(arcOfParabola);
+                    /*Base::Vector3d rotatedFocusPoint = getRotatedPoint(arcOfParabola->getFocus(), centerPoint, individualAngle * i);
+                    Base::Vector3d rotatedCenterPoint = ;
                     double arcStartAngle, arcEndAngle;
-                    arcOfParabola->getRange(arcStartAngle, arcEndAngle, /*emulateCCWXY=*/true);
+                    arcOfParabola->getRange(arcStartAngle, arcEndAngle, true);
                     stream << "append(Part.ArcOfParabola(Part.Parabola(App.Vector(" << rotatedFocusPoint.x << "," << rotatedFocusPoint.y << ",0),App.Vector(" << rotatedCenterPoint.x << "," << rotatedCenterPoint.y
                         << ",0),App.Vector(0,0,1)),"
                         << arcStartAngle << "," << arcEndAngle << "))\n";
-
-                    /*Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.ArcOfParabola"
-                        "(Part.Parabola(App.Vector(%f,%f,0),App.Vector(%f,%f,0),App.Vector(0,0,1)),%f,%f),%s)",
-                        rotatedFocusPoint.x, rotatedFocusPoint.y,
-                        rotatedCenterPoint.x, rotatedCenterPoint.y,
-                        arcStartAngle, arcEndAngle,
-                        GeometryFacade::getConstruction(geo) ? "True" : "False");*/
+                    */
                 }
                 else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
-                    /*//try 1 : Doesn't work since I added these circles. But before it worked only with numberOfCopies = 0.
-                    const Part::GeomBSplineCurve* bSpline = static_cast<const Part::GeomBSplineCurve*>(geo);
-                    std::vector<Base::Vector3d> bSplineCtrlPoints = bSpline->getPoles();
-                    std::vector<double> bSplineWeights = bSpline->getWeights();
-                    std::stringstream stream;
-                    int FirstPoleGeoId = getHighestCurveIndex()+1;
-                    for (size_t k = 0; k < bSplineCtrlPoints.size(); k++) {
-                        Base::Vector3d rotatedControlPoint = getRotatedPoint(bSplineCtrlPoints[k], centerPoint, individualAngle * i);
-                        stream << "App.Vector(" << rotatedControlPoint.x << "," << rotatedControlPoint.y << "),";
-                        //Add pole
-                        Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.Circle(App.Vector(%f,%f,0),App.Vector(0,0,1),10),True)",
-                            rotatedControlPoint.x, rotatedControlPoint.y);
-                        Gui::cmdAppObjectArgs(sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Weight',%d,%f)) ",
-                            getHighestCurveIndex(), bSplineWeights[k]);
-                    }
-                    std::string controlpoints = stream.str();
-                    // remove last comma and add brackets
-                    int index = controlpoints.rfind(',');
-                    controlpoints.resize(index);
-                    controlpoints.insert(0, 1, '[');
-                    controlpoints.append(1, ']');
-                    Base::Console().Warning("%s\n", controlpoints.c_str());
-                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "addGeometry(Part.BSplineCurve(%s,None,None,%s,3,None,False),%s)",
-                        controlpoints.c_str(),
-                        bSpline->isPeriodic() ? "True" : "False",
-                        GeometryFacade::getConstruction(geo) ? "True" : "False");
-                    Base::Console().Warning("hello 3\n");
-                    // Constraint pole circles to B-spline.
-                    std::stringstream cstream;
-                    cstream << "conList = []\n";
-                    for (size_t k = 0; k < bSplineCtrlPoints.size(); k++) {
-                        Base::Console().Warning("hello 4\n");
-                        cstream << "conList.append(Sketcher.Constraint('InternalAlignment:Sketcher::BSplineControlPoint'," << FirstPoleGeoId + k
-                            << "," << static_cast<int>(Sketcher::PointPos::mid) << "," << getHighestCurveIndex() << "," << k << "))\n";
-                    }
-                    cstream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
-                    cstream << "del conList\n";
-                    Gui::Command::doCommand(Gui::Command::Doc, cstream.str().c_str());
-                    // for showing the knots on creation
-                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "exposeInternalGeometry(%d)", getHighestCurveIndex());*/
-
-                    /*//try 2 : Works with only numberOfCopies = 0...
-                    Part::GeomBSplineCurve* geobsp = static_cast<Part::GeomBSplineCurve*>(geo->copy());
-
-                    std::vector<Base::Vector3d> poles = geobsp->getPoles();
-
-                    for (std::vector<Base::Vector3d>::iterator jt = poles.begin(); jt != poles.end(); ++jt) {
-
-                        (*jt) = getRotatedPoint((*jt), centerPoint, individualAngle * i);
-                    }
-
-                    geobsp->setPoles(poles);
-                    sketchgui->getSketchObject()->addGeometry(geobsp, GeometryFacade::getConstruction(geo));*/
                 }
             }
         }
-        stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addGeometry(geoList,False)\n";
-        stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addGeometry(constrGeoList,True)\n";
-        stream << "del geoList\n";
-        stream << "del constrGeoList\n";
-        Gui::Command::doCommand(Gui::Command::Doc, stream.str().c_str());
-        /*if (needUpdateGeos || onReleaseButton) {
-        * Idea is to move geos rather than delete and recreate to reduce crashes. But it's not sure it's better and it's not working.
-            needUpdateGeos = 0;
-            prevNumberOfCopies = numberOfCopies;
-            sketchgui->draw(false, false); // Redraw
-            sketchgui->getSketchObject()->solve(true);
 
-            int lastCurve = getHighestCurveIndex();
-            for (int i = firstCurveCreated; i <= lastCurve; i++) {
-                const Part::Geometry* geo = Obj->getGeometry(i);
-                if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
-                    Obj->initTemporaryMove(i, PointPos::mid, false);
-                }
-            }
+        if (!onReleaseButton) {
+            //Add the lines to show angle
+            Part::GeomLineSegment* line = new Part::GeomLineSegment();
+            Base::Vector3d p1 = Base::Vector3d(centerPoint.x, centerPoint.y, 0.);
+            Base::Vector3d p2 = Base::Vector3d(startPoint.x, startPoint.y, 0.);
+            line->setPoints(p1, p2);
+            geometriesToAdd.push_back(line);
+
+            Part::GeomLineSegment* line2 = new Part::GeomLineSegment();
+            p1 = Base::Vector3d(centerPoint.x, centerPoint.y, 0.);
+            p2 = Base::Vector3d(endpoint.x, endpoint.y, 0.);
+            line2->setPoints(p1, p2);
+            geometriesToAdd.push_back(line2);
+
+            //Draw geos
+            drawEdit(geometriesToAdd);
         }
         else {
-            rotateGeos();
-            sketchgui->draw(false, false); // Redraw
-        }*/
+            //Creates geos
+            Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Rotate"));
+            Obj->addGeometry(std::move(geometriesToAdd));
 
-        //Create constraints
-        if (onReleaseButton) {
-            //stream << "conList = []\n"; //not sure this way would be better
             const std::vector< Sketcher::Constraint* >& vals = Obj->Constraints.getValues();
             std::vector< Constraint* > newconstrVals(vals);
             std::vector<int> geoIdsWhoAlreadyHasEqual = {}; //avoid applying equal several times if cloning distanceX and distanceY of the same part.
@@ -2678,23 +2521,24 @@ protected:
             }
             if (newconstrVals.size() > vals.size())
                 Obj->Constraints.setValues(std::move(newconstrVals));
-            //stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
-            //stream << "del conList\n";
-        }
 
+            if (deleteOriginal) {
+                std::stringstream stream;
+                for (size_t j = 0; j < listOfGeoIds.size() - 1; j++) {
+                    stream << listOfGeoIds[j] << ",";
+                }
+                stream << listOfGeoIds[listOfGeoIds.size() - 1];
+                try {
+                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "delGeometries([%s])", stream.str().c_str());
+                }
+                catch (const Base::Exception& e) {
+                    Base::Console().Error("%s\n", e.what());
+                }
+            }
+            Gui::Command::commitCommand();
 
-        if (deleteOriginal) {
-            std::stringstream stream;
-            for (size_t j = 0; j < listOfGeoIds.size() - 1; j++) {
-                stream << listOfGeoIds[j] << ",";
-            }
-            stream << listOfGeoIds[listOfGeoIds.size() - 1];
-            try {
-                Gui::cmdAppObjectArgs(sketchgui->getObject(), "delGeometries([%s])", stream.str().c_str());
-            }
-            catch (const Base::Exception& e) {
-                Base::Console().Error("%s\n", e.what());
-            }
+            sketchgui->getSketchObject()->solve(true);
+            sketchgui->draw(false, false); // Redraw
         }
     }
 

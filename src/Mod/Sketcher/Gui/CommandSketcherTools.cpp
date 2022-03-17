@@ -2388,9 +2388,6 @@ protected:
                     Part::GeomArcOfEllipse* arcOfEllipse = static_cast<Part::GeomArcOfEllipse*>(geo);
                     arcOfEllipse->setCenter(getRotatedPoint(arcOfEllipse->getCenter(), centerPoint, individualAngle* i));
                     arcOfEllipse->setMajorAxisDir(getRotatedPoint(arcOfEllipse->getMajorAxisDir(), Base::Vector2d(0., 0.), individualAngle* i));
-                    /*double arcStartAngle, arcEndAngle; //apparantly not needed.
-                    arcOfEllipse->getRange(arcStartAngle, arcEndAngle, true);
-                    arcOfEllipse->setRange(arcStartAngle + individualAngle * i, arcEndAngle + individualAngle * i, true);*/
                     geometriesToAdd.push_back(arcOfEllipse);
                 }
                 else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
@@ -3205,7 +3202,7 @@ public:
         toolSettings->widget->setSettings(19);
         firstCurveCreated = getHighestCurveIndex() + 1;
 
-        generatevCC();
+        vCC = generatevCC(listOfGeoIds);
         generateSourceWires();
 
         // Constrain icon size in px
@@ -3334,7 +3331,9 @@ protected:
     SnapMode snapMode;
     JoinMode joinMode;
     std::vector<int> listOfGeoIds;
+    std::vector<int> listOfOffsetGeoIds;
     std::vector<std::vector<int>> vCC;
+    std::vector<std::vector<int>> vCCO;
     Base::Vector2d endpoint;
     std::vector<TopoDS_Wire> sourceWires;
 
@@ -3373,8 +3372,10 @@ protected:
 
         //turn wires/edges of shape into Geometries.
         std::vector<Part::Geometry*> geometriesToAdd;
+        listOfOffsetGeoIds.clear();
         TopExp_Explorer expl(offsetShape, TopAbs_EDGE);
-        for (; expl.More(); expl.Next()) {
+        int geoIdToAdd = firstCurveCreated;
+        for (; expl.More(); expl.Next(), geoIdToAdd++) {
 
             const TopoDS_Edge& edge = TopoDS::Edge(expl.Current());
             BRepAdaptor_Curve curve(edge);
@@ -3398,6 +3399,7 @@ protected:
                 line->setPoints(p1, p2);
                 GeometryFacade::setConstruction(line, false);
                 geometriesToAdd.push_back(line);
+                listOfOffsetGeoIds.push_back(geoIdToAdd);
             }
             else if (curve.GetType() == GeomAbs_Circle) {
                 gp_Circ circle = curve.Circle();
@@ -3422,6 +3424,7 @@ protected:
                     GeometryFacade::setConstruction(gArc, false);
                     geometriesToAdd.push_back(gArc);
                 }
+                listOfOffsetGeoIds.push_back(geoIdToAdd);
             }
             else if (curve.GetType() == GeomAbs_Ellipse) {
 
@@ -3447,7 +3450,9 @@ protected:
                     GeometryFacade::setConstruction(gArc, false);
                     geometriesToAdd.push_back(gArc);
                 }
+                listOfOffsetGeoIds.push_back(geoIdToAdd);
             }
+
         }
 
 
@@ -3456,6 +3461,7 @@ protected:
             drawEdit(geometriesToAdd);
         }
         else {
+            Base::Console().Warning("hello onrelease \n");
             //Create geos
             Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Offset"));
             Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
@@ -3464,33 +3470,57 @@ protected:
             //Create constraints
             std::stringstream stream;
             stream << "conList = []\n";
-            for (int i = firstCurveCreated; i < getHighestCurveIndex(); i++) {
-                for (int j = i + 1; j < getHighestCurveIndex() + 1; j++) {
+            for (size_t i = 0; i < listOfOffsetGeoIds.size()-1; i++) {
+                Base::Console().Warning("create constraint i : %d\n", i);
+                for (size_t j = i + 1; j < listOfOffsetGeoIds.size(); j++) {
                     //There's a bug with created arcs. They end points seems to swap at some point... Here we make coincidences based on lengths. So they must change after.
                     //here we check for coincidence on all geometries. It's far from ideal. We should check only the geometries that were inside a wire next to each other.
-                    Base::Vector2d firstStartPoint, firstEndPoint, secondStartPoint, secondEndPoint;
-                    if (getFirstSecondPoints(i, firstStartPoint, firstEndPoint) && getFirstSecondPoints(j, secondStartPoint, secondEndPoint)) {
+                    Base::Vector3d firstStartPoint, firstEndPoint, secondStartPoint, secondEndPoint;
+                    if (getFirstSecondPoints(listOfOffsetGeoIds[i], firstStartPoint, firstEndPoint) && getFirstSecondPoints(listOfOffsetGeoIds[j], secondStartPoint, secondEndPoint)) {
+                        bool create = false;
+                        int posi = 1;
+                        int posj = 1;
+
                         if ((firstStartPoint - secondStartPoint).Length() < Precision::Confusion()) {
-                            stream << "conList.append(Sketcher.Constraint('Coincident'," << i << ",1, " << j << ",1))\n";
+                            create = true;
                         }
                         else if ((firstStartPoint - secondEndPoint).Length() < Precision::Confusion()) {
-                            stream << "conList.append(Sketcher.Constraint('Coincident'," << i << ",1, " << j << ",2))\n";
+                            create = true;
+                            posi = 1;
+                            posj = 2;
                         }
                         else if ((firstEndPoint - secondStartPoint).Length() < Precision::Confusion()) {
-                            stream << "conList.append(Sketcher.Constraint('Coincident'," << i << ",2, " << j << ",1))\n";
+                            create = true;
+                            posi = 2;
+                            posj = 1;
                         }
                         else if ((firstEndPoint - secondEndPoint).Length() < Precision::Confusion()) {
-                            stream << "conList.append(Sketcher.Constraint('Coincident'," << i << ",2, " << j << ",2))\n";
+                            create = true;
+                            posi = 2;
+                            posj = 2;
+                        }
+                        if (create) {
+                            bool tangent = needTangent(listOfOffsetGeoIds[i], listOfOffsetGeoIds[j], posi, posj);
+                            if (tangent) {
+                                stream << "conList.append(Sketcher.Constraint('Tangent'," << listOfOffsetGeoIds[i] << "," << posi << ", " << listOfOffsetGeoIds[j] << "," << posj << "))\n";
+                            }
+                            else {
+                                stream << "conList.append(Sketcher.Constraint('Coincident'," << listOfOffsetGeoIds[i] << "," << posi << ", " << listOfOffsetGeoIds[j] << "," << posj << "))\n";
+                            }
                         }
                     }
                 }
             }
+
+            Base::Console().Warning("after create constrain for \n");
             stream << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
             stream << "del conList\n";
             Gui::Command::doCommand(Gui::Command::Doc, stream.str().c_str());
+            //We have to doCommand here even if we makeOffsetConstraint later because we'll have to know if there're tangents.
 
             //Delete original geometries if necessary
             if (!toolSettings->widget->isCheckBoxChecked(2)) {
+
                 std::stringstream stream;
                 for (size_t j = 0; j < listOfGeoIds.size() - 1; j++) {
                     stream << listOfGeoIds[j] << ",";
@@ -3503,21 +3533,331 @@ protected:
                     Base::Console().Error("%s\n", e.what());
                 }
             }
+            else {
+                Base::Console().Warning("hbefore makeoffsetconstr \n");
+                std::stringstream stream2;
+                stream2 << "conList = []\n";
+                if (toolSettings->widget->isCheckBoxChecked(4)) {
+                    vCCO = generatevCC(listOfOffsetGeoIds);
+                    makeOffsetConstraint(stream2);
+                }
+                stream2 << Gui::Command::getObjectCmd(sketchgui->getObject()) << ".addConstraint(conList)\n";
+                stream2 << "del conList\n";
+                Gui::Command::doCommand(Gui::Command::Doc, stream2.str().c_str());
+            }
 
             Gui::Command::commitCommand();
         }
     }
 
-    void generatevCC() {
+    bool needTangent(int geoId1, int geoId2, int pos1, int pos2) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        const Part::Geometry* geo1 = Obj->getGeometry(geoId1);
+        const Part::Geometry* geo2 = Obj->getGeometry(geoId2);
+
+        if (geo1->getTypeId() == Part::GeomArcOfCircle::getClassTypeId() || geo2->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+            Base::Vector3d perpendicular1, perpendicular2, p1, p2;
+            if (geo1->getTypeId() == Part::GeomArcOfCircle::getClassTypeId() 
+                || geo1->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                const Part::GeomArcOfConic* arcOfCircle = static_cast<const Part::GeomArcOfConic*>(geo1);
+                p1 = arcOfCircle->getEndPoint();
+                if(pos1 == 1) {
+                    p1 = arcOfCircle->getStartPoint();
+                }
+                perpendicular1.x = -(arcOfCircle->getCenter() - p1).y;
+                perpendicular1.y = (arcOfCircle->getCenter() - p1).x;
+            }
+            else if (geo1->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo1);
+                p1 = line->getEndPoint();
+                perpendicular1 = line->getStartPoint() - line->getEndPoint();
+                if (pos1 == 1) {
+                    p1 = line->getStartPoint();
+                    perpendicular1 = line->getEndPoint() - line->getStartPoint();
+                }
+            }
+            else { return false; }
+            //Todo: add cases for arcOfellipse parabolas hyperbolas bspline
+            if (geo2->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
+                || geo2->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                const Part::GeomArcOfConic* arcOfCircle = static_cast<const Part::GeomArcOfConic*>(geo2);
+                p2 = arcOfCircle->getEndPoint();
+                if (pos2 == 1) {
+                    p2 = arcOfCircle->getStartPoint();
+                }
+                perpendicular2.x = -(arcOfCircle->getCenter() - p2).y;
+                perpendicular2.y = (arcOfCircle->getCenter() - p2).x;
+            }
+            else if (geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo2);
+                p2 = line->getEndPoint();
+                perpendicular2 = line->getStartPoint() - line->getEndPoint();
+                if (pos2 == 1) {
+                    p2 = line->getStartPoint();
+                    perpendicular2 = line->getEndPoint() - line->getStartPoint();
+                }
+            }
+            else { return false; }
+            //Todo: add cases for arcOfellipse parabolas hyperbolas bspline
+
+            //if lines are parallel
+            if ((perpendicular1 % perpendicular2).Length() < Precision::Intersection()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void makeOffsetConstraint(std::stringstream& stream) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+
+        int newCurveCounter = 0;
+        int prevCurveCounter = 0;
+        std::vector<Part::Geometry*> geometriesToAdd;
+        for (size_t i = 0; i < vCCO.size(); i++) {
+            //Check if curve is closed. Note as we use pipe it should always be closed but in case we enable 'Skin' in the future.
+            bool isCurveClosed = false;
+            if (vCCO[i].size() > 2) {
+                CoincidencePointPos cpp = checkForCoincidence(vCCO[i][0], vCCO[i][vCCO[i].size() - 1]);
+                if (cpp.FirstGeoPos != Sketcher::PointPos::none)
+                    isCurveClosed = true;
+            }
+            else if (vCCO[i].size() == 2) {
+                //if only 2 elements, we need to check that they don't close end to end.
+                CoincidencePointPos cpp = checkForCoincidence(vCCO[i][0], vCCO[i][vCCO[i].size() - 1]);
+                if (cpp.FirstGeoPos != Sketcher::PointPos::none) {
+                    if (cpp.SecondCoincidenceFirstGeoPos != Sketcher::PointPos::none) {
+                        isCurveClosed = true;
+                    }
+                }
+            }
+            bool atLeastOneLine = false;
+            bool reRunForFirst = false;
+            bool inTangentGroup = false;
+
+            for (int j = 0; j < static_cast<int> (vCCO[i].size()); j++) {
+
+                //Tangent constraint is constraining the offset already. So if there are tangents we should not create the construction lines. Hence the code below.
+                bool createLine = true;
+                bool forceCreate = false;
+                if (!inTangentGroup && (!isCurveClosed || j != 0 || reRunForFirst)) {
+                    createLine = true;
+                    atLeastOneLine = true;
+                }
+                else { //include case of j == 0 and closed curve, because if required the line will be made after last.
+                    createLine = false;
+                }
+
+                if (j + 1 < vCCO[i].size()) {
+                    CoincidencePointPos ppc = checkForCoincidence(vCCO[i][j], vCCO[i][j+1], true);//true is tangentOnly
+                    if (ppc.FirstGeoPos != Sketcher::PointPos::none) {
+                        inTangentGroup = true;
+                    }
+                    else {
+                        inTangentGroup = false;
+                    }
+                }
+                else if (j == vCCO[i].size() - 1 && isCurveClosed) {//Case of last geoId for closed curves.
+                    CoincidencePointPos ppc = checkForCoincidence(vCCO[i][j], vCCO[i][0], true);
+                    if (ppc.FirstGeoPos != Sketcher::PointPos::none) {
+                        if (!atLeastOneLine) { //We need at least one line
+                            createLine = true;
+                            forceCreate = true;
+                        }
+                    }
+                    else {
+                        //create line for j = 0. For this we rerun the for at j=0 after this run. With an escape bool.
+                        reRunForFirst = true;
+                        inTangentGroup = false;
+                    }
+                }
+
+                Base::Console().Warning("i-j : %d-%d / vCCO[i][j] : %d / / createLine %d / reRunForFirst %d\n", i, j, vCCO[i][j], createLine, reRunForFirst);
+                const Part::Geometry* geo = Obj->getGeometry(vCCO[i][j]);
+                for (size_t k = 0; k < listOfGeoIds.size(); k++) {
+                    //Check if listOfGeoIds[k] is the offseted curve giving curve i-j.
+                    const Part::Geometry* geo2 = Obj->getGeometry(listOfGeoIds[k]);
+
+                    if (geo->getTypeId() == Part::GeomCircle::getClassTypeId() && geo2->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                        const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo);
+                        const Part::GeomCircle* circle2 = static_cast<const Part::GeomCircle*>(geo2);
+                        Base::Vector3d p1 = circle->getCenter();
+                        Base::Vector3d p2 = circle2->getCenter();
+                        if ((p1 - p2).Length() < Precision::Confusion()) {
+                            //coincidence of center
+                            stream << "conList.append(Sketcher.Constraint('Coincident'," << vCCO[i][j] << ",3, " << listOfGeoIds[k] << ",3))\n";
+                            //Create line between both circles.
+                            Part::GeomLineSegment* line = new Part::GeomLineSegment();
+                            p1.x = p1.x + circle->getRadius();
+                            p2.x = p2.x + circle2->getRadius();
+                            line->setPoints(p1, p2);
+                            GeometryFacade::setConstruction(line, true);
+                            geometriesToAdd.push_back(line);
+                            newCurveCounter++;
+                            stream << "conList.append(Sketcher.Constraint('Perpendicular'," << getHighestCurveIndex() + newCurveCounter << ", " << vCCO[i][j] << "))\n";
+                            stream << "conList.append(Sketcher.Constraint('PointOnObject'," << getHighestCurveIndex() + newCurveCounter << ",1, " << vCCO[i][j] << "))\n";
+                            stream << "conList.append(Sketcher.Constraint('PointOnObject'," << getHighestCurveIndex() + newCurveCounter << ",2, " << listOfGeoIds[k] << "))\n";
+                            break;
+                        }
+                    }
+                    else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId() && geo2->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                        //same as circle but 2 lines
+                    }
+                    else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId() && geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                        const Part::GeomLineSegment* lineSeg1 = static_cast<const Part::GeomLineSegment*>(geo);
+                        const Part::GeomLineSegment* lineSeg2 = static_cast<const Part::GeomLineSegment*>(geo2);
+                        Base::Vector3d p1[2], p2[2];
+                        p1[0] = lineSeg1->getStartPoint();
+                        p1[1] = lineSeg1->getEndPoint();
+                        p2[0] = lineSeg2->getStartPoint();
+                        p2[1] = lineSeg2->getEndPoint();
+                        //if lines are parallel
+                        if (((p1[1] - p1[0]) % (p2[1] - p2[0])).Length() < Precision::Intersection()) {
+                            //If the lines are space by offsetLength distance
+                            Base::Vector3d projectedP;
+                            projectedP.ProjectToLine(p1[0] - p2[0], p2[1] - p2[0]);
+
+                            if ((projectedP).Length() - fabs(offsetLength) < Precision::Confusion()) {
+                                if (!forceCreate) {
+                                    stream << "conList.append(Sketcher.Constraint('Parallel'," << vCCO[i][j] << ", " << listOfGeoIds[k] << "))\n";
+                                }
+
+                                //We don't need a construction line if the line has a tangent at one end. Unless it's the first line that we're making.
+                                if (createLine) {
+                                    Part::GeomLineSegment* line = new Part::GeomLineSegment();
+                                    line->setPoints(p1[0], p1[0] + projectedP);
+                                    GeometryFacade::setConstruction(line, true);
+                                    geometriesToAdd.push_back(line);
+                                    newCurveCounter++;
+
+                                    stream << "conList.append(Sketcher.Constraint('Perpendicular'," << getHighestCurveIndex() + newCurveCounter << ", " << vCCO[i][j] << "))\n";
+                                    stream << "conList.append(Sketcher.Constraint('PointOnObject'," << getHighestCurveIndex() + newCurveCounter << ",1, " << vCCO[i][j] << "))\n";
+                                    stream << "conList.append(Sketcher.Constraint('PointOnObject'," << getHighestCurveIndex() + newCurveCounter << ",2, " << listOfGeoIds[k] << "))\n";
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                        //multiple cases because arc join mode creates arcs or circle.
+                        const Part::GeomArcOfCircle* arcOfCircle = static_cast<const Part::GeomArcOfCircle*>(geo);
+                        Base::Vector3d p1 = arcOfCircle->getCenter();
+
+                        if (geo2->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                            const Part::GeomArcOfCircle* arcOfCircle2 = static_cast<const Part::GeomArcOfCircle*>(geo2);
+                            Base::Vector3d p2 = arcOfCircle2->getCenter();
+                            Base::Vector3d p3 = arcOfCircle2->getStartPoint();
+                            Base::Vector3d p4 = arcOfCircle2->getEndPoint();
+
+                            if ((p1 - p2).Length() < Precision::Confusion()) {
+                                //coincidence of center. Offset arc is the offset of an arc
+                                stream << "conList.append(Sketcher.Constraint('Coincident'," << vCCO[i][j] << ",3, " << listOfGeoIds[k] << ",3))\n";
+                                if (createLine) {
+                                    //Create line between both circles.
+                                    Part::GeomLineSegment* line = new Part::GeomLineSegment();
+                                    p1.x = p1.x + arcOfCircle->getRadius();
+                                    p2.x = p2.x + arcOfCircle2->getRadius();
+                                    line->setPoints(p1, p2);
+                                    GeometryFacade::setConstruction(line, true);
+                                    geometriesToAdd.push_back(line);
+                                    newCurveCounter++;
+                                    stream << "conList.append(Sketcher.Constraint('Perpendicular'," << getHighestCurveIndex() + newCurveCounter << ", " << vCCO[i][j] << "))\n";
+                                    stream << "conList.append(Sketcher.Constraint('PointOnObject'," << getHighestCurveIndex() + newCurveCounter << ",1, " << vCCO[i][j] << "))\n";
+                                    stream << "conList.append(Sketcher.Constraint('PointOnObject'," << getHighestCurveIndex() + newCurveCounter << ",2, " << listOfGeoIds[k] << "))\n";
+                                }
+                                break;
+                            }
+                            else if ((p1 - p3).Length() < Precision::Confusion()) {
+                                //coincidence of center to startpoint. offset arc is created arc join
+                                stream << "conList.append(Sketcher.Constraint('Coincident'," << vCCO[i][j] << ",3, " << listOfGeoIds[k] << ", 1))\n";
+
+                                if (forceCreate) {
+                                    stream << "conList.append(Sketcher.Constraint('Radius'," << vCCO[i][j] << ", " << offsetLength << "))\n";
+                                }
+                                break;
+                            }
+                            else if ((p1 - p4).Length() < Precision::Confusion()) {
+                                //coincidence of center to startpoint
+                                stream << "conList.append(Sketcher.Constraint('Coincident'," << vCCO[i][j] << ",3, " << listOfGeoIds[k] << ", 2))\n";
+
+                                if (forceCreate) {
+                                    stream << "conList.append(Sketcher.Constraint('Radius'," << vCCO[i][j] << ", " << offsetLength << "))\n";
+                                }
+                                break;
+                            }
+
+                        }
+                        else if (geo2->getTypeId() == Part::GeomLineSegment::getClassTypeId()
+                            || geo2->getTypeId() == Part::GeomArcOfConic::getClassTypeId()
+                            || geo2->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                            //cases where arc is created by arc join mode.
+                            Base::Vector3d p2, p3;
+
+                            if (getFirstSecondPoints(listOfGeoIds[k], p2, p3)) {
+                                if (((p1 - p2).Length() < Precision::Confusion()) || ((p1 - p3).Length() < Precision::Confusion())) {
+                                    if ((p1 - p2).Length() < Precision::Confusion()) {
+                                        //coincidence of center to startpoint
+                                        stream << "conList.append(Sketcher.Constraint('Coincident'," << vCCO[i][j] << ",3, " << listOfGeoIds[k] << ", 1))\n";
+                                    }
+                                    else if ((p1 - p3).Length() < Precision::Confusion()) {
+                                        //coincidence of center to endpoint
+                                        stream << "conList.append(Sketcher.Constraint('Coincident'," << vCCO[i][j] << ",3, " << listOfGeoIds[k] << ", 2))\n";
+                                    }
+                                    break;
+                                }
+                            }
+
+                        }
+
+                    }
+                    else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId() && geo2->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                        const Part::GeomArcOfEllipse* arcOfEllipse = static_cast<const Part::GeomArcOfEllipse*>(geo2);
+                    }
+                    else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId() && geo2->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+                        const Part::GeomArcOfHyperbola* arcOfHyperbola = static_cast<const Part::GeomArcOfHyperbola*>(geo2);
+                    }
+                    else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId() && geo2->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                        const Part::GeomArcOfParabola* arcOfParabola = static_cast<const Part::GeomArcOfParabola*>(geo2);
+                    }
+                    else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId() && geo2->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                    }
+
+                }
+                if (newCurveCounter != prevCurveCounter) {
+                    prevCurveCounter = newCurveCounter;
+                    if (newCurveCounter != 1) {
+                        stream << "conList.append(Sketcher.Constraint('Equal'," << getHighestCurveIndex() + newCurveCounter << ", " << getHighestCurveIndex() + 1 << "))\n";
+                    }
+                }
+
+                if (reRunForFirst) {
+                    if (j != 0) {
+                        j = -1;
+                    }// j will be incremented to 0 after new loop
+                    else {
+                        break;
+                    }
+                }
+            }
+        }
+        if (newCurveCounter != 0) {
+            stream << "conList.append(Sketcher.Constraint('Distance'," << getHighestCurveIndex() + 1 << ", " << offsetLength << "))\n";
+        }
+        Obj->addGeometry(std::move(geometriesToAdd));
+    }
+    
+    std::vector<std::vector<int>> generatevCC(std::vector<int>& listOfGeo) {
         //This function separates all the selected geometries into separate continuous curves.
         Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
-        for (size_t i = 0; i < listOfGeoIds.size(); i++) {
+        std::vector<std::vector<int>> vcc;
+
+        for (size_t i = 0; i < listOfGeo.size(); i++) {
             std::vector<int> vecOfGeoIds;
-            const Part::Geometry* geo = Obj->getGeometry(listOfGeoIds[i]);
+            const Part::Geometry* geo = Obj->getGeometry(listOfGeo[i]);
             if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()
                 || geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
-                vecOfGeoIds.push_back(listOfGeoIds[i]);
-                vCC.push_back(vecOfGeoIds);
+                vecOfGeoIds.push_back(listOfGeo[i]);
+                vcc.push_back(vecOfGeoIds);
             }
             else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()
                 || geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
@@ -3527,43 +3867,43 @@ protected:
                 || geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
                 bool inserted = 0;
                 int insertedIn = -1;
-                //Base::Console().Warning("Inserting : %d\n", listOfGeoIds[i]);
-                for (size_t j = 0; j < vCC.size(); j++) {
+                //Base::Console().Warning("Inserting : %d\n", listOfGeo[i]);
+                for (size_t j = 0; j < vcc.size(); j++) {
                     //Base::Console().Warning("curve : %d\n", j);
-                    for (size_t k = 0; k < vCC[j].size(); k++) {
-                        //Base::Console().Warning("edge : %d ", vCC[j][k]);
-                        CoincidencePointPos pointPosOfCoincidence = checkForCoincidence(listOfGeoIds[i], vCC[j][k]);
+                    for (size_t k = 0; k < vcc[j].size(); k++) {
+                        //Base::Console().Warning("edge : %d ", vcc[j][k]);
+                        CoincidencePointPos pointPosOfCoincidence = checkForCoincidence(listOfGeo[i], vcc[j][k]);
                         if (pointPosOfCoincidence.FirstGeoPos != Sketcher::PointPos::none) {
                             if (inserted && insertedIn != j) {
                                 //if it's already inserted in another continuous curve then we need to merge both curves together.
                                 //There're 2 cases, it could have been inserted at the end or at the beginning.
-                                if (vCC[insertedIn][0] == listOfGeoIds[i]) {
+                                if (vcc[insertedIn][0] == listOfGeo[i]) {
                                     //Two cases. Either the coincident is at the beginning or at the end.
                                     if (k == 0) {
-                                        std::reverse(vCC[j].begin(), vCC[j].end());
+                                        std::reverse(vcc[j].begin(), vcc[j].end());
                                     }
-                                    vCC[j].insert(vCC[j].end(), vCC[insertedIn].begin(), vCC[insertedIn].end());
-                                    vCC.erase(vCC.begin() + insertedIn);
+                                    vcc[j].insert(vcc[j].end(), vcc[insertedIn].begin(), vcc[insertedIn].end());
+                                    vcc.erase(vcc.begin() + insertedIn);
                                 }
                                 else {
-                                    if (k != 0) { //ie k is  vCC[j].size()-1
-                                        std::reverse(vCC[j].begin(), vCC[j].end());
+                                    if (k != 0) { //ie k is  vcc[j].size()-1
+                                        std::reverse(vcc[j].begin(), vcc[j].end());
                                     }
-                                    vCC[insertedIn].insert(vCC[insertedIn].end(), vCC[j].begin(), vCC[j].end());
-                                    vCC.erase(vCC.begin() + j);
+                                    vcc[insertedIn].insert(vcc[insertedIn].end(), vcc[j].begin(), vcc[j].end());
+                                    vcc.erase(vcc.begin() + j);
                                 }
                                 j--;
                                 //Base::Console().Warning("Removing vector : %d ", j);
                             }
                             else {
                                 //we need to get the curves in the correct order.
-                                if (k == vCC[j].size() - 1) {
-                                    vCC[j].push_back(listOfGeoIds[i]);
+                                if (k == vcc[j].size() - 1) {
+                                    vcc[j].push_back(listOfGeo[i]);
                                     //Base::Console().Warning("inserted at the end in : %d ", j);
                                 }
                                 else {
                                     //in this case k should actually be 0. 
-                                    vCC[j].insert(vCC[j].begin() + k, listOfGeoIds[i]);
+                                    vcc[j].insert(vcc[j].begin() + k, listOfGeo[i]);
                                     //Base::Console().Warning("inserted after %d in : %d ", k, j);
                                 }
                                 insertedIn = j;
@@ -3576,11 +3916,13 @@ protected:
                     }
                 }
                 if (!inserted) {
-                    vecOfGeoIds.push_back(listOfGeoIds[i]);
-                    vCC.push_back(vecOfGeoIds);
+                    vecOfGeoIds.push_back(listOfGeo[i]);
+                    vcc.push_back(vecOfGeoIds);
                 }
             }
         }
+        Base::Console().Warning("vcc.size() : %d\n", vcc.size());
+        return vcc;
     }
 
     void generateSourceWires() {
@@ -3648,13 +3990,13 @@ protected:
         return false;
     }
 
-    bool getFirstSecondPoints(int geoId, Base::Vector2d& startPoint, Base::Vector2d& endPoint) {
+    bool getFirstSecondPoints(int geoId, Base::Vector3d& startPoint, Base::Vector3d& endPoint) {
         const Part::Geometry* geo = sketchgui->getSketchObject()->getGeometry(geoId);
 
         if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
             const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
-            startPoint = vec3dTo2d(line->getStartPoint());
-            endPoint = vec3dTo2d(line->getEndPoint());
+            startPoint = line->getStartPoint();
+            endPoint = line->getEndPoint();
             return true;
         }
         else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()
@@ -3662,20 +4004,20 @@ protected:
             || geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()
             || geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
             const Part::GeomArcOfConic* arcOfConic = static_cast<const Part::GeomArcOfConic*>(geo);
-            startPoint = vec3dTo2d(arcOfConic->getStartPoint());
-            endPoint = vec3dTo2d(arcOfConic->getEndPoint());
+            startPoint = arcOfConic->getStartPoint();
+            endPoint = arcOfConic->getEndPoint();
             return true;
         }
         else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
             const Part::GeomBSplineCurve* bSpline = static_cast<const Part::GeomBSplineCurve*>(geo);
-            startPoint = vec3dTo2d(bSpline->getStartPoint());
-            endPoint = vec3dTo2d(bSpline->getEndPoint());
+            startPoint = bSpline->getStartPoint();
+            endPoint = bSpline->getEndPoint();
             return true;
         }
         return false;
     }
 
-    CoincidencePointPos checkForCoincidence(int GeoId1, int GeoId2) {
+    CoincidencePointPos checkForCoincidence(int GeoId1, int GeoId2, bool tangentOnly = false) {
         Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
         const std::vector< Sketcher::Constraint* >& vals = Obj->Constraints.getValues();
         CoincidencePointPos positions;
@@ -3685,7 +4027,7 @@ protected:
         positions.SecondCoincidenceSecondGeoPos = Sketcher::PointPos::none;
         bool firstCoincidenceFound = 0;
         for (std::vector< Sketcher::Constraint* >::const_iterator it = vals.begin(); it != vals.end(); ++it) {
-            if ((*it)->Type == Sketcher::Coincident || (*it)->Type == Sketcher::Tangent) {
+            if ( (!tangentOnly && (*it)->Type == Sketcher::Coincident) || (*it)->Type == Sketcher::Tangent) {
                 if ((*it)->First == GeoId1 && (*it)->FirstPos != Sketcher::PointPos::mid && (*it)->FirstPos != Sketcher::PointPos::none
                     && (*it)->Second == GeoId2 && (*it)->SecondPos != Sketcher::PointPos::mid && (*it)->SecondPos != Sketcher::PointPos::none) {
                     if (!firstCoincidenceFound) {

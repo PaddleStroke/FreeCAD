@@ -790,6 +790,10 @@ void SketcherToolWidget::setSettings(int toolSelected)
             ui->checkBoxTS3->setChecked(1);
             ui->checkBoxTS3->setText(QApplication::translate("TaskSketcherTool_scale", "Arc join type"));
 
+            ui->checkBoxTS4->setVisible(1);
+            ui->checkBoxTS4->setChecked(1);
+            ui->checkBoxTS4->setText(QApplication::translate("TaskSketcherTool_scale", "Offset Constraint"));
+
             setParameterFocus(0);
             isWidgetActive = 1;
             break;

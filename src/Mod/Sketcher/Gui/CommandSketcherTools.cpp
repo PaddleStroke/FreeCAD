@@ -2948,11 +2948,19 @@ protected:
             }
             else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
                 Part::GeomArcOfParabola* arcOfParabola = static_cast<Part::GeomArcOfParabola*>(geo);
+                //Todo: Problem with scale parabola end points.
                 arcOfParabola->setFocal(arcOfParabola->getFocal() * scaleFactor);
                 arcOfParabola->setCenter(getScaledPoint(arcOfParabola->getCenter(), referencePoint, scaleFactor));
                 geometriesToAdd.push_back(arcOfParabola);
             }
             else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                Part::GeomBSplineCurve* bSpline = static_cast<Part::GeomBSplineCurve*>(geo);
+                std::vector<Base::Vector3d> poles = bSpline->getPoles();
+                for (size_t p = 0; p < poles.size(); p++) {
+                    poles[p] = getScaledPoint(poles[p], referencePoint, scaleFactor);
+                }
+                bSpline->setPoles(poles);
+                geometriesToAdd.push_back(bSpline);
             }
         }
 

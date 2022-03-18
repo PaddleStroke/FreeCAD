@@ -2400,17 +2400,17 @@ protected:
                     Part::GeomArcOfParabola* arcOfParabola = static_cast<Part::GeomArcOfParabola*>(geo);
                     
                     arcOfParabola->setCenter(getRotatedPoint(arcOfParabola->getCenter(), centerPoint, individualAngle* i));
+                    arcOfParabola->setAngleXU(arcOfParabola->getAngleXU() + individualAngle * i);
                     geometriesToAdd.push_back(arcOfParabola);
-                    /*Base::Vector3d rotatedFocusPoint = getRotatedPoint(arcOfParabola->getFocus(), centerPoint, individualAngle * i);
-                    Base::Vector3d rotatedCenterPoint = ;
-                    double arcStartAngle, arcEndAngle;
-                    arcOfParabola->getRange(arcStartAngle, arcEndAngle, true);
-                    stream << "append(Part.ArcOfParabola(Part.Parabola(App.Vector(" << rotatedFocusPoint.x << "," << rotatedFocusPoint.y << ",0),App.Vector(" << rotatedCenterPoint.x << "," << rotatedCenterPoint.y
-                        << ",0),App.Vector(0,0,1)),"
-                        << arcStartAngle << "," << arcEndAngle << "))\n";
-                    */
                 }
                 else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                    Part::GeomBSplineCurve* bSpline = static_cast<Part::GeomBSplineCurve*>(geo);
+                    std::vector<Base::Vector3d> poles = bSpline->getPoles();
+                    for (size_t p = 0; p < poles.size(); p++) {
+                        poles[p] = getRotatedPoint(poles[p], centerPoint, individualAngle * i);
+                    }
+                    bSpline->setPoles(poles);
+                    geometriesToAdd.push_back(bSpline);
                 }
             }
         }

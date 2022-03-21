@@ -3033,16 +3033,14 @@ protected:
                             constNew->Second = firstCurveCreated + secondIndex + listOfGeoIds.size() * i;
                             newconstrVals.push_back(constNew);
                         }
-                        else if ((*it)->First == (*it)->Second && indexInVec(geoIdsWhoAlreadyHasEqual, (*it)->First) != -1) {
+                        else if ((*it)->First == (*it)->Second && indexInVec(geoIdsWhoAlreadyHasEqual, firstCurveCreated + secondIndex + listOfGeoIds.size() * i) == -1) {
                             Constraint* constNew = (*it)->copy();
                             constNew->Type = Sketcher::Equal;// first is already (*it)->First
                             constNew->isDriving = true;
                             constNew->Second = firstCurveCreated + secondIndex + listOfGeoIds.size() * i;
+                            geoIdsWhoAlreadyHasEqual.push_back(constNew->Second);
                             newconstrVals.push_back(constNew);
                         }
-                    }
-                    if (toolSettings->widget->isCheckBoxChecked(2) && (*it)->First == (*it)->Second) {
-                        geoIdsWhoAlreadyHasEqual.push_back((*it)->First);
                     }
                 }
             }

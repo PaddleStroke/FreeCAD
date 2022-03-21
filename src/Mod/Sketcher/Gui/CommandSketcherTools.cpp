@@ -2509,13 +2509,11 @@ protected:
                                     constNew->Type = Sketcher::Equal;
                                     constNew->isDriving = true;
                                     constNew->Second = firstCurveCreated + secondIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k;
+                                    geoIdsWhoAlreadyHasEqual.push_back(constNew->Second);
                                     newconstrVals.push_back(constNew);
                                 }
                             }
                         }
-                    }
-                    if (toolSettings->widget->isCheckBoxChecked(2) && (*it)->First == (*it)->Second) {
-                        geoIdsWhoAlreadyHasEqual.push_back((*it)->First);
                     }
                 }
             }

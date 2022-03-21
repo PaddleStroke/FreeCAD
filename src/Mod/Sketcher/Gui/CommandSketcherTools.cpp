@@ -2129,6 +2129,536 @@ bool CmdSketcherRectangularArray::isActive(void)
     return isSketcherAcceleratorActive(getActiveGuiDocument(), true);
 }
 
+// Translate / rectangular pattern tool =======================================================
+
+class DrawSketchHandlerTranslate : public DrawSketchHandler
+{
+public:
+    DrawSketchHandlerTranslate(std::vector<int> listOfGeoIds)
+        : Mode(STATUS_SEEK_First)
+        , numberOfCopies(0)
+        , secondNumberOfCopies(1)
+        , deleteOriginal(0)
+        , snapMode(SnapMode::Free)
+        , firstTranslationVector(Base::Vector3d(0.,0.,0.))
+        , secondTranslationVector(Base::Vector3d(0., 0., 0.))
+        , listOfGeoIds(listOfGeoIds) {}
+    virtual ~DrawSketchHandlerTranslate() {}
+
+    enum SelectMode {
+        STATUS_SEEK_First,
+        STATUS_SEEK_Second,
+        STATUS_SEEK_Third,       /**< enum value ----. */
+        STATUS_End
+    };
+
+    enum class SnapMode {
+        Free,
+        Snap5Degree
+    };
+
+    virtual void activated(ViewProviderSketch*)
+    {
+        toolSettings->widget->setSettings(20);
+        firstCurveCreated = getHighestCurveIndex() + 1;
+
+        // Constrain icon size in px
+        qreal pixelRatio = devicePixelRatio();
+        const unsigned long defaultCrosshairColor = 0xFFFFFF;
+        unsigned long color = getCrosshairColor();
+        auto colorMapping = std::map<unsigned long, unsigned long>();
+        colorMapping[defaultCrosshairColor] = color;
+
+        qreal fullIconWidth = 32 * pixelRatio;
+        qreal iconWidth = 16 * pixelRatio;
+        QPixmap cursorPixmap = Gui::BitmapFactory().pixmapFromSvg("Sketcher_Crosshair", QSizeF(fullIconWidth, fullIconWidth), colorMapping),
+            icon = Gui::BitmapFactory().pixmapFromSvg("Sketcher_Translate", QSizeF(iconWidth, iconWidth));
+        QPainter cursorPainter;
+        cursorPainter.begin(&cursorPixmap);
+        cursorPainter.drawPixmap(16 * pixelRatio, 16 * pixelRatio, icon);
+        cursorPainter.end();
+        int hotX = 8;
+        int hotY = 8;
+        cursorPixmap.setDevicePixelRatio(pixelRatio);
+        // only X11 needs hot point coordinates to be scaled
+        if (qGuiApp->platformName() == QLatin1String("xcb")) {
+            hotX *= pixelRatio;
+            hotY *= pixelRatio;
+        }
+        setCursor(cursorPixmap, hotX, hotY, false);
+    }
+    virtual void deactivated(ViewProviderSketch*) {}
+
+    virtual void mouseMove(Base::Vector2d onSketchPos)
+    {
+        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+            snapMode = SnapMode::Snap5Degree;
+        else
+            snapMode = SnapMode::Free;
+
+        if (Mode == STATUS_SEEK_First) {
+            setPositionText(onSketchPos);
+            if (snapMode == SnapMode::Snap5Degree && getSnapPoint(referencePoint)) {
+                setPositionText(referencePoint);
+            }
+
+            if (toolSettings->widget->isSettingSet[0] && toolSettings->widget->isSettingSet[1]) {
+                pressButton(onSketchPos);
+                releaseButton(onSketchPos);
+            }
+        }
+        else if (Mode == STATUS_SEEK_Second) {
+            toolSettings->widget->setLabel(QApplication::translate("Translate_2", "Select first translation point."), 6);
+            double length = (onSketchPos - referencePoint).Length();
+            double angle = (onSketchPos - referencePoint).Angle();
+
+            if (toolSettings->widget->isSettingSet[3]) {
+                length = toolSettings->widget->toolParameters[3];
+                if (snapMode == SnapMode::Snap5Degree) {
+                    angle = round(angle / (M_PI / 36)) * M_PI / 36;
+                    firstTranslationPoint = referencePoint + length * Base::Vector2d(cos(angle), sin(angle));
+                }
+                else {
+                    Base::Vector2d onSketchPosVec = onSketchPos - referencePoint;
+                    firstTranslationPoint = onSketchPosVec * length / onSketchPosVec.Length() + referencePoint;
+                }
+            }
+            else {
+                if (snapMode == SnapMode::Snap5Degree) {
+                    if (getSnapPoint(firstTranslationPoint)) {
+                        angle = (firstTranslationPoint - referencePoint).Angle();
+                    }
+                    else {
+                        angle = round(angle / (M_PI / 36)) * M_PI / 36;
+                        firstTranslationPoint = referencePoint + length * Base::Vector2d(cos(angle), sin(angle));
+                    }
+                }
+                else {
+                    firstTranslationPoint = onSketchPos;
+                }
+            }
+
+            if (toolSettings->widget->isSettingSet[2]) {
+                numberOfCopies = floor(abs(toolSettings->widget->toolParameters[2]));
+            }
+
+            firstTranslationVector.x = (firstTranslationPoint - referencePoint).x;
+            firstTranslationVector.y = (firstTranslationPoint - referencePoint).y;
+
+            //Draw geometries
+            generateTranslatedGeos(false);
+
+            SbString text;
+            text.sprintf(" (%.1f, %.1fdeg)", length, angle * 180 / M_PI);
+            setPositionText(firstTranslationPoint, text);
+        }
+        else if (Mode == STATUS_SEEK_Third) {
+            toolSettings->widget->setLabel(QApplication::translate("Translate_2", "Select second translation point."), 6);
+            double length = (onSketchPos - referencePoint).Length();
+            double angle = (onSketchPos - referencePoint).Angle();
+
+            if (toolSettings->widget->isSettingSet[5]) {
+                length = toolSettings->widget->toolParameters[5];
+                if (snapMode == SnapMode::Snap5Degree) {
+                    angle = round(angle / (M_PI / 36)) * M_PI / 36;
+                    secondTranslationPoint = referencePoint + length * Base::Vector2d(cos(angle), sin(angle));
+                }
+                else {
+                    Base::Vector2d onSketchPosVec = onSketchPos - referencePoint;
+                    secondTranslationPoint = onSketchPosVec * length / onSketchPosVec.Length() + referencePoint;
+                }
+            }
+            else {
+                if (snapMode == SnapMode::Snap5Degree) {
+                    if (getSnapPoint(secondTranslationPoint)) {
+                        angle = (secondTranslationPoint - referencePoint).Angle();
+                    }
+                    else {
+                        angle = round(angle / (M_PI / 36)) * M_PI / 36;
+                        secondTranslationPoint = referencePoint + length * Base::Vector2d(cos(angle), sin(angle));
+                    }
+                }
+                else {
+                    secondTranslationPoint = onSketchPos;
+                }
+            }
+
+            if (toolSettings->widget->isSettingSet[4]) {
+                secondNumberOfCopies = max(1., floor(abs(toolSettings->widget->toolParameters[4])));
+            }
+
+            secondTranslationVector.x = (secondTranslationPoint - referencePoint).x;
+            secondTranslationVector.y = (secondTranslationPoint - referencePoint).y;
+
+            //Draw geometries
+            generateTranslatedGeos(false);
+
+            SbString text;
+            text.sprintf(" (%.1f, %.1fdeg)", length, angle * 180 / M_PI);
+            setPositionText(firstTranslationPoint, text);
+        }
+        applyCursor();
+    }
+
+    virtual bool pressButton(Base::Vector2d onSketchPos)
+    {
+        if (Mode == STATUS_SEEK_First) {
+            if (!(snapMode == SnapMode::Snap5Degree && getSnapPoint(referencePoint))) {
+                //note: if getSnapPoint returns true, then centerPoint is modified already
+                referencePoint = onSketchPos;
+                if (toolSettings->widget->isSettingSet[0] == 1) {
+                    referencePoint.x = toolSettings->widget->toolParameters[0];
+                }
+                if (toolSettings->widget->isSettingSet[1] == 1) {
+                    referencePoint.y = toolSettings->widget->toolParameters[1];
+                }
+            }
+
+            toolSettings->widget->setParameterActive(0, 0);
+            toolSettings->widget->setParameterActive(0, 1);
+            toolSettings->widget->setParameterActive(1, 2);
+            toolSettings->widget->setParameterActive(1, 3);
+            toolSettings->widget->setParameterFocus(2);
+            Mode = STATUS_SEEK_Second;
+        }
+        else if (Mode == STATUS_SEEK_Second) {
+            toolSettings->widget->setParameterActive(1, 2);
+            toolSettings->widget->setParameterActive(0, 3);
+            toolSettings->widget->setParameterActive(1, 4);
+            toolSettings->widget->setParameterActive(1, 5);
+            Mode = STATUS_SEEK_Third;
+        }
+        else if (Mode == STATUS_SEEK_Third) {
+            Mode = STATUS_End;
+        }
+        return true;
+    }
+
+    virtual bool releaseButton(Base::Vector2d onSketchPos)
+    {
+        Q_UNUSED(onSketchPos);
+        if (Mode == STATUS_End) {
+            generateTranslatedGeos(true);
+
+            sketchgui->purgeHandler();
+        }
+        return true;
+    }
+protected:
+    SelectMode Mode;
+    SnapMode snapMode;
+    std::vector<int> listOfGeoIds;
+    Base::Vector2d referencePoint, firstTranslationPoint, secondTranslationPoint;
+    Base::Vector3d firstTranslationVector, secondTranslationVector;
+
+    bool deleteOriginal;
+    int numberOfCopies, secondNumberOfCopies, firstCurveCreated;
+
+    void generateTranslatedGeos(bool onReleaseButton) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        int numberOfCopiesToMake = numberOfCopies;
+        if (numberOfCopies == 0) {
+            numberOfCopiesToMake = 1;
+            deleteOriginal = 1;
+        }
+        else {
+            deleteOriginal = 0;
+        }
+
+        //Generate geos
+        std::vector<Part::Geometry*> geometriesToAdd; 
+        for (size_t k = 0; k < secondNumberOfCopies; k++) {
+            for (size_t i = 0; i <= numberOfCopiesToMake; i++) {
+                if (!(k == 0 && i == 0)) {
+                    for (size_t j = 0; j < listOfGeoIds.size(); j++) {
+                        Part::Geometry* geo = Obj->getGeometry(listOfGeoIds[j])->copy();
+                        GeometryFacade::setConstruction(geo, GeometryFacade::getConstruction(Obj->getGeometry(listOfGeoIds[j])));
+                        if (geo->getTypeId() == Part::GeomConic::getClassTypeId()) {
+                            Part::GeomConic* conic = static_cast<Part::GeomConic*>(geo);
+                            conic->setCenter(conic->getCenter() + firstTranslationVector * i + secondTranslationVector * k);
+                            geometriesToAdd.push_back(conic);
+                        }
+                        else if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                            Part::GeomLineSegment* line = static_cast<Part::GeomLineSegment*>(geo);
+                            line->setPoints(line->getStartPoint() + firstTranslationVector * i + secondTranslationVector * k,
+                                line->getEndPoint() + firstTranslationVector * i + secondTranslationVector * k);
+                            geometriesToAdd.push_back(line);
+                        }
+                        else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                            Part::GeomBSplineCurve* bSpline = static_cast<Part::GeomBSplineCurve*>(geo);
+                            std::vector<Base::Vector3d> poles = bSpline->getPoles();
+                            for (size_t p = 0; p < poles.size(); p++) {
+                                poles[p] = poles[p] + firstTranslationVector * i + secondTranslationVector * k;
+                            }
+                            bSpline->setPoles(poles);
+                            geometriesToAdd.push_back(bSpline);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!onReleaseButton) {
+            //Add the line to show angle
+            Part::GeomLineSegment* line = new Part::GeomLineSegment();
+            Base::Vector3d p1 = Base::Vector3d(referencePoint.x, referencePoint.y, 0.);
+            Base::Vector3d p2 = Base::Vector3d(firstTranslationPoint.x, firstTranslationPoint.y, 0.);
+            line->setPoints(p1, p2);
+            geometriesToAdd.push_back(line);
+
+            if (secondTranslationVector.Length() > Precision::Confusion()) {
+                Part::GeomLineSegment* line2 = new Part::GeomLineSegment();
+                p1 = Base::Vector3d(referencePoint.x, referencePoint.y, 0.);
+                p2 = Base::Vector3d(secondTranslationPoint.x, secondTranslationPoint.y, 0.);
+                line2->setPoints(p1, p2);
+                geometriesToAdd.push_back(line2);
+            }
+
+            //Draw geos
+            drawEdit(geometriesToAdd);
+        }
+        else {
+            //Creates geos
+            Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Translate"));
+            Obj->addGeometry(std::move(geometriesToAdd));
+
+            //Create constrains
+            const std::vector< Sketcher::Constraint* >& vals = Obj->Constraints.getValues();
+            std::vector< Constraint* > newconstrVals(vals);
+            std::vector<int> geoIdsWhoAlreadyHasEqual = {}; //avoid applying equal several times if cloning distanceX and distanceY of the same part.
+
+            std::vector< Sketcher::Constraint* >::const_iterator itEnd = vals.end(); //we need vals.end before adding any constraints
+            for (std::vector< Sketcher::Constraint* >::const_iterator it = vals.begin(); it != itEnd; ++it) {
+                int firstIndex = indexInVec(listOfGeoIds, (*it)->First);
+                int secondIndex = indexInVec(listOfGeoIds, (*it)->Second);
+                int thirdIndex = indexInVec(listOfGeoIds, (*it)->Third);
+
+                if (((*it)->Type == Sketcher::Symmetric
+                    || (*it)->Type == Sketcher::Tangent
+                    || (*it)->Type == Sketcher::Perpendicular)
+                    && firstIndex >= 0 && secondIndex >= 0 && thirdIndex >= 0) {
+                    for (size_t k = 0; k < secondNumberOfCopies; k++) {
+                        for (size_t i = 0; i <= numberOfCopiesToMake; i++) {
+                            if (!(k == 0 && i == 0)) {
+                                Constraint* constNew = (*it)->copy();
+                                constNew->First = firstCurveCreated + firstIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k;
+                                constNew->Second = firstCurveCreated + secondIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k;
+                                constNew->Third = firstCurveCreated + thirdIndex + listOfGeoIds.size() * i + listOfGeoIds.size() * numberOfCopiesToMake * k;
+                                newconstrVals.push_back(constNew);
+                            }
+                        }
+                    }
+                }
+                else if (((*it)->Type == Sketcher::Coincident
+                    || (*it)->Type == Sketcher::Tangent
+                    || (*it)->Type == Sketcher::Symmetric
+                    || (*it)->Type == Sketcher::Perpendicular
+                    || (*it)->Type == Sketcher::Parallel
+                    || (*it)->Type == Sketcher::Equal
+                    || (*it)->Type == Sketcher::Angle
+                    || (*it)->Type == Sketcher::PointOnObject)
+                    && firstIndex >= 0 && secondIndex >= 0 && thirdIndex == GeoEnum::GeoUndef) {
+                    for (size_t k = 0; k < secondNumberOfCopies; k++) {
+                        for (size_t i = 0; i <= numberOfCopiesToMake; i++) {
+                            if (!(k == 0 && i == 0)) {
+                                Constraint* constNew = (*it)->copy();
+                                constNew->First = firstCurveCreated + firstIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k;
+                                constNew->Second = firstCurveCreated + secondIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k;
+                                newconstrVals.push_back(constNew);
+                            }
+                        }
+                    }
+                }
+                else if (((*it)->Type == Sketcher::Radius
+                    || (*it)->Type == Sketcher::Diameter)
+                    && firstIndex >= 0) {
+                    for (size_t k = 0; k < secondNumberOfCopies; k++) {
+                        for (size_t i = 0; i <= numberOfCopiesToMake; i++) {
+                            if (!(k == 0 && i == 0)) {
+                                if (deleteOriginal || !toolSettings->widget->isCheckBoxChecked(2)) {
+                                    Constraint* constNew = (*it)->copy();
+                                    constNew->First = firstCurveCreated + firstIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k;
+                                    newconstrVals.push_back(constNew);
+                                }
+                                else { //Clone constraint mode !
+                                    Constraint* constNew = (*it)->copy();
+                                    constNew->Type = Sketcher::Equal;// first is already (*it)->First
+                                    constNew->isDriving = true;
+                                    constNew->Second = firstCurveCreated + firstIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k;
+                                    newconstrVals.push_back(constNew);
+                                }
+                            }
+                        }
+                    }
+                }
+                else if (((*it)->Type == Sketcher::Distance
+                    || (*it)->Type == Sketcher::DistanceX
+                    || (*it)->Type == Sketcher::DistanceY)
+                    && firstIndex >= 0 && secondIndex >= 0) { //only line length because we can't apply equality between points.
+                    for (size_t k = 0; k < secondNumberOfCopies; k++) {
+                        for (size_t i = 0; i <= numberOfCopiesToMake; i++) {
+                            if (!(k == 0 && i == 0)) {
+                                if (deleteOriginal || !toolSettings->widget->isCheckBoxChecked(2) || (*it)->First != (*it)->Second) {
+                                    Constraint* constNew = (*it)->copy();
+                                    constNew->First = firstCurveCreated + firstIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k;
+                                    constNew->Second = firstCurveCreated + secondIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k;
+                                    newconstrVals.push_back(constNew);
+                                }
+                                else if (indexInVec(geoIdsWhoAlreadyHasEqual, firstCurveCreated + secondIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k) == -1) { //Clone constraint mode !
+                                    Constraint* constNew = (*it)->copy();
+                                    constNew->Type = Sketcher::Equal;
+                                    constNew->isDriving = true;
+                                    constNew->Second = firstCurveCreated + secondIndex + listOfGeoIds.size() * (i - 1) + listOfGeoIds.size() * (numberOfCopiesToMake + 1) * k;
+                                    newconstrVals.push_back(constNew);
+                                }
+                            }
+                        }
+                    }
+                    if (toolSettings->widget->isCheckBoxChecked(2) && (*it)->First == (*it)->Second) {
+                        geoIdsWhoAlreadyHasEqual.push_back((*it)->First);
+                    }
+                }
+            }
+            if (newconstrVals.size() > vals.size())
+                Obj->Constraints.setValues(std::move(newconstrVals));
+
+            if (deleteOriginal) {
+                std::stringstream stream;
+                for (size_t j = 0; j < listOfGeoIds.size() - 1; j++) {
+                    stream << listOfGeoIds[j] << ",";
+                }
+                stream << listOfGeoIds[listOfGeoIds.size() - 1];
+                try {
+                    Gui::cmdAppObjectArgs(sketchgui->getObject(), "delGeometries([%s])", stream.str().c_str());
+                }
+                catch (const Base::Exception& e) {
+                    Base::Console().Error("%s\n", e.what());
+                }
+            }
+            Gui::Command::commitCommand();
+
+            sketchgui->getSketchObject()->solve(true);
+            sketchgui->draw(false, false); // Redraw
+        }
+    }
+
+    bool getSnapPoint(Base::Vector2d& snapPoint) {
+        int pointGeoId = GeoEnum::GeoUndef;
+        Sketcher::PointPos pointPosId = Sketcher::PointPos::none;
+        int VtId = getPreselectPoint();
+        int CrsId = getPreselectCross();
+        if (CrsId == 0) {
+            pointGeoId = Sketcher::GeoEnum::RtPnt;
+            pointPosId = Sketcher::PointPos::start;
+        }
+        else if (VtId >= 0) {
+            sketchgui->getSketchObject()->getGeoVertexIndex(VtId, pointGeoId, pointPosId);
+        }
+        if (pointGeoId != GeoEnum::GeoUndef && pointGeoId < firstCurveCreated) {
+            //don't want to snap to the point of a geometry which is being previewed!
+            auto sk = static_cast<Sketcher::SketchObject*>(sketchgui->getObject());
+            snapPoint.x = sk->getPoint(pointGeoId, pointPosId).x;
+            snapPoint.y = sk->getPoint(pointGeoId, pointPosId).y;
+            return true;
+        }
+        return false;
+    }
+
+    int indexInVec(std::vector<int> vec, int elem)
+    {
+        if (elem == GeoEnum::GeoUndef) {
+            return GeoEnum::GeoUndef;
+        }
+        for (size_t i = 0; i < vec.size(); i++)
+        {
+            if (vec[i] == elem)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    void restartCommand(const char* cstrName) {
+        Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+        Gui::Command::abortCommand();
+        Obj->solve(true);
+        sketchgui->draw(false, false); // Redraw
+        Gui::Command::openCommand(cstrName);
+    }
+};
+
+DEF_STD_CMD_A(CmdSketcherTranslate)
+
+CmdSketcherTranslate::CmdSketcherTranslate()
+    : Command("Sketcher_Translate")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Translate geometries");
+    sToolTipText = QT_TR_NOOP("Translate selected geometries n times, enable creation of rectangular patterns.");
+    sWhatsThis = "Sketcher_Translate";
+    sStatusTip = sToolTipText;
+    sPixmap = "Sketcher_Translate";
+    sAccel = "W";
+    eType = ForEdit;
+}
+
+void CmdSketcherTranslate::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    std::vector<int> listOfGeoIds = {};
+
+    // get the selection
+    std::vector<Gui::SelectionObject> selection;
+    selection = getSelection().getSelectionEx(0, Sketcher::SketchObject::getClassTypeId());
+
+    // only one sketch with its subelements are allowed to be selected
+    if (selection.size() != 1) {
+        QMessageBox::warning(Gui::getMainWindow(),
+            QObject::tr("Wrong selection"),
+            QObject::tr("Select elements from a single sketch."));
+        return;
+    }
+
+    // get the needed lists and objects
+    const std::vector<std::string>& SubNames = selection[0].getSubNames();
+    if (!SubNames.empty()) {
+        Sketcher::SketchObject* Obj = static_cast<Sketcher::SketchObject*>(selection[0].getObject());
+
+        for (std::vector<std::string>::const_iterator it = SubNames.begin(); it != SubNames.end(); ++it) {
+            // only handle non-external edges
+            if (it->size() > 4 && it->substr(0, 4) == "Edge") {
+                int geoId = std::atoi(it->substr(4, 4000).c_str()) - 1;
+                if (geoId >= 0) {
+                    listOfGeoIds.push_back(geoId);
+                }
+            }
+            else if (it->size() > 6 && it->substr(0, 6) == "Vertex") {
+                // only if it is a GeomPoint
+                int VtId = std::atoi(it->substr(6, 4000).c_str()) - 1;
+                int geoId;
+                Sketcher::PointPos PosId;
+                Obj->getGeoVertexIndex(VtId, geoId, PosId);
+                if (Obj->getGeometry(geoId)->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+                    if (geoId >= 0) {
+                        listOfGeoIds.push_back(geoId);
+                    }
+                }
+            }
+        }
+    }
+
+    getSelection().clearSelection();
+
+    ActivateAcceleratorHandler(getActiveGuiDocument(), new DrawSketchHandlerTranslate(listOfGeoIds));
+}
+
+bool CmdSketcherTranslate::isActive(void)
+{
+    return isSketcherAcceleratorActive(getActiveGuiDocument(), false);
+}
+
 // Rotate / circular pattern tool =======================================================
 
 class DrawSketchHandlerRotate : public DrawSketchHandler
@@ -4412,6 +4942,7 @@ void CreateSketcherCommandsConstraintAccel(void)
     rcCmdMgr.addCommand(new CmdSketcherDeleteAllGeometry());
     rcCmdMgr.addCommand(new CmdSketcherDeleteAllConstraints());
     rcCmdMgr.addCommand(new CmdSketcherRemoveAxesAlignment());
+    rcCmdMgr.addCommand(new CmdSketcherTranslate());
     rcCmdMgr.addCommand(new CmdSketcherRotate());
     rcCmdMgr.addCommand(new CmdSketcherScale());
     rcCmdMgr.addCommand(new CmdSketcherOffset());

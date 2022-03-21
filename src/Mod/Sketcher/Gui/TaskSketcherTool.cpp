@@ -798,6 +798,47 @@ void SketcherToolWidget::setSettings(int toolSelected)
             isWidgetActive = 1;
             break;
         }
+        case 20: //Translate
+        {
+            toolParameters.resize(4, 0);
+            isSettingSet.resize(4, 0);
+
+            ui->label->setVisible(1);
+            ui->label2->setVisible(1);
+            ui->label3->setVisible(1);
+            ui->label4->setVisible(1);
+            ui->label5->setVisible(1);
+            ui->label6->setVisible(1);
+            ui->label->setText(QApplication::translate("TaskSketcherTool_p1_scale", "x of reference point"));
+            ui->label2->setText(QApplication::translate("TaskSketcherTool_p2_scale", "y of reference point"));
+            ui->label3->setText(QApplication::translate("TaskSketcherTool_p1_translate", "First number of copies"));
+            ui->label4->setText(QApplication::translate("TaskSketcherTool_p2_translate", "First translation length"));
+            ui->label5->setText(QApplication::translate("TaskSketcherTool_p3_translate", "Second number of copies"));
+            ui->label6->setText(QApplication::translate("TaskSketcherTool_p4_translate", "Second translation length"));
+
+            ui->parameterOne->setVisible(1);
+            ui->parameterOne->setEnabled(1);
+            ui->parameterTwo->setVisible(1);
+            ui->parameterTwo->setEnabled(1);
+            ui->parameterThree->setVisible(1);
+            ui->parameterThree->setEnabled(0);
+            ui->parameterFour->setVisible(1);
+            ui->parameterFour->setEnabled(0);
+            ui->parameterFive->setVisible(1);
+            ui->parameterFive->setEnabled(0);
+            ui->parameterSix->setVisible(1);
+            ui->parameterSix->setEnabled(0);
+
+            ui->checkBoxTS2->setVisible(1);
+            ui->checkBoxTS2->setChecked(1);
+            ui->checkBoxTS2->setText(QApplication::translate("TaskSketcherTool_translate", "Clone constraints"));
+
+            setLabel(QApplication::translate("Scale_1", "Select the reference point of the translation."), 6);
+
+            setParameterFocus(0);
+            isWidgetActive = 1;
+            break;
+        }
 
     }
 

@@ -1339,7 +1339,6 @@ public:
     DrawSketchHandlerTranslate(std::vector<int> listOfGeoIds)
         :
         constructionMethod(ConstructionMethod::LinearArray)
-        , snapMode(static_cast<int>(SnapMode::Free))
         , listOfGeoIds(listOfGeoIds)
         , firstTranslationVector(Base::Vector3d(0., 0., 0.))
         , secondTranslationVector(Base::Vector3d(0., 0., 0.))
@@ -1351,26 +1350,14 @@ public:
         {}
     virtual ~DrawSketchHandlerTranslate() = default;
 
-
-    enum class SnapMode {
-        Free,
-        Snap5Degree
-    };
-
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
-        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
-            snapMode = static_cast<int>(SnapMode::Snap5Degree);
-        else
-            snapMode = static_cast<int>(SnapMode::Free);
 
         switch (state()) {
         case SelectMode::SeekFirst:
         {
             referencePoint = onSketchPos;
-            if (snapMode == static_cast<int>(SnapMode::Snap5Degree)) {
-                getSnapPoint(referencePoint);
-            }
+            snapRef = onSketchPos;
             drawPositionAtCursor(onSketchPos);
         }
         break;
@@ -1379,16 +1366,6 @@ private:
             double length = (onSketchPos - referencePoint).Length();
             double angle = (onSketchPos - referencePoint).Angle();
             firstTranslationPoint = onSketchPos;
-
-            if (snapMode == static_cast<int>(SnapMode::Snap5Degree)) {
-                if (getSnapPoint(firstTranslationPoint)) {
-                    angle = (firstTranslationPoint - referencePoint).Angle();
-                }
-                else {
-                    angle = round(angle / (M_PI / 36)) * M_PI / 36;
-                    firstTranslationPoint = referencePoint + length * Base::Vector2d(cos(angle), sin(angle));
-                }
-            }
 
             firstTranslationVector.x = (firstTranslationPoint - referencePoint).x;
             firstTranslationVector.y = (firstTranslationPoint - referencePoint).y;
@@ -1406,16 +1383,6 @@ private:
             double length = (onSketchPos - referencePoint).Length();
             double angle = (onSketchPos - referencePoint).Angle();
             secondTranslationPoint = onSketchPos;
-
-            if (snapMode == static_cast<int>(SnapMode::Snap5Degree)) {
-                if (getSnapPoint(secondTranslationPoint)) {
-                    angle = (secondTranslationPoint - referencePoint).Angle();
-                }
-                else {
-                    angle = round(angle / (M_PI / 36)) * M_PI / 36;
-                    secondTranslationPoint = referencePoint + length * Base::Vector2d(cos(angle), sin(angle));
-                }
-            }
 
             secondTranslationVector.x = (secondTranslationPoint - referencePoint).x;
             secondTranslationVector.y = (secondTranslationPoint - referencePoint).y;
@@ -1470,7 +1437,6 @@ private:
 
 private:
     ConstructionMethod constructionMethod;
-    SnapMode snapMode;
     std::vector<int> listOfGeoIds;
     Base::Vector2d referencePoint, firstTranslationPoint, secondTranslationPoint;
     Base::Vector3d firstTranslationVector, secondTranslationVector;
@@ -1662,28 +1628,6 @@ private:
             sketchgui->getSketchObject()->solve(true);
             sketchgui->draw(false, false); // Redraw
         }
-    }
-
-    bool getSnapPoint(Base::Vector2d& snapPoint) {
-        int pointGeoId = GeoEnum::GeoUndef;
-        Sketcher::PointPos pointPosId = Sketcher::PointPos::none;
-        int VtId = getPreselectPoint();
-        int CrsId = getPreselectCross();
-        if (CrsId == 0) {
-            pointGeoId = Sketcher::GeoEnum::RtPnt;
-            pointPosId = Sketcher::PointPos::start;
-        }
-        else if (VtId >= 0) {
-            sketchgui->getSketchObject()->getGeoVertexIndex(VtId, pointGeoId, pointPosId);
-        }
-        if (pointGeoId != GeoEnum::GeoUndef && pointGeoId < firstCurveCreated) {
-            //don't want to snap to the point of a geometry which is being previewed!
-            auto sk = static_cast<Sketcher::SketchObject*>(sketchgui->getObject());
-            snapPoint.x = sk->getPoint(pointGeoId, pointPosId).x;
-            snapPoint.y = sk->getPoint(pointGeoId, pointPosId).y;
-            return true;
-        }
-        return false;
     }
 
     int indexInVec(std::vector<int> vec, int elem)
@@ -2010,7 +1954,6 @@ class DrawSketchHandlerRotate : public DrawSketchHandlerRotateBase
 
 public:
     DrawSketchHandlerRotate(std::vector<int> listOfGeoIds)
-        : snapMode(static_cast<int>(SnapMode::Free))
         , listOfGeoIds(listOfGeoIds)
         , deleteOriginal(false)
         , cloneConstraints(false)
@@ -2018,25 +1961,13 @@ public:
 
     virtual ~DrawSketchHandlerRotate() = default;
 
-    enum class SnapMode {
-        Free,
-        Snap
-    };
-
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
-        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
-            snapMode = SnapMode::Snap;
-        else
-            snapMode = static_cast<int>(SnapMode::Free);
-
         switch (state()) {
         case SelectMode::SeekFirst:
         {
             centerPoint = onSketchPos;
-            if (snapMode == SnapMode::Snap) {
-                getSnapPoint(centerPoint);
-            }
+            snapRef = onSketchPos;
             drawPositionAtCursor(onSketchPos);
         }
         break;
@@ -2046,16 +1977,6 @@ private:
             startAngle = (onSketchPos - centerPoint).Angle();
 
             startPoint = onSketchPos;
-
-            if (snapMode == SnapMode::Snap) {
-                if (getSnapPoint(startPoint)) {
-                    startAngle = (startPoint - centerPoint).Angle();
-                }
-                else {
-                    startAngle = round(startAngle / (M_PI / 36)) * M_PI / 36;
-                    startPoint = centerPoint + length * Base::Vector2d(cos(startAngle), sin(startAngle));
-                }
-            }
 
             SbString text;
             text.sprintf(" (%.1f, %.1fdeg)", length, startAngle * 180 / M_PI);
@@ -2074,18 +1995,6 @@ private:
             endAngle = (onSketchPos - centerPoint).Angle();
             endpoint = onSketchPos;
 
-            if (snapMode == SnapMode::Snap) {
-                if (getSnapPoint(endpoint)) {
-                    endAngle = (endpoint - centerPoint).Angle();
-                }
-                else {
-                    endAngle = round(endAngle / (M_PI / 36)) * M_PI / 36;
-                    endpoint = centerPoint + length * Base::Vector2d(cos(endAngle), sin(endAngle));
-                }
-            }
-            else {
-                endpoint = centerPoint + length * Base::Vector2d(cos(endAngle), sin(endAngle));
-            }
             double angle1 = atan2(endpoint.y - centerPoint.y,
                 endpoint.x - centerPoint.x) - startAngle;
             double angle2 = angle1 + (angle1 < 0. ? 2 : -2) * M_PI;
@@ -2130,7 +2039,6 @@ private:
     }
 
 private:
-    SnapMode snapMode;
     std::vector<int> listOfGeoIds;
     Base::Vector2d centerPoint, startPoint, endpoint;
 
@@ -2334,28 +2242,6 @@ private:
             sketchgui->getSketchObject()->solve(true);
             sketchgui->draw(false, false); // Redraw
         }
-    }
-
-    bool getSnapPoint(Base::Vector2d& snapPoint) {
-        int pointGeoId = GeoEnum::GeoUndef;
-        Sketcher::PointPos pointPosId = Sketcher::PointPos::none;
-        int VtId = getPreselectPoint();
-        int CrsId = getPreselectCross();
-        if (CrsId == 0) {
-            pointGeoId = Sketcher::GeoEnum::RtPnt;
-            pointPosId = Sketcher::PointPos::start;
-        }
-        else if (VtId >= 0) {
-            sketchgui->getSketchObject()->getGeoVertexIndex(VtId, pointGeoId, pointPosId);
-        }
-        if (pointGeoId != GeoEnum::GeoUndef && pointGeoId < firstCurveCreated) {
-            //don't want to snap to the point of a geometry which is being previewed!
-            auto sk = static_cast<Sketcher::SketchObject*>(sketchgui->getObject());
-            snapPoint.x = sk->getPoint(pointGeoId, pointPosId).x;
-            snapPoint.y = sk->getPoint(pointGeoId, pointPosId).y;
-            return true;
-        }
-        return false;
     }
 
     int indexInVec(std::vector<int> vec, int elem)
@@ -2646,31 +2532,16 @@ class DrawSketchHandlerScale : public DrawSketchHandlerScaleBase
 
 public:
     DrawSketchHandlerScale(std::vector<int> listOfGeoIds)
-        : snapMode(static_cast<int>(SnapMode::Free))
         , listOfGeoIds(listOfGeoIds)
         , deleteOriginal(false) {}
     virtual ~DrawSketchHandlerScale() {}
 
-    enum class SnapMode {
-        Free,
-        Snap,
-        Snap5Degree
-    };
-
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
-        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
-            snapMode = SnapMode::Snap;
-        else
-            snapMode = static_cast<int>(SnapMode::Free);
-
         switch (state()) {
         case SelectMode::SeekFirst:
         {
             referencePoint = onSketchPos;
-            if (snapMode == static_cast<int>(SnapMode::Snap5Degree)) {
-                getSnapPoint(referencePoint);
-            }
             drawPositionAtCursor(onSketchPos);
         }
         break;
@@ -2679,12 +2550,6 @@ private:
             refLength = (onSketchPos - referencePoint).Length();
 
             startPoint = onSketchPos;
-
-            if (snapMode == SnapMode::Snap) {
-                if (getSnapPoint(startPoint)) {
-                    refLength = (startPoint - referencePoint).Length();
-                }
-            }
 
             std::vector<Part::Geometry*> geometriesToAdd;
             Part::GeomLineSegment* line = new Part::GeomLineSegment();
@@ -2702,12 +2567,6 @@ private:
             length = (onSketchPos - referencePoint).Length();
 
             endPoint = onSketchPos;
-
-            if (snapMode == SnapMode::Snap) {
-                if (getSnapPoint(endPoint)) {
-                    length = (endPoint - referencePoint).Length();
-                }
-            }
 
             scaleFactor = length / refLength;
 
@@ -2749,7 +2608,6 @@ private:
     }
 
 private:
-    SnapMode snapMode;
     std::vector<int> listOfGeoIds;
     Base::Vector2d referencePoint, startPoint, endPoint;
     bool deleteOriginal;
@@ -2916,28 +2774,6 @@ private:
 
             Gui::Command::commitCommand();
         }
-    }
-
-    bool getSnapPoint(Base::Vector2d& snapPoint) {
-        int pointGeoId = GeoEnum::GeoUndef;
-        Sketcher::PointPos pointPosId = Sketcher::PointPos::none;
-        int VtId = getPreselectPoint();
-        int CrsId = getPreselectCross();
-        if (CrsId == 0) {
-            pointGeoId = Sketcher::GeoEnum::RtPnt;
-            pointPosId = Sketcher::PointPos::start;
-        }
-        else if (VtId >= 0) {
-            sketchgui->getSketchObject()->getGeoVertexIndex(VtId, pointGeoId, pointPosId);
-        }
-        if (pointGeoId != GeoEnum::GeoUndef && pointGeoId < firstCurveCreated) {
-            //don't want to snap to the point of a geometry which is being previewed!
-            auto sk = static_cast<Sketcher::SketchObject*>(sketchgui->getObject());
-            snapPoint.x = sk->getPoint(pointGeoId, pointPosId).x;
-            snapPoint.y = sk->getPoint(pointGeoId, pointPosId).y;
-            return true;
-        }
-        return false;
     }
 
     int indexInVec(std::vector<int> vec, int elem)
@@ -3202,7 +3038,7 @@ using DrawSketchHandlerOffsetBase = DrawSketchDefaultWidgetHandler< DrawSketchHa
     StateMachines::OneSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
     /*PNumToolwidgetparameters =*/1,
     /*PNumToolwidgetCheckboxes =*/ 2,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -3213,19 +3049,13 @@ class DrawSketchHandlerOffset : public DrawSketchHandlerOffsetBase
 
 public:
     DrawSketchHandlerOffset(std::vector<int> listOfGeoIds)
-        : snapMode(static_cast<int>(SnapMode::Free))
-        , listOfGeoIds(listOfGeoIds)
+        : listOfGeoIds(listOfGeoIds)
         , deleteOriginal(false)
         , offsetLengthSet(false)
         , offsetConstraint(false)
         , offsetLength(1) {}
 
     virtual ~DrawSketchHandlerOffset() = default;
-
-    enum class SnapMode {
-        Free,
-        Snap
-    };
 
     enum class JoinMode {
         Arc,
@@ -3241,18 +3071,10 @@ public:
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
-        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
-            snapMode = SnapMode::Snap;
-        else
-            snapMode = static_cast<int>(SnapMode::Free);
-
         switch (state()) {
         case SelectMode::SeekFirst:
         {
             endpoint = onSketchPos;
-            if (snapMode == SnapMode::Snap) {
-                getSnapPoint(endpoint);
-            }
 
             if (!offsetLengthSet) {
                 findOffsetLength();
@@ -3316,7 +3138,6 @@ private:
         Sketcher::PointPos SecondCoincidenceSecondGeoPos;
     };
 
-    SnapMode snapMode;
     JoinMode joinMode;
     std::vector<int> listOfGeoIds;
     std::vector<int> listOfOffsetGeoIds;

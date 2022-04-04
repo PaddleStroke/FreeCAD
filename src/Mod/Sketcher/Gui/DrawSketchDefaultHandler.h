@@ -193,7 +193,7 @@ public:
                                 , EditCurve(PInitEditCurveSize)
                                 ,sugConstraints(PInitAutoConstraintSize)
                                 ,snapMode(SnapMode::Free)
-                                ,toolSnapMode(PToolSnapMode)
+                                ,toolSnapMode(static_cast<SnapMode>(PToolSnapMode))
                                 ,snapRef(Base::Vector2d(0., 0.))
     {
         applyCursor();

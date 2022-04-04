@@ -233,6 +233,7 @@ using DrawSketchHandlerLineBase = DrawSketchDefaultWidgetHandler<   DrawSketchHa
                                                                     /*SelectModeT*/ StateMachines::TwoSeekEnd,
                                                                     /*PEditCurveSize =*/ 2,
                                                                     /*PAutoConstraintSize =*/ 2,
+                                                                    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
                                                                     /*PNumToolwidgetparameters =*/ 4,
                                                                     /*PNumToolwidgetCheckboxes =*/ 0,
                                                                     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -251,6 +252,7 @@ private:
                 drawPositionAtCursor(onSketchPos);
 
                 EditCurve[0] = onSketchPos;
+                snapRef = onSketchPos;
 
                 if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f,0.f))) {
                     renderSuggestConstraintsCursor(sugConstraints[0]);
@@ -433,6 +435,7 @@ using DrawSketchHandlerRectangleBase = DrawSketchDefaultWidgetHandler<  DrawSket
                                                                         StateMachines::ThreeSeekEnd,
                                                                         /*PEditCurveSize =*/ 5,
                                                                         /*PAutoConstraintSize =*/ 2,
+                                                                        /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
                                                                         /*PNumToolwidgetparameters =*/4,
                                                                         /*PNumToolwidgetCheckboxes =*/ 1,
                                                                         /*PNumToolwidgetComboboxes =*/ 1>;
@@ -1175,6 +1178,7 @@ using DrawSketchHandlerFrameBase = DrawSketchDefaultWidgetHandler<  DrawSketchHa
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 5,
     /*PAutoConstraintSize =*/ 2,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
     /*PNumToolwidgetparameters =*/5,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -1665,6 +1669,7 @@ using DrawSketchHandlerPolygonBase = DrawSketchDefaultWidgetHandler<  DrawSketch
     StateMachines::TwoSeekEnd,
     /*PEditCurveSize =*/ 7,
     /*PAutoConstraintSize =*/ 2,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
     /*PNumToolwidgetparameters =*/5,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -1688,6 +1693,7 @@ private:
         {
             drawPositionAtCursor(onSketchPos);
             centerPoint = onSketchPos;
+            snapRef = onSketchPos;
 
             if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f, 0.f))) {
                 renderSuggestConstraintsCursor(sugConstraints[0]);
@@ -2780,6 +2786,7 @@ using DrawSketchHandlerCircleBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
     /*PNumToolwidgetparameters =*/3,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -3242,6 +3249,7 @@ using DrawSketchHandlerEllipseBase = DrawSketchDefaultWidgetHandler<  DrawSketch
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
     /*PNumToolwidgetparameters =*/5,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -3266,6 +3274,7 @@ private:
         switch (state()) {
         case SelectMode::SeekFirst:
         {
+            snapRef = onSketchPos;
             drawPositionAtCursor(onSketchPos);
             if (constructionMethod == ConstructionMethod::Center) {
                 centerPoint = onSketchPos;
@@ -3898,10 +3907,11 @@ bool CmdSketcherCompCreateCircle::isActive(void)
 /* Arc of Circle tool  =================================================================*/
 class DrawSketchHandlerArc;
 
-using DrawSketchHandlerArcBase = DrawSketchDefaultWidgetHandler<  DrawSketchHandlerArc,
+using DrawSketchHandlerArcBase = DrawSketchDefaultWidgetHandler < DrawSketchHandlerArc,
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
     /*PNumToolwidgetparameters =*/5,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -3916,11 +3926,6 @@ public:
         ThreeRim
     };
 
-    enum SnapMode {
-        Free,
-        Snap5Degree
-    };
-
     DrawSketchHandlerArc(ConstructionMethod constrMethod = ConstructionMethod::Center) :
         constructionMethod(constrMethod)
         , startAngle(0)
@@ -3931,14 +3936,10 @@ public:
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
-        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
-            snapMode = SnapMode::Snap5Degree;
-        else
-            snapMode = SnapMode::Free;
-
         switch (state()) {
         case SelectMode::SeekFirst:
         {
+            snapRef = onSketchPos;
             drawPositionAtCursor(onSketchPos);
             if (constructionMethod == ConstructionMethod::Center) {
                 centerPoint = onSketchPos;
@@ -3960,11 +3961,6 @@ private:
                 double rx = firstPoint.x - centerPoint.x;
                 double ry = firstPoint.y - centerPoint.y;
                 startAngle = atan2(ry, rx);
-
-                if (snapMode == SnapMode::Snap5Degree) {
-                    startAngle = round(startAngle / (M_PI / 36)) * M_PI / 36;
-                    firstPoint = centerPoint + radius * Base::Vector2d(cos(startAngle), sin(startAngle));
-                }
             }
             else {
                 centerPoint = (onSketchPos - firstPoint) / 2 + firstPoint;
@@ -4008,10 +4004,6 @@ private:
                         onSketchPos.x - centerPoint.x) - startAngle;
                     double angle2 = angle1 + (angle1 < 0. ? 2 : -2) * M_PI;
                     arcAngle = abs(angle1 - arcAngle) < abs(angle2 - arcAngle) ? angle1 : angle2;
-
-                    if (snapMode == SnapMode::Snap5Degree) {
-                        arcAngle = round(arcAngle / (M_PI / 36)) * M_PI / 36;
-                    }
 
                     if (arcAngle > 0)
                         endAngle = startAngle + arcAngle;
@@ -4183,7 +4175,6 @@ private:
 
 private:
     ConstructionMethod constructionMethod;
-    SnapMode snapMode;
     Base::Vector2d centerPoint, firstPoint, secondPoint;
     double radius, startAngle, endAngle, arcAngle;
     Sketcher::PointPos arcPos1, arcPos2;
@@ -6302,6 +6293,7 @@ using DrawSketchHandlerPointBase = DrawSketchDefaultWidgetHandler<  DrawSketchHa
     StateMachines::OneSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 1,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
     /*PNumToolwidgetparameters =*/2,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -6549,6 +6541,7 @@ using DrawSketchHandlerFilletBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
     StateMachines::TwoSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::Free),
     /*PNumToolwidgetparameters =*/1,
     /*PNumToolwidgetCheckboxes =*/ 2,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -7525,6 +7518,7 @@ using DrawSketchHandlerInsertBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 2,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
     /*PNumToolwidgetparameters =*/ 3,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -8651,6 +8645,7 @@ using DrawSketchHandlerSlotBase = DrawSketchDefaultWidgetHandler<  DrawSketchHan
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
     /*PNumToolwidgetparameters =*/5,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -8660,30 +8655,21 @@ class DrawSketchHandlerSlot : public DrawSketchHandlerSlotBase
     friend DrawSketchHandlerSlotBase;
 public:
 
-    enum class SnapMode {
-        Free,
-        Snap5Degree
-    };
-
     DrawSketchHandlerSlot() :
         radius(1)
-        , angleIsSet(false), lengthIsSet(false)
         ,isHorizontal(false), isVertical(false) {}
 
     virtual ~DrawSketchHandlerSlot() = default;
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
-        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
-            snapMode = SnapMode::Snap5Degree;
-        else
-            snapMode = SnapMode::Free;
 
         switch (state()) {
         case SelectMode::SeekFirst:
         {
             drawPositionAtCursor(onSketchPos);
             startPoint = onSketchPos;
+            snapRef = onSketchPos;
 
             if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f, 0.f))) {
                 renderSuggestConstraintsCursor(sugConstraints[0]);
@@ -8699,15 +8685,10 @@ private:
             length = (secondPoint - startPoint).Length();
             radius = length / 5; //radius chosen at 1/5 of length
 
-            if (!angleIsSet && snapMode == SnapMode::Snap5Degree) {
-                angle = round(angle / (M_PI / 36)) * M_PI / 36;
-                secondPoint = startPoint + length * Base::Vector2d(cos(angle), sin(angle));
-
-                if (std::fmod(angle, M_PI) < Precision::Confusion())
-                    isHorizontal = true;
-                else if (std::fmod(angle, M_PI / 2) < Precision::Confusion())
-                    isVertical = true;
-            }
+            if (std::fmod(angle, M_PI) < Precision::Confusion())
+                isHorizontal = true;
+            else if (std::fmod(angle, M_PI / 2) < Precision::Confusion())
+                isVertical = true;
 
             drawEdit(createSlotGeometries());
 
@@ -8789,8 +8770,6 @@ private:
 
             tryAutoRecompute(static_cast<Sketcher::SketchObject*>(sketchgui->getObject()));
         }
-        angleIsSet = false;
-        lengthIsSet = false;
     }
 
     virtual void createAutoConstraints() override {
@@ -8821,10 +8800,9 @@ private:
     }
 
 private:
-    SnapMode snapMode;
     Base::Vector2d startPoint, secondPoint;
     double radius, length, angle;
-    bool angleIsSet, lengthIsSet, isHorizontal, isVertical;
+    bool isHorizontal, isVertical;
 
     std::vector<Part::Geometry*> createSlotGeometries() {
         std::vector<Part::Geometry*> geometriesToAdd;
@@ -8880,11 +8858,9 @@ template <> void DrawSketchHandlerSlotBase::ToolWidgetManager::adaptDrawingToPar
         break;
     case WParameter::Third:
         dHandler->length = value;
-        dHandler->lengthIsSet = true;
         break;
     case WParameter::Fourth:
         dHandler->angle = value * M_PI / 180;
-        dHandler->angleIsSet = true;
         break;
     }
 }
@@ -9095,6 +9071,7 @@ using DrawSketchHandlerArcSlotBase = DrawSketchDefaultWidgetHandler<  DrawSketch
     StateMachines::FourSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
     /*PNumToolwidgetparameters =*/6,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -9110,11 +9087,6 @@ public:
         RectangleSlot
     };
 
-    enum class SnapMode {
-        Free,
-        Snap5Degree
-    };
-
     DrawSketchHandlerArcSlot(ConstructionMethod constrMethod = ConstructionMethod::ArcSlot) :
         constructionMethod(constrMethod)
         , startAngle(0)
@@ -9125,10 +9097,6 @@ public:
 
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
-        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
-            snapMode = SnapMode::Snap5Degree;
-        else
-            snapMode = SnapMode::Free;
 
         switch (state()) {
         case SelectMode::SeekFirst:
@@ -9148,11 +9116,6 @@ private:
 
             startAngle = GetPointAngle(centerPoint, startPoint);
             radius = (startPoint - centerPoint).Length();
-
-            if (snapMode == SnapMode::Snap5Degree) {
-                startAngle = round(startAngle / (M_PI / 36)) * M_PI / 36;
-                startPoint = centerPoint + radius * Base::Vector2d(cos(startAngle), sin(startAngle));
-            }
 
             std::vector<Part::Geometry*> geometriesToAdd;
             Part::GeomCircle* circle = new Part::GeomCircle();
@@ -9188,11 +9151,6 @@ private:
                 onSketchPos.x - centerPoint.x) - startAngle;
             double angle2 = angle1 + (angle1 < 0. ? 2 : -2) * M_PI;
             arcAngle = abs(angle1 - arcAngle) < abs(angle2 - arcAngle) ? angle1 : angle2;
-
-            if (snapMode == SnapMode::Snap5Degree) {
-                arcAngle = round(arcAngle / (M_PI / 36)) * M_PI / 36;
-                endPoint = centerPoint + radius * Base::Vector2d(cos(startAngle + arcAngle), sin(startAngle + arcAngle));
-            }
 
             bool angleReversed = false;
             if (arcAngle > 0)
@@ -9502,7 +9460,6 @@ private:
 
 private:
     ConstructionMethod constructionMethod;
-    SnapMode snapMode;
     Base::Vector2d centerPoint, startPoint, endPoint;
     double startAngle, endAngle, arcAngle, r, radius;
 };

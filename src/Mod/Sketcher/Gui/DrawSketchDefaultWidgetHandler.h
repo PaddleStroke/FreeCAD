@@ -96,12 +96,13 @@ template< typename HandlerT,          // The geometry tool for which the templat
           typename SelectModeT,         // The state machine defining the states that the handle iterates
           int PEditCurveSize,           // The initial size of the EditCurve
           int PAutoConstraintSize,      // The initial size of the AutoConstraint
+          int PToolSnapMode,        //The snap mode used by the tool by default when snapping.
           int PNumToolwidgetparameters, // The number of parameter spinboxes in the default widget
           int PNumToolwidgetCheckboxes, // The number of checkboxes in the default widget
           int PNumToolwidgetComboboxes > // The number of comboboxes in the default widget
-class DrawSketchDefaultWidgetHandler: public DrawSketchDefaultHandler<HandlerT, SelectModeT, PEditCurveSize, PAutoConstraintSize>
+class DrawSketchDefaultWidgetHandler: public DrawSketchDefaultHandler<HandlerT, SelectModeT, PEditCurveSize, PAutoConstraintSize, PToolSnapMode>
 {
-    using DSDefaultHandler = DrawSketchDefaultHandler<HandlerT, SelectModeT, PEditCurveSize, PAutoConstraintSize>;
+    using DSDefaultHandler = DrawSketchDefaultHandler<HandlerT, SelectModeT, PEditCurveSize, PAutoConstraintSize, PToolSnapMode>;
 
 private:
     class ToolWidgetManager {

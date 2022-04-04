@@ -184,13 +184,17 @@ private:
 template < typename HandlerT,         // The geometry tool for which the template is created (See GeometryTools above)
            typename SelectModeT,        // The state machine defining the states that the handle iterates
            int PInitEditCurveSize,      // The initial size of the EditCurve
-           int PInitAutoConstraintSize> // The initial size of the AutoConstraint>
+           int PInitAutoConstraintSize, // The initial size of the AutoConstraint>
+           int PToolSnapMode>       //The snap mode used by the tool by default when snapping.
 class DrawSketchDefaultHandler: public DrawSketchHandler, public StateMachine<SelectModeT>
 {
 public:
     DrawSketchDefaultHandler():   initialEditCurveSize(PInitEditCurveSize)
                                 , EditCurve(PInitEditCurveSize)
                                 ,sugConstraints(PInitAutoConstraintSize)
+                                ,snapMode(SnapMode::Free)
+                                ,toolSnapMode(PToolSnapMode)
+                                ,snapRef(Base::Vector2d(0., 0.))
     {
         applyCursor();
     }
@@ -204,6 +208,15 @@ public:
     //@{
     virtual void mouseMove(Base::Vector2d onSketchPos) override
     {
+        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+            snapMode = toolSnapMode;
+        else
+            snapMode = SnapMode::Free;
+        if (snapMode == SnapMode::SnapToObject)
+            getSnapPosition(onSketchPos);
+        if (snapMode == SnapMode::Snap5Degree)
+            getSnapPosition(onSketchPos, snapRef);
+
         updateDataAndDrawToPosition(onSketchPos);
     }
 
@@ -221,16 +234,16 @@ public:
     }
     //@}
 
-    bool getSnapPosition(SnapMod snapMod, Base::Vector2d& pointToOverride, Base::Vector2d referencePoint = Base::Vector2d(0., 0.)) {
+    bool getSnapPosition(Base::Vector2d& pointToOverride, Base::Vector2d referencePoint = Base::Vector2d(0., 0.)) {
         //Snap to grid should probably be a toggle button. I would say in taskview near 'show grid' and 'grid size' we could add a checkbox 'Snap to grid'.
         //Then the snap mod should be set here to SnapToGrid by looking at the pref.
 
-        if (snapMod == SnapMod::Free)
+        if (snapMode == SnapMode::Free)
             return false;
-        else if (snapMod == SnapMod::SnapToObject || snapMod == SnapMod::Snap5Degree || snapMod == SnapMod::SnapToGrid) {
+        if (snapMode == SnapMode::SnapToObject || snapMode == SnapMode::Snap5Degree || snapMode == SnapMode::SnapToGrid) {
             //If we are using Snap5Degree or SnapToGrid we still want to snap to object if there is an object preselected. They are kind of a sub-type of SnapToObject.
             Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
-            int geoId = GeoEnum::GeoUndef;
+            int geoId = -2000; //GeoEnum::GeoUndef doesnt work?
             Sketcher::PointPos posId = Sketcher::PointPos::none;
 
             int VtId = getPreselectPoint();
@@ -246,11 +259,9 @@ public:
                     Obj->getGeoVertexIndex(VtId, geoId, posId);
                 }
 
-                if (geoId != GeoEnum::GeoUndef) {
-                    pointToOverride.x = Obj->getPoint(geoId, posId).x;
-                    pointToOverride.y = Obj->getPoint(geoId, posId).y;
-                    return true;
-                }
+                pointToOverride.x = Obj->getPoint(geoId, posId).x;
+                pointToOverride.y = Obj->getPoint(geoId, posId).y;
+                return true;
             }
             else if (CrsId == 1) { //H_Axis
                 pointToOverride.y = 0;
@@ -265,7 +276,7 @@ public:
                 //Todo: find a way to snap to infinite line (if line is in view). Currently it's not possible because infinite line doesn't get preselected.
                 //Todo: find how to project point on ellipse/parabola/hyperbola...
                 if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
-                    Part::GeomLineSegment* line = static_cast<Part::GeomLineSegment*>(geo);
+                    const Part::GeomLineSegment* line = static_cast<const Part::GeomLineSegment*>(geo);
                     Base::Vector2d startPoint = Base::Vector2d(line->getStartPoint().x, line->getStartPoint().y);
                     Base::Vector2d endPoint = Base::Vector2d(line->getEndPoint().x, line->getEndPoint().y);
                     pointToOverride.ProjectToLine(pointToOverride - startPoint, endPoint - startPoint);
@@ -273,7 +284,7 @@ public:
                     return true;
                 }
                 else if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
-                    Part::GeomCircle* circle = static_cast<Part::GeomCircle*>(geo);
+                    const Part::GeomCircle* circle = static_cast<const Part::GeomCircle*>(geo);
                     Base::Vector2d centerPoint = Base::Vector2d(circle->getCenter().x, circle->getCenter().y);
 
                     Base::Vector2d v = pointToOverride - centerPoint;
@@ -281,7 +292,7 @@ public:
                     return true;
                 }
                 else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
-                    Part::GeomArcOfCircle* circle = static_cast<Part::GeomArcOfCircle*>(geo);
+                    const Part::GeomArcOfCircle* circle = static_cast<const Part::GeomArcOfCircle*>(geo);
                     Base::Vector2d centerPoint = Base::Vector2d(circle->getCenter().x, circle->getCenter().y);
 
                     Base::Vector2d v = pointToOverride - centerPoint;
@@ -295,14 +306,14 @@ public:
                 else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {}
             }
         }
-        else if (snapMod == SnapMod::Snap5Degree) {
+        if (snapMode == SnapMode::Snap5Degree) {
             double length = (pointToOverride - referencePoint).Length();
             double angle = (pointToOverride - referencePoint).Angle();
             angle = round(angle / (M_PI / 36)) * M_PI / 36;
             pointToOverride = referencePoint + length * Base::Vector2d(cos(angle), sin(angle));
             return true;
         }
-        else if (snapMod == SnapMod::SnapToGrid) {
+        if (snapMode == SnapMode::SnapToGrid) {
             double gridSize = sketchgui->GridSize.getValue();
             int nx = floor(pointToOverride.x / gridSize);
             int ny = floor(pointToOverride.y / gridSize);
@@ -450,6 +461,10 @@ protected:
 
     bool avoidRedundants;
     bool continuousMode;
+
+    SnapMode snapMode;
+    SnapeMode toolSnapMode;
+    Base::Vector2d snapRef;
 };
 
 } // namespace SketcherGui

@@ -1076,6 +1076,7 @@ using DrawSketchHandlerSymmetryBase = DrawSketchDefaultWidgetHandler< DrawSketch
     StateMachines::OneSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::Free),
     /*PNumToolwidgetparameters =*/0,
     /*PNumToolwidgetCheckboxes =*/ 2,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -1370,7 +1371,7 @@ public:
                           Sketcher::PointPos originpos, int nelements,
                           SketcherCopy::Op op)
     : Mode(STATUS_SEEK_First)
-    , snapMode(SnapMode::Free)
+    , snapMode(static_cast<int>(SnapMode::Free))
     , geoIdList(geoidlist)
     , Origin()
     , OriginGeoId(origingeoid)
@@ -1398,16 +1399,16 @@ public:
         if (Mode == STATUS_SEEK_First) {
 
              if(QApplication::keyboardModifiers() == Qt::ControlModifier)
-                    snapMode = SnapMode::Snap5Degree;
+                    snapMode = static_cast<int>(SnapMode::Snap5Degree);
                 else
-                    snapMode = SnapMode::Free;
+                    snapMode = static_cast<int>(SnapMode::Free);
 
             float length = (onSketchPos - EditCurve[0]).Length();
             float angle = (onSketchPos - EditCurve[0]).Angle();
 
             Base::Vector2d endpoint = onSketchPos;
 
-            if (snapMode == SnapMode::Snap5Degree) {
+            if (snapMode == static_cast<int>(SnapMode::Snap5Degree)) {
                 angle = round(angle / (M_PI/36)) * M_PI/36;
                 endpoint = EditCurve[0] + length * Base::Vector2d(cos(angle),sin(angle));
             }
@@ -1916,7 +1917,7 @@ public:
                                       int rows, int cols, bool constraintSeparation,
                                       bool equalVerticalHorizontalSpacing)
         : Mode(STATUS_SEEK_First)
-        , snapMode(SnapMode::Free)
+        , snapMode(static_cast<int>(SnapMode::Free))
         , geoIdList(geoidlist)
         , OriginGeoId(origingeoid)
         , OriginPos(originpos)
@@ -1947,16 +1948,16 @@ public:
         if (Mode==STATUS_SEEK_First) {
 
             if(QApplication::keyboardModifiers() == Qt::ControlModifier)
-                    snapMode = SnapMode::Snap5Degree;
+                    snapMode = static_cast<int>(SnapMode::Snap5Degree);
                 else
-                    snapMode = SnapMode::Free;
+                    snapMode = static_cast<int>(SnapMode::Free);
 
             float length = (onSketchPos - EditCurve[0]).Length();
             float angle = (onSketchPos - EditCurve[0]).Angle();
 
             Base::Vector2d endpoint = onSketchPos;
 
-            if (snapMode == SnapMode::Snap5Degree) {
+            if (snapMode == static_cast<int>(SnapMode::Snap5Degree)) {
                 angle = round(angle / (M_PI/36)) * M_PI/36;
                 endpoint = EditCurve[0] + length * Base::Vector2d(cos(angle),sin(angle));
             }
@@ -2199,6 +2200,7 @@ using DrawSketchHandlerTranslateBase = DrawSketchDefaultWidgetHandler< DrawSketc
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
     /*PNumToolwidgetparameters =*/6,
     /*PNumToolwidgetCheckboxes =*/ 1,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -2216,7 +2218,7 @@ public:
     DrawSketchHandlerTranslate(std::vector<int> listOfGeoIds)
         :
         constructionMethod(ConstructionMethod::LinearArray)
-        , snapMode(SnapMode::Free)
+        , snapMode(static_cast<int>(SnapMode::Free))
         , listOfGeoIds(listOfGeoIds)
         , firstTranslationVector(Base::Vector3d(0., 0., 0.))
         , secondTranslationVector(Base::Vector3d(0., 0., 0.))
@@ -2237,15 +2239,15 @@ public:
 private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
         if (QApplication::keyboardModifiers() == Qt::ControlModifier)
-            snapMode = SnapMode::Snap5Degree;
+            snapMode = static_cast<int>(SnapMode::Snap5Degree);
         else
-            snapMode = SnapMode::Free;
+            snapMode = static_cast<int>(SnapMode::Free);
 
         switch (state()) {
         case SelectMode::SeekFirst:
         {
             referencePoint = onSketchPos;
-            if (snapMode == SnapMode::Snap5Degree) {
+            if (snapMode == static_cast<int>(SnapMode::Snap5Degree)) {
                 getSnapPoint(referencePoint);
             }
             drawPositionAtCursor(onSketchPos);
@@ -2257,7 +2259,7 @@ private:
             double angle = (onSketchPos - referencePoint).Angle();
             firstTranslationPoint = onSketchPos;
 
-            if (snapMode == SnapMode::Snap5Degree) {
+            if (snapMode == static_cast<int>(SnapMode::Snap5Degree)) {
                 if (getSnapPoint(firstTranslationPoint)) {
                     angle = (firstTranslationPoint - referencePoint).Angle();
                 }
@@ -2284,7 +2286,7 @@ private:
             double angle = (onSketchPos - referencePoint).Angle();
             secondTranslationPoint = onSketchPos;
 
-            if (snapMode == SnapMode::Snap5Degree) {
+            if (snapMode == static_cast<int>(SnapMode::Snap5Degree)) {
                 if (getSnapPoint(secondTranslationPoint)) {
                     angle = (secondTranslationPoint - referencePoint).Angle();
                 }
@@ -2876,6 +2878,7 @@ using DrawSketchHandlerRotateBase = DrawSketchDefaultWidgetHandler< DrawSketchHa
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
     /*PNumToolwidgetparameters =*/4,
     /*PNumToolwidgetCheckboxes =*/ 1,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -2886,7 +2889,7 @@ class DrawSketchHandlerRotate : public DrawSketchHandlerRotateBase
 
 public:
     DrawSketchHandlerRotate(std::vector<int> listOfGeoIds)
-        : snapMode(SnapMode::Free)
+        : snapMode(static_cast<int>(SnapMode::Free))
         , listOfGeoIds(listOfGeoIds)
         , deleteOriginal(false)
         , cloneConstraints(false)
@@ -2904,7 +2907,7 @@ private:
         if (QApplication::keyboardModifiers() == Qt::ControlModifier)
             snapMode = SnapMode::Snap;
         else
-            snapMode = SnapMode::Free;
+            snapMode = static_cast<int>(SnapMode::Free);
 
         switch (state()) {
         case SelectMode::SeekFirst:
@@ -3511,6 +3514,7 @@ using DrawSketchHandlerScaleBase = DrawSketchDefaultWidgetHandler< DrawSketchHan
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
     /*PNumToolwidgetparameters =*/3,
     /*PNumToolwidgetCheckboxes =*/ 1,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -3521,7 +3525,7 @@ class DrawSketchHandlerScale : public DrawSketchHandlerScaleBase
 
 public:
     DrawSketchHandlerScale(std::vector<int> listOfGeoIds)
-        : snapMode(SnapMode::Free)
+        : snapMode(static_cast<int>(SnapMode::Free))
         , listOfGeoIds(listOfGeoIds)
         , deleteOriginal(false) {}
     virtual ~DrawSketchHandlerScale() {}
@@ -3537,13 +3541,13 @@ private:
         if (QApplication::keyboardModifiers() == Qt::ControlModifier)
             snapMode = SnapMode::Snap;
         else
-            snapMode = SnapMode::Free;
+            snapMode = static_cast<int>(SnapMode::Free);
 
         switch (state()) {
         case SelectMode::SeekFirst:
         {
             referencePoint = onSketchPos;
-            if (snapMode == SnapMode::Snap5Degree) {
+            if (snapMode == static_cast<int>(SnapMode::Snap5Degree)) {
                 getSnapPoint(referencePoint);
             }
             drawPositionAtCursor(onSketchPos);
@@ -4077,6 +4081,7 @@ using DrawSketchHandlerOffsetBase = DrawSketchDefaultWidgetHandler< DrawSketchHa
     StateMachines::OneSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
+    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
     /*PNumToolwidgetparameters =*/1,
     /*PNumToolwidgetCheckboxes =*/ 2,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -4087,7 +4092,7 @@ class DrawSketchHandlerOffset : public DrawSketchHandlerOffsetBase
 
 public:
     DrawSketchHandlerOffset(std::vector<int> listOfGeoIds)
-        : snapMode(SnapMode::Free)
+        : snapMode(static_cast<int>(SnapMode::Free))
         , listOfGeoIds(listOfGeoIds)
         , deleteOriginal(false)
         , offsetLengthSet(false)
@@ -4118,7 +4123,7 @@ private:
         if (QApplication::keyboardModifiers() == Qt::ControlModifier)
             snapMode = SnapMode::Snap;
         else
-            snapMode = SnapMode::Free;
+            snapMode = static_cast<int>(SnapMode::Free);
 
         switch (state()) {
         case SelectMode::SeekFirst:

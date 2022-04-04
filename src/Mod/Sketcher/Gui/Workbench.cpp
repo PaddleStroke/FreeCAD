@@ -358,10 +358,6 @@ inline void SketcherAddWorkbenchTools<Gui::MenuItem>(Gui::MenuItem& consaccel)
                 << "Sketcher_SelectHorizontalAxis"
                 << "Separator"
                 << "Sketcher_Symmetry"
-                << "Sketcher_Clone"
-                << "Sketcher_Copy"
-                << "Sketcher_Move"
-                << "Sketcher_RectangularArray"
                 << "Sketcher_RemoveAxesAlignment"
                 << "Separator"
                 << "Sketcher_DeleteAllGeometry"
@@ -384,8 +380,6 @@ inline void SketcherAddWorkbenchTools<Gui::ToolBarItem>(Gui::ToolBarItem& consac
                 << "Sketcher_Scale"
                 << "Sketcher_Offset"
                 << "Sketcher_Symmetry"
-                << "Sketcher_CompCopy"
-                << "Sketcher_RectangularArray"
                 << "Sketcher_RemoveAxesAlignment"
                 << "Sketcher_DeleteAllConstraints";
 }

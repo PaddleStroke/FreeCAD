@@ -1068,7 +1068,176 @@ bool CmdSketcherRestoreInternalAlignmentGeometry::isActive(void)
     return isSketcherAcceleratorActive(getActiveGuiDocument(), true);
 }
 
-// ================================================================================
+// Symmetry tool =====================================================================
+
+class DrawSketchHandlerSymmetry;
+
+using DrawSketchHandlerSymmetryBase = DrawSketchDefaultWidgetHandler< DrawSketchHandlerSymmetry,
+    StateMachines::OneSeekEnd,
+    /*PEditCurveSize =*/ 0,
+    /*PAutoConstraintSize =*/ 0,
+    /*PNumToolwidgetparameters =*/0,
+    /*PNumToolwidgetCheckboxes =*/ 2,
+    /*PNumToolwidgetComboboxes =*/ 0>;
+
+class DrawSketchHandlerSymmetry : public DrawSketchHandlerSymmetryBase
+{
+public:
+    DrawSketchHandlerSymmetry(std::vector<int> listOfGeoIds)
+        : deleteOriginal(false)
+        , symmetricConstraints(true)
+        , geoId(GeoEnum::GeoUndef)
+        , posId(Sketcher::PointPos::none)
+        , listOfGeoIds(listOfGeoIds) {}
+    virtual ~DrawSketchHandlerSymmetry() {}
+
+private:
+    virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override {
+        switch (state()) {
+        case SelectMode::SeekFirst:
+        {
+            drawPositionAtCursor(onSketchPos);
+
+            Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+            geoId = GeoEnum::GeoUndef;
+            posId = Sketcher::PointPos::none;
+
+            int VtId = getPreselectPoint();
+            int CrsId = getPreselectCross();
+            int CrvId = getPreselectCurve();
+
+            if (CrsId == 0 || VtId >= 0) {
+                if (CrsId == 0) {
+                    geoId = Sketcher::GeoEnum::RtPnt;
+                    posId = Sketcher::PointPos::start;
+                }
+                else if (VtId >= 0) {
+                    Obj->getGeoVertexIndex(VtId, geoId, posId);
+                }
+            }
+            else if (CrsId == 1) { //H_Axis
+                geoId = Sketcher::GeoEnum::HAxis;
+                posId = Sketcher::PointPos::none;
+            }
+            else if (CrsId == 2) { //V_Axis
+                geoId = Sketcher::GeoEnum::VAxis;
+                posId = Sketcher::PointPos::none;
+            }
+            else if (CrvId >= 0 || CrvId <= Sketcher::GeoEnum::RefExt) { //Curves
+                const Part::Geometry* geo = Obj->getGeometry(CrvId);
+
+                if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                    geoId = CrvId;
+                    posId = Sketcher::PointPos::none;
+                }
+                else
+                    return;
+            }
+            else
+                return;
+
+            drawEdit(Obj->getSymmetricGeos(listOfGeoIds, geoId, posId));
+        }
+        break;
+        default:
+            break;
+        }
+    }
+
+    virtual void executeCommands() override {
+        std::stringstream stream;
+
+        stream << "[";
+        for (size_t i = 0; i < listOfGeoIds.size() - 1; ++i) {
+            stream << listOfGeoIds[i] << ",";
+        }
+        stream << listOfGeoIds[listOfGeoIds.size() - 1] << "]";
+
+        Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Create symmetric geometry"));
+
+        try {
+            Gui::cmdAppObjectArgs(sketchgui->getSketchObject(),
+                "addSymmetric(%s, %d, %d)",
+                stream.str().c_str(), geoId, static_cast<int>(posId));
+            Gui::Command::commitCommand();
+        }
+        catch (const Base::Exception& e) {
+            Base::Console().Error("%s\n", e.what());
+            Gui::Command::abortCommand();
+        }
+
+        sketchgui->purgeHandler();
+    }
+
+    virtual void createAutoConstraints() override {
+        //none
+    }
+
+    virtual std::string getToolName() const override {
+        return "DSH_Symmetry";
+    }
+
+    virtual QString getCrosshairCursorString() const override {
+        return QString::fromLatin1("Sketcher_Symmetry");
+    }
+
+public:
+    std::vector<int> listOfGeoIds;
+    bool deleteOriginal, symmetricConstraints;
+    int geoId;
+    Sketcher::PointPos posId;
+};
+
+template <> void DrawSketchHandlerSymmetryBase::ToolWidgetManager::configureToolWidget() {
+    auto dHandler = static_cast<DrawSketchHandlerSymmetry*>(handler);
+    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_symmetry", "Delete original geometries"));
+    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c2_symmetry", "Symmetric constraints"));
+
+    toolWidget->setNoticeVisible(true);
+    toolWidget->setNoticeText(QApplication::translate("Symmetry_1", "Select the line of the symmetry."));
+}
+
+template <> void DrawSketchHandlerSymmetryBase::ToolWidgetManager::adaptDrawingToParameterChange(int parameterindex, double value) {
+    //none
+}
+
+template <> void DrawSketchHandlerSymmetryBase::ToolWidgetManager::onHandlerModeChanged() {
+    //none
+}
+
+template <> void DrawSketchHandlerSymmetryBase::ToolWidgetManager::adaptDrawingToCheckboxChange(int checkboxindex, bool value) {
+    auto dHandler = static_cast<DrawSketchHandlerSymmetry*>(handler);
+    switch (checkboxindex) {
+    case WCheckbox::FirstBox:
+        dHandler->deleteOriginal = value;
+        break;
+    case WCheckbox::SecondBox:
+        //dHandler->cloneConstraints = value;
+        break;
+    default:
+        break;
+    }
+
+    handler->updateDataAndDrawToPosition(prevCursorPosition);
+    onHandlerModeChanged(); //re-focus/select spinbox
+}
+
+template <> void DrawSketchHandlerSymmetryBase::ToolWidgetManager::doEnforceWidgetParameters(Base::Vector2d& onSketchPos) {
+    //none
+    prevCursorPosition = onSketchPos;
+}
+
+template <> void DrawSketchHandlerSymmetryBase::ToolWidgetManager::updateVisualValues(Base::Vector2d onSketchPos) {
+    //none
+}
+
+template <> void DrawSketchHandlerSymmetryBase::ToolWidgetManager::doChangeDrawSketchHandlerMode() {
+    //none
+}
+
+template <> void DrawSketchHandlerSymmetryBase::ToolWidgetManager::addConstraints() {
+    //none
+}
 
 DEF_STD_CMD_A(CmdSketcherSymmetry)
 
@@ -1089,10 +1258,7 @@ CmdSketcherSymmetry::CmdSketcherSymmetry()
 void CmdSketcherSymmetry::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
-
-    // Cancel any in-progress operation
-    Gui::Document* doc = Gui::Application::Instance->activeDocument();
-    SketcherGui::ReleaseHandler(doc);
+    std::vector<int> listOfGeoIds = {};
 
     // get the selection
     std::vector<Gui::SelectionObject> selection;
@@ -1100,169 +1266,43 @@ void CmdSketcherSymmetry::activated(int iMsg)
 
     // only one sketch with its subelements are allowed to be selected
     if (selection.size() != 1) {
-        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
+        QMessageBox::warning(Gui::getMainWindow(),
+            QObject::tr("Wrong selection"),
             QObject::tr("Select elements from a single sketch."));
         return;
     }
 
     // get the needed lists and objects
-    const std::vector<std::string> &SubNames = selection[0].getSubNames();
-    if (SubNames.empty()) {
-        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
-            QObject::tr("Select elements from a single sketch."));
-        return;
-    }
+    const std::vector<std::string>& SubNames = selection[0].getSubNames();
+    if (!SubNames.empty()) {
+        Sketcher::SketchObject* Obj = static_cast<Sketcher::SketchObject*>(selection[0].getObject());
 
-    Sketcher::SketchObject* Obj = static_cast<Sketcher::SketchObject*>(selection[0].getObject());
-    getSelection().clearSelection();
-
-    int LastGeoId = 0;
-    Sketcher::PointPos LastPointPos = Sketcher::PointPos::none;
-    const Part::Geometry *LastGeo;
-    typedef enum { invalid = -1, line = 0, point = 1 } GeoType;
-
-    GeoType lastgeotype = invalid;
-
-    // create python command with list of elements
-    std::stringstream stream;
-    int geoids = 0;
-
-    for (std::vector<std::string>::const_iterator it=SubNames.begin(); it != SubNames.end(); ++it) {
-        // only handle non-external edges
-        if ((it->size() > 4 && it->substr(0,4) == "Edge") ||
-            (it->size() > 12 && it->substr(0,12) == "ExternalEdge")) {
-
-            if (it->substr(0,4) == "Edge") {
-                LastGeoId = std::atoi(it->substr(4,4000).c_str()) - 1;
-                LastPointPos = Sketcher::PointPos::none;
+        for (std::vector<std::string>::const_iterator it = SubNames.begin(); it != SubNames.end(); ++it) {
+            // only handle non-external edges
+            if (it->size() > 4 && it->substr(0, 4) == "Edge") {
+                int geoId = std::atoi(it->substr(4, 4000).c_str()) - 1;
+                if (geoId >= 0) {
+                    listOfGeoIds.push_back(geoId);
+                }
             }
-            else {
-                LastGeoId = -std::atoi(it->substr(12,4000).c_str()) - 2;
-                LastPointPos = Sketcher::PointPos::none;
-            }
-
-            // reference can be external or non-external
-            LastGeo = Obj->getGeometry(LastGeoId);
-            // Only for supported types
-            if (LastGeo->getTypeId() == Part::GeomLineSegment::getClassTypeId())
-                lastgeotype = line;
-            else
-                lastgeotype = invalid;
-
-            // lines to make symmetric (only non-external)
-            if (LastGeoId >= 0) {
-                geoids++;
-                stream << LastGeoId << ",";
-            }
-        }
-        else if (it->size() > 6 && it->substr(0,6) == "Vertex") {
-            // only if it is a GeomPoint
-            int VtId = std::atoi(it->substr(6,4000).c_str()) - 1;
-            int GeoId;
-            Sketcher::PointPos PosId;
-            Obj->getGeoVertexIndex(VtId, GeoId, PosId);
-
-            if (Obj->getGeometry(GeoId)->getTypeId() == Part::GeomPoint::getClassTypeId()) {
-                LastGeoId = GeoId;
-                LastPointPos = Sketcher::PointPos::start;
-                lastgeotype = point;
-
-                // points to make symmetric
-                if (LastGeoId >= 0) {
-                    geoids++;
-                    stream << LastGeoId << ",";
+            else if (it->size() > 6 && it->substr(0, 6) == "Vertex") {
+                // only if it is a GeomPoint
+                int VtId = std::atoi(it->substr(6, 4000).c_str()) - 1;
+                int geoId;
+                Sketcher::PointPos PosId;
+                Obj->getGeoVertexIndex(VtId, geoId, PosId);
+                if (Obj->getGeometry(geoId)->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+                    if (geoId >= 0) {
+                        listOfGeoIds.push_back(geoId);
+                    }
                 }
             }
         }
     }
 
-    bool lastvertexoraxis = false;
-    // check if last selected element is a Vertex, not being a GeomPoint
-    if (SubNames.rbegin()->size() > 6 && SubNames.rbegin()->substr(0,6) == "Vertex") {
-        int VtId = std::atoi(SubNames.rbegin()->substr(6,4000).c_str()) - 1;
-        int GeoId;
-        Sketcher::PointPos PosId;
-        Obj->getGeoVertexIndex(VtId, GeoId, PosId);
-        if (Obj->getGeometry(GeoId)->getTypeId() != Part::GeomPoint::getClassTypeId()) {
-            LastGeoId = GeoId;
-            LastPointPos = PosId;
-            lastgeotype = point;
-            lastvertexoraxis = true;
-        }
-    }
-    // check if last selected element is horizontal axis
-    else if (SubNames.rbegin()->size() == 6 && SubNames.rbegin()->substr(0,6) == "H_Axis") {
-        LastGeoId = Sketcher::GeoEnum::HAxis;
-        LastPointPos = Sketcher::PointPos::none;
-        lastgeotype = line;
-        lastvertexoraxis = true;
-    }
-    // check if last selected element is vertical axis
-    else if (SubNames.rbegin()->size() == 6 && SubNames.rbegin()->substr(0,6) == "V_Axis") {
-        LastGeoId = Sketcher::GeoEnum::VAxis;
-        LastPointPos = Sketcher::PointPos::none;
-        lastgeotype = line;
-        lastvertexoraxis = true;
-    }
-    // check if last selected element is the root point
-    else if (SubNames.rbegin()->size() == 9 && SubNames.rbegin()->substr(0,9) == "RootPoint") {
-        LastGeoId = Sketcher::GeoEnum::RtPnt;
-        LastPointPos = Sketcher::PointPos::start;
-        lastgeotype = point;
-        lastvertexoraxis = true;
-    }
+    getSelection().clearSelection();
 
-    if (geoids == 0 || (geoids == 1 && LastGeoId >= 0 && !lastvertexoraxis)) {
-        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
-            QObject::tr("A symmetric construction requires "
-                        "at least two geometric elements, "
-                        "the last geometric element being the reference "
-                        "for the symmetry construction."));
-        return;
-    }
-
-    if (lastgeotype == invalid) {
-        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
-            QObject::tr("The last element must be a point "
-                        "or a line serving as reference "
-                        "for the symmetry construction."));
-        return;
-    }
-
-    std::string geoIdList = stream.str();
-
-    // missing cases:
-    // 1- Last element is an edge, and is V or H axis
-    // 2- Last element is a point GeomPoint
-    // 3- Last element is a point (Vertex)
-
-    if (LastGeoId >= 0 && !lastvertexoraxis) {
-        // if LastGeoId was added remove the last element
-        int index = geoIdList.rfind(',');
-        index = geoIdList.rfind(',', index-1);
-        geoIdList.resize(index);
-    }
-    else {
-        int index = geoIdList.rfind(',');
-        geoIdList.resize(index);
-    }
-
-    geoIdList.insert(0, 1, '[');
-    geoIdList.append(1, ']');
-
-    Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Create symmetric geometry"));
-
-    try{
-        Gui::cmdAppObjectArgs(Obj,
-                              "addSymmetric(%s, %d, %d)",
-                              geoIdList.c_str(), LastGeoId, static_cast<int>(LastPointPos));
-        Gui::Command::commitCommand();
-    }
-    catch (const Base::Exception& e) {
-        Base::Console().Error("%s\n", e.what());
-        Gui::Command::abortCommand();
-    }
-    tryAutoRecomputeIfNotSolve(Obj);
+    ActivateAcceleratorHandler(getActiveGuiDocument(), new DrawSketchHandlerSymmetry(listOfGeoIds));
 }
 
 bool CmdSketcherSymmetry::isActive(void)

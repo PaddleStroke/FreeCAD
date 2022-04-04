@@ -293,6 +293,7 @@ public:
 
     /// adds symmetric geometric elements with respect to the refGeoId (line or point)
     int addSymmetric(const std::vector<int> &geoIdList, int refGeoId, Sketcher::PointPos refPosId=Sketcher::PointPos::none);
+    std::vector<Part::Geometry*> getSymmetricGeos(const std::vector<int>& geoIdList, int refGeoId, Sketcher::PointPos refPosId = Sketcher::PointPos::none, std::map<int, int>& geoIdMap = std::map<int, int>(), std::map<int, bool>& isStartEndInverted = std::map<int, bool>());
     /// with default parameters adds a copy of the geometric elements displaced by the displacement vector.
     /// It creates an array of csize elements in the direction of the displacement vector by rsize elements in the
     /// direction perpendicular to the displacement vector, wherein the modulus of this perpendicular vector is scaled by perpscale.

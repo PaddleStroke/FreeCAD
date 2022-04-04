@@ -3625,8 +3625,6 @@ int SketchObject::addSymmetric(const std::vector<int> &geoIdList, int refGeoId, 
 
     newgeoVals.reserve(geovals.size()+geoIdList.size());
 
-    int cgeoid = getHighestCurveIndex()+1;
-
     std::map<int, int> geoIdMap;
     std::map<int, bool> isStartEndInverted;
 
@@ -3642,466 +3640,12 @@ int SketchObject::addSymmetric(const std::vector<int> &geoIdList, int refGeoId, 
                 refIsAxisAligned = true;
         }
     }
-
-    // reference is a line
-    if(refPosId == Sketcher::PointPos::none) {
-        const Part::Geometry *georef = getGeometry(refGeoId);
-        if(georef->getTypeId() != Part::GeomLineSegment::getClassTypeId()) {
-            Base::Console().Error("Reference for symmetric is neither a point nor a line.\n");
-            return -1;
-        }
-
-        const Part::GeomLineSegment *refGeoLine = static_cast<const Part::GeomLineSegment *>(georef);
-        //line
-        Base::Vector3d refstart = refGeoLine->getStartPoint();
-        Base::Vector3d vectline = refGeoLine->getEndPoint()-refstart;
-
-        for (std::vector<int>::const_iterator it = geoIdList.begin(); it != geoIdList.end(); ++it) {
-            const Part::Geometry *geo = getGeometry(*it);
-            Part::Geometry *geosym;
-
-            auto gf = GeometryFacade::getFacade(geo);
-
-            if(gf->isInternalAligned()) {
-                // only add this geometry if the corresponding geometry it defines is also in the list.
-                int definedGeo = GeoEnum::GeoUndef;
-
-                for( auto c : Constraints.getValues()) {
-                    if(c->Type == Sketcher::InternalAlignment && c->First == *it) {
-                        definedGeo = c->Second;
-                        break;
-                    }
-                }
-
-                if(std::find(geoIdList.begin(), geoIdList.end(), definedGeo) != geoIdList.end() )
-                    geosym = geo->copy();
-                else
-                    continue; // we should not mirror internal alignment geometry, unless the element they define is also mirrored
-
-            }
-            else {
-                geosym = geo->copy();
-            }
-
-            // Handle Geometry
-            if(geosym->getTypeId() == Part::GeomLineSegment::getClassTypeId()){
-                Part::GeomLineSegment *geosymline = static_cast<Part::GeomLineSegment *>(geosym);
-                Base::Vector3d sp = geosymline->getStartPoint();
-                Base::Vector3d ep = geosymline->getEndPoint();
-
-                geosymline->setPoints(sp+2.0*(sp.Perpendicular(refGeoLine->getStartPoint(),vectline)-sp),
-                        ep+2.0*(ep.Perpendicular(refGeoLine->getStartPoint(),vectline)-ep));
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomCircle::getClassTypeId()){
-                Part::GeomCircle *geosymcircle = static_cast<Part::GeomCircle *>(geosym);
-                Base::Vector3d cp = geosymcircle->getCenter();
-
-                geosymcircle->setCenter(cp+2.0*(cp.Perpendicular(refGeoLine->getStartPoint(),vectline)-cp));
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()){
-                Part::GeomArcOfCircle *geoaoc = static_cast<Part::GeomArcOfCircle *>(geosym);
-                Base::Vector3d sp = geoaoc->getStartPoint(true);
-                Base::Vector3d ep = geoaoc->getEndPoint(true);
-                Base::Vector3d cp = geoaoc->getCenter();
-
-                Base::Vector3d ssp = sp+2.0*(sp.Perpendicular(refGeoLine->getStartPoint(),vectline)-sp);
-                Base::Vector3d sep = ep+2.0*(ep.Perpendicular(refGeoLine->getStartPoint(),vectline)-ep);
-                Base::Vector3d scp = cp+2.0*(cp.Perpendicular(refGeoLine->getStartPoint(),vectline)-cp);
-
-                double theta1 = Base::fmod(atan2(sep.y - scp.y, sep.x - scp.x), 2.f*M_PI);
-                double theta2 = Base::fmod(atan2(ssp.y - scp.y, ssp.x - scp.x), 2.f*M_PI);
-
-                geoaoc->setCenter(scp);
-                geoaoc->setRange(theta1,theta2,true);
-                isStartEndInverted.insert(std::make_pair(*it, true));
-            }
-            else if(geosym->getTypeId() == Part::GeomEllipse::getClassTypeId()){
-                Part::GeomEllipse *geosymellipse = static_cast<Part::GeomEllipse *>(geosym);
-                Base::Vector3d cp = geosymellipse->getCenter();
-
-                Base::Vector3d majdir = geosymellipse->getMajorAxisDir();
-                double majord=geosymellipse->getMajorRadius();
-                double minord=geosymellipse->getMinorRadius();
-                double df= sqrt(majord*majord-minord*minord);
-                Base::Vector3d f1 = cp + df * majdir;
-
-                Base::Vector3d sf1 = f1+2.0*(f1.Perpendicular(refGeoLine->getStartPoint(),vectline)-f1);
-                Base::Vector3d scp = cp+2.0*(cp.Perpendicular(refGeoLine->getStartPoint(),vectline)-cp);
-
-                geosymellipse->setMajorAxisDir(sf1-scp);
-
-                geosymellipse->setCenter(scp);
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()){
-                Part::GeomArcOfEllipse *geosymaoe = static_cast<Part::GeomArcOfEllipse *>(geosym);
-                Base::Vector3d cp = geosymaoe->getCenter();
-
-                Base::Vector3d majdir = geosymaoe->getMajorAxisDir();
-                double majord=geosymaoe->getMajorRadius();
-                double minord=geosymaoe->getMinorRadius();
-                double df= sqrt(majord*majord-minord*minord);
-                Base::Vector3d f1 = cp + df * majdir;
-
-                Base::Vector3d sf1 = f1+2.0*(f1.Perpendicular(refGeoLine->getStartPoint(),vectline)-f1);
-                Base::Vector3d scp = cp+2.0*(cp.Perpendicular(refGeoLine->getStartPoint(),vectline)-cp);
-
-                geosymaoe->setMajorAxisDir(sf1-scp);
-
-                geosymaoe->setCenter(scp);
-
-                double theta1,theta2;
-                geosymaoe->getRange(theta1,theta2,true);
-                theta1 = 2.0*M_PI - theta1;
-                theta2 = 2.0*M_PI - theta2;
-                std::swap(theta1, theta2);
-                if (theta1 < 0) {
-                    theta1 += 2.0*M_PI;
-                    theta2 += 2.0*M_PI;
-                }
-
-                geosymaoe->setRange(theta1,theta2,true);
-                isStartEndInverted.insert(std::make_pair(*it, true));
-            }
-            else if(geosym->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()){
-                Part::GeomArcOfHyperbola *geosymaoe = static_cast<Part::GeomArcOfHyperbola *>(geosym);
-                Base::Vector3d cp = geosymaoe->getCenter();
-
-                Base::Vector3d majdir = geosymaoe->getMajorAxisDir();
-                double majord=geosymaoe->getMajorRadius();
-                double minord=geosymaoe->getMinorRadius();
-                double df= sqrt(majord*majord+minord*minord);
-                Base::Vector3d f1 = cp + df * majdir;
-
-                Base::Vector3d sf1 = f1+2.0*(f1.Perpendicular(refGeoLine->getStartPoint(),vectline)-f1);
-                Base::Vector3d scp = cp+2.0*(cp.Perpendicular(refGeoLine->getStartPoint(),vectline)-cp);
-
-                geosymaoe->setMajorAxisDir(sf1-scp);
-
-                geosymaoe->setCenter(scp);
-
-                double theta1,theta2;
-                geosymaoe->getRange(theta1,theta2,true);
-                theta1 = -theta1;
-                theta2 = -theta2;
-                std::swap(theta1, theta2);
-
-                geosymaoe->setRange(theta1,theta2,true);
-                isStartEndInverted.insert(std::make_pair(*it, true));
-            }
-            else if(geosym->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()){
-                Part::GeomArcOfParabola *geosymaoe = static_cast<Part::GeomArcOfParabola *>(geosym);
-                Base::Vector3d cp = geosymaoe->getCenter();
-
-                //double df= geosymaoe->getFocal();
-                Base::Vector3d f1 = geosymaoe->getFocus();
-
-                Base::Vector3d sf1 = f1+2.0*(f1.Perpendicular(refGeoLine->getStartPoint(),vectline)-f1);
-                Base::Vector3d scp = cp+2.0*(cp.Perpendicular(refGeoLine->getStartPoint(),vectline)-cp);
-
-                geosymaoe->setXAxisDir(sf1-scp);
-                geosymaoe->setCenter(scp);
-
-                double theta1,theta2;
-                geosymaoe->getRange(theta1,theta2,true);
-                theta1 = -theta1;
-                theta2 = -theta2;
-                std::swap(theta1, theta2);
-
-                geosymaoe->setRange(theta1,theta2,true);
-                isStartEndInverted.insert(std::make_pair(*it, true));
-            }
-            else if(geosym->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()){
-                Part::GeomBSplineCurve *geosymbsp = static_cast<Part::GeomBSplineCurve *>(geosym);
-
-                std::vector<Base::Vector3d> poles = geosymbsp->getPoles();
-
-                for(std::vector<Base::Vector3d>::iterator jt = poles.begin(); jt != poles.end(); ++jt){
-
-                    (*jt) = (*jt) + 2.0*((*jt).Perpendicular(refGeoLine->getStartPoint(),vectline)-(*jt));
-                }
-
-                geosymbsp->setPoles(poles);
-
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomPoint::getClassTypeId()){
-                Part::GeomPoint *geosympoint = static_cast<Part::GeomPoint *>(geosym);
-                Base::Vector3d cp = geosympoint->getPoint();
-
-                geosympoint->setPoint(cp+2.0*(cp.Perpendicular(refGeoLine->getStartPoint(),vectline)-cp));
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else {
-                Base::Console().Error("Unsupported Geometry!! Just copying it.\n");
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-
-            newgeoVals.push_back(geosym);
-            geoIdMap.insert(std::make_pair(*it, cgeoid));
-            cgeoid++;
-        }
-    }
-    else { //reference is a point
+    if (refPosId != Sketcher::PointPos::none) {
         refIsAxisAligned = true;
-        Vector3d refpoint;
-        const Part::Geometry *georef = getGeometry(refGeoId);
-
-        if (georef->getTypeId() == Part::GeomPoint::getClassTypeId()) {
-            refpoint = static_cast<const Part::GeomPoint *>(georef)->getPoint();
-        }
-        else if ( refGeoId == -1 && refPosId == Sketcher::PointPos::start) {
-            refpoint = Vector3d(0,0,0);
-        }
-        else {
-            switch(refPosId){
-                case Sketcher::PointPos::start:
-                    if(georef->getTypeId() == Part::GeomLineSegment::getClassTypeId()){
-                        const Part::GeomLineSegment *geosymline = static_cast<const Part::GeomLineSegment *>(georef);
-                        refpoint = geosymline->getStartPoint();
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()){
-                        const Part::GeomArcOfCircle *geoaoc = static_cast<const Part::GeomArcOfCircle *>(georef);
-                        refpoint = geoaoc->getStartPoint(true);
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()){
-                        const Part::GeomArcOfEllipse *geosymaoe = static_cast<const Part::GeomArcOfEllipse *>(georef);
-                        refpoint = geosymaoe->getStartPoint(true);
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()){
-                        const Part::GeomArcOfHyperbola *geosymaoe = static_cast<const Part::GeomArcOfHyperbola *>(georef);
-                        refpoint = geosymaoe->getStartPoint(true);
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()){
-                        const Part::GeomArcOfParabola *geosymaoe = static_cast<const Part::GeomArcOfParabola *>(georef);
-                        refpoint = geosymaoe->getStartPoint(true);
-                    } else if(georef->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()){
-                        const Part::GeomBSplineCurve *geosymbsp = static_cast<const Part::GeomBSplineCurve *>(georef);
-                        refpoint = geosymbsp->getStartPoint();
-                    }
-                    break;
-                case Sketcher::PointPos::end:
-                    if(georef->getTypeId() == Part::GeomLineSegment::getClassTypeId()){
-                        const Part::GeomLineSegment *geosymline = static_cast<const Part::GeomLineSegment *>(georef);
-                        refpoint = geosymline->getEndPoint();
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()){
-                        const Part::GeomArcOfCircle *geoaoc = static_cast<const Part::GeomArcOfCircle *>(georef);
-                        refpoint = geoaoc->getEndPoint(true);
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()){
-                        const Part::GeomArcOfEllipse *geosymaoe = static_cast<const Part::GeomArcOfEllipse *>(georef);
-                        refpoint = geosymaoe->getEndPoint(true);
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()){
-                        const Part::GeomArcOfHyperbola *geosymaoe = static_cast<const Part::GeomArcOfHyperbola *>(georef);
-                        refpoint = geosymaoe->getEndPoint(true);
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()){
-                        const Part::GeomArcOfParabola *geosymaoe = static_cast<const Part::GeomArcOfParabola *>(georef);
-                        refpoint = geosymaoe->getEndPoint(true);
-                    }
-                    else if(georef->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()){
-                        const Part::GeomBSplineCurve *geosymbsp = static_cast<const Part::GeomBSplineCurve *>(georef);
-                        refpoint = geosymbsp->getEndPoint();
-                    }
-                    break;
-                case Sketcher::PointPos::mid:
-                    if(georef->getTypeId() == Part::GeomCircle::getClassTypeId()){
-                        const Part::GeomCircle *geosymcircle = static_cast<const Part::GeomCircle *>(georef);
-                        refpoint = geosymcircle->getCenter();
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()){
-                        const Part::GeomArcOfCircle *geoaoc = static_cast<const Part::GeomArcOfCircle *>(georef);
-                        refpoint = geoaoc->getCenter();
-                    }
-                    else if(georef->getTypeId() == Part::GeomEllipse::getClassTypeId()){
-                        const Part::GeomEllipse *geosymellipse = static_cast<const Part::GeomEllipse *>(georef);
-                        refpoint = geosymellipse->getCenter();
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()){
-                        const Part::GeomArcOfEllipse *geosymaoe = static_cast<const Part::GeomArcOfEllipse *>(georef);
-                        refpoint = geosymaoe->getCenter();
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()){
-                        const Part::GeomArcOfHyperbola *geosymaoe = static_cast<const Part::GeomArcOfHyperbola *>(georef);
-                        refpoint = geosymaoe->getCenter();
-                    }
-                    else if(georef->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()){
-                        const Part::GeomArcOfParabola *geosymaoe = static_cast<const Part::GeomArcOfParabola *>(georef);
-                        refpoint = geosymaoe->getCenter();
-                    }
-                    break;
-                default:
-                    Base::Console().Error("Wrong PointPosId.\n");
-                    return -1;
-            }
-        }
-
-        for (std::vector<int>::const_iterator it = geoIdList.begin(); it != geoIdList.end(); ++it) {
-            const Part::Geometry *geo = getGeometry(*it);
-
-            Part::Geometry *geosym;
-
-            auto gf = GeometryFacade::getFacade(geo);
-
-            if(gf->isInternalAligned()) {
-                // only add this geometry if the corresponding geometry it defines is also in the list.
-                int definedGeo = GeoEnum::GeoUndef;
-
-                for( auto c : Constraints.getValues()) {
-                    if(c->Type == Sketcher::InternalAlignment && c->First == *it) {
-                        definedGeo = c->Second;
-                        break;
-                    }
-                }
-
-                if(std::find(geoIdList.begin(), geoIdList.end(), definedGeo) != geoIdList.end() )
-                    geosym = geo->copy();
-                else
-                    continue; // we should not mirror internal alignment geometry, unless the element they define is also mirrored
-
-            }
-            else {
-                geosym = geo->copy();
-            }
-
-            // Handle Geometry
-            if(geosym->getTypeId() == Part::GeomLineSegment::getClassTypeId()){
-                Part::GeomLineSegment *geosymline = static_cast<Part::GeomLineSegment *>(geosym);
-                Base::Vector3d sp = geosymline->getStartPoint();
-                Base::Vector3d ep = geosymline->getEndPoint();
-                Base::Vector3d ssp = sp + 2.0*(refpoint-sp);
-                Base::Vector3d sep = ep + 2.0*(refpoint-ep);
-
-                geosymline->setPoints(ssp, sep);
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomCircle::getClassTypeId()){
-                Part::GeomCircle *geosymcircle = static_cast<Part::GeomCircle *>(geosym);
-                Base::Vector3d cp = geosymcircle->getCenter();
-
-                geosymcircle->setCenter(cp + 2.0*(refpoint-cp));
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()){
-                Part::GeomArcOfCircle *geoaoc = static_cast<Part::GeomArcOfCircle *>(geosym);
-                Base::Vector3d sp = geoaoc->getStartPoint(true);
-                Base::Vector3d ep = geoaoc->getEndPoint(true);
-                Base::Vector3d cp = geoaoc->getCenter();
-
-                Base::Vector3d ssp = sp + 2.0*(refpoint-sp);
-                Base::Vector3d sep = ep + 2.0*(refpoint-ep);
-                Base::Vector3d scp = cp + 2.0*(refpoint-cp);
-
-                double theta1 = Base::fmod(atan2(ssp.y - scp.y, ssp.x - scp.x), 2.f*M_PI);
-                double theta2 = Base::fmod(atan2(sep.y - scp.y, sep.x - scp.x), 2.f*M_PI);
-
-                geoaoc->setCenter(scp);
-                geoaoc->setRange(theta1,theta2,true);
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomEllipse::getClassTypeId()){
-                Part::GeomEllipse *geosymellipse = static_cast<Part::GeomEllipse *>(geosym);
-                Base::Vector3d cp = geosymellipse->getCenter();
-
-                Base::Vector3d majdir = geosymellipse->getMajorAxisDir();
-                double majord=geosymellipse->getMajorRadius();
-                double minord=geosymellipse->getMinorRadius();
-                double df= sqrt(majord*majord-minord*minord);
-                Base::Vector3d f1 = cp + df * majdir;
-
-                Base::Vector3d sf1 = f1 + 2.0*(refpoint-f1);
-                Base::Vector3d scp = cp + 2.0*(refpoint-cp);
-
-                geosymellipse->setMajorAxisDir(sf1-scp);
-
-                geosymellipse->setCenter(scp);
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()){
-                Part::GeomArcOfEllipse *geosymaoe = static_cast<Part::GeomArcOfEllipse *>(geosym);
-                Base::Vector3d cp = geosymaoe->getCenter();
-
-                Base::Vector3d majdir = geosymaoe->getMajorAxisDir();
-                double majord=geosymaoe->getMajorRadius();
-                double minord=geosymaoe->getMinorRadius();
-                double df= sqrt(majord*majord-minord*minord);
-                Base::Vector3d f1 = cp + df * majdir;
-
-                Base::Vector3d sf1 = f1 + 2.0*(refpoint-f1);
-                Base::Vector3d scp = cp + 2.0*(refpoint-cp);
-
-                geosymaoe->setMajorAxisDir(sf1-scp);
-
-                geosymaoe->setCenter(scp);
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()){
-                Part::GeomArcOfHyperbola *geosymaoe = static_cast<Part::GeomArcOfHyperbola *>(geosym);
-                Base::Vector3d cp = geosymaoe->getCenter();
-
-                Base::Vector3d majdir = geosymaoe->getMajorAxisDir();
-                double majord=geosymaoe->getMajorRadius();
-                double minord=geosymaoe->getMinorRadius();
-                double df= sqrt(majord*majord+minord*minord);
-                Base::Vector3d f1 = cp + df * majdir;
-
-                Base::Vector3d sf1 = f1 + 2.0*(refpoint-f1);
-                Base::Vector3d scp = cp + 2.0*(refpoint-cp);
-
-                geosymaoe->setMajorAxisDir(sf1-scp);
-
-                geosymaoe->setCenter(scp);
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()){
-                Part::GeomArcOfParabola *geosymaoe = static_cast<Part::GeomArcOfParabola *>(geosym);
-                Base::Vector3d cp = geosymaoe->getCenter();
-
-                /*double df= geosymaoe->getFocal();*/
-                Base::Vector3d f1 = geosymaoe->getFocus();
-
-                Base::Vector3d sf1 = f1 + 2.0*(refpoint-f1);
-                Base::Vector3d scp = cp + 2.0*(refpoint-cp);
-
-                geosymaoe->setXAxisDir(sf1-scp);
-                geosymaoe->setCenter(scp);
-
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()){
-                Part::GeomBSplineCurve *geosymbsp = static_cast<Part::GeomBSplineCurve *>(geosym);
-
-                std::vector<Base::Vector3d> poles = geosymbsp->getPoles();
-
-                for(std::vector<Base::Vector3d>::iterator it = poles.begin(); it != poles.end(); ++it){
-                    (*it) = (*it) + 2.0*(refpoint-(*it));
-                }
-
-                geosymbsp->setPoles(poles);
-
-                //isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else if(geosym->getTypeId() == Part::GeomPoint::getClassTypeId()){
-                Part::GeomPoint *geosympoint = static_cast<Part::GeomPoint *>(geosym);
-                Base::Vector3d cp = geosympoint->getPoint();
-
-                geosympoint->setPoint(cp + 2.0*(refpoint-cp));
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-            else {
-                Base::Console().Error("Unsupported Geometry!! Just copying it.\n");
-                isStartEndInverted.insert(std::make_pair(*it, false));
-            }
-
-            newgeoVals.push_back(geosym);
-            geoIdMap.insert(std::make_pair(*it, cgeoid));
-            cgeoid++;
-        }
     }
+
+    std::vector<Part::Geometry*> symmetricGeos = getSymmetricGeos(geoIdList, refGeoId, refPosId, geoIdMap, isStartEndInverted);
+    newgeoVals.insert(newgeoVals.end(), symmetricGeos.begin(), symmetricGeos.end());
 
     // add the geometry
 
@@ -4227,6 +3771,475 @@ int SketchObject::addSymmetric(const std::vector<int> &geoIdList, int refGeoId, 
 
     return Geometry.getSize()-1;
 }
+
+std::vector<Part::Geometry*> SketchObject::getSymmetricGeos(const std::vector<int>& geoIdList, int refGeoId, Sketcher::PointPos refPosId/*=Sketcher::PointPos::none*/, std::map<int, int>& geoIdMap, std::map<int, bool>& isStartEndInverted) {
+    std::vector< Part::Geometry* > newgeoVals;
+    int cgeoid = getHighestCurveIndex() + 1;
+
+    // reference is a line
+    if (refPosId == Sketcher::PointPos::none) {
+        const Part::Geometry* georef = getGeometry(refGeoId);
+        if (georef->getTypeId() != Part::GeomLineSegment::getClassTypeId()) {
+            Base::Console().Error("Reference for symmetric is neither a point nor a line.\n");
+            return {};
+        }
+
+        const Part::GeomLineSegment* refGeoLine = static_cast<const Part::GeomLineSegment*>(georef);
+        //line
+        Base::Vector3d refstart = refGeoLine->getStartPoint();
+        Base::Vector3d vectline = refGeoLine->getEndPoint() - refstart;
+
+        for (std::vector<int>::const_iterator it = geoIdList.begin(); it != geoIdList.end(); ++it) {
+            const Part::Geometry* geo = getGeometry(*it);
+            Part::Geometry* geosym;
+
+            auto gf = GeometryFacade::getFacade(geo);
+
+            if (gf->isInternalAligned()) {
+                // only add this geometry if the corresponding geometry it defines is also in the list.
+                int definedGeo = GeoEnum::GeoUndef;
+
+                for (auto c : Constraints.getValues()) {
+                    if (c->Type == Sketcher::InternalAlignment && c->First == *it) {
+                        definedGeo = c->Second;
+                        break;
+                    }
+                }
+
+                if (std::find(geoIdList.begin(), geoIdList.end(), definedGeo) != geoIdList.end())
+                    geosym = geo->copy();
+                else
+                    continue; // we should not mirror internal alignment geometry, unless the element they define is also mirrored
+
+            }
+            else {
+                geosym = geo->copy();
+            }
+
+            // Handle Geometry
+            if (geosym->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                Part::GeomLineSegment* geosymline = static_cast<Part::GeomLineSegment*>(geosym);
+                Base::Vector3d sp = geosymline->getStartPoint();
+                Base::Vector3d ep = geosymline->getEndPoint();
+
+                geosymline->setPoints(sp + 2.0 * (sp.Perpendicular(refGeoLine->getStartPoint(), vectline) - sp),
+                    ep + 2.0 * (ep.Perpendicular(refGeoLine->getStartPoint(), vectline) - ep));
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                Part::GeomCircle* geosymcircle = static_cast<Part::GeomCircle*>(geosym);
+                Base::Vector3d cp = geosymcircle->getCenter();
+
+                geosymcircle->setCenter(cp + 2.0 * (cp.Perpendicular(refGeoLine->getStartPoint(), vectline) - cp));
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                Part::GeomArcOfCircle* geoaoc = static_cast<Part::GeomArcOfCircle*>(geosym);
+                Base::Vector3d sp = geoaoc->getStartPoint(true);
+                Base::Vector3d ep = geoaoc->getEndPoint(true);
+                Base::Vector3d cp = geoaoc->getCenter();
+
+                Base::Vector3d ssp = sp + 2.0 * (sp.Perpendicular(refGeoLine->getStartPoint(), vectline) - sp);
+                Base::Vector3d sep = ep + 2.0 * (ep.Perpendicular(refGeoLine->getStartPoint(), vectline) - ep);
+                Base::Vector3d scp = cp + 2.0 * (cp.Perpendicular(refGeoLine->getStartPoint(), vectline) - cp);
+
+                double theta1 = Base::fmod(atan2(sep.y - scp.y, sep.x - scp.x), 2.f * M_PI);
+                double theta2 = Base::fmod(atan2(ssp.y - scp.y, ssp.x - scp.x), 2.f * M_PI);
+
+                geoaoc->setCenter(scp);
+                geoaoc->setRange(theta1, theta2, true);
+                isStartEndInverted.insert(std::make_pair(*it, true));
+            }
+            else if (geosym->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                Part::GeomEllipse* geosymellipse = static_cast<Part::GeomEllipse*>(geosym);
+                Base::Vector3d cp = geosymellipse->getCenter();
+
+                Base::Vector3d majdir = geosymellipse->getMajorAxisDir();
+                double majord = geosymellipse->getMajorRadius();
+                double minord = geosymellipse->getMinorRadius();
+                double df = sqrt(majord * majord - minord * minord);
+                Base::Vector3d f1 = cp + df * majdir;
+
+                Base::Vector3d sf1 = f1 + 2.0 * (f1.Perpendicular(refGeoLine->getStartPoint(), vectline) - f1);
+                Base::Vector3d scp = cp + 2.0 * (cp.Perpendicular(refGeoLine->getStartPoint(), vectline) - cp);
+
+                geosymellipse->setMajorAxisDir(sf1 - scp);
+
+                geosymellipse->setCenter(scp);
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                Part::GeomArcOfEllipse* geosymaoe = static_cast<Part::GeomArcOfEllipse*>(geosym);
+                Base::Vector3d cp = geosymaoe->getCenter();
+
+                Base::Vector3d majdir = geosymaoe->getMajorAxisDir();
+                double majord = geosymaoe->getMajorRadius();
+                double minord = geosymaoe->getMinorRadius();
+                double df = sqrt(majord * majord - minord * minord);
+                Base::Vector3d f1 = cp + df * majdir;
+
+                Base::Vector3d sf1 = f1 + 2.0 * (f1.Perpendicular(refGeoLine->getStartPoint(), vectline) - f1);
+                Base::Vector3d scp = cp + 2.0 * (cp.Perpendicular(refGeoLine->getStartPoint(), vectline) - cp);
+
+                geosymaoe->setMajorAxisDir(sf1 - scp);
+
+                geosymaoe->setCenter(scp);
+
+                double theta1, theta2;
+                geosymaoe->getRange(theta1, theta2, true);
+                theta1 = 2.0 * M_PI - theta1;
+                theta2 = 2.0 * M_PI - theta2;
+                std::swap(theta1, theta2);
+                if (theta1 < 0) {
+                    theta1 += 2.0 * M_PI;
+                    theta2 += 2.0 * M_PI;
+                }
+
+                geosymaoe->setRange(theta1, theta2, true);
+                isStartEndInverted.insert(std::make_pair(*it, true));
+            }
+            else if (geosym->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+                Part::GeomArcOfHyperbola* geosymaoe = static_cast<Part::GeomArcOfHyperbola*>(geosym);
+                Base::Vector3d cp = geosymaoe->getCenter();
+
+                Base::Vector3d majdir = geosymaoe->getMajorAxisDir();
+                double majord = geosymaoe->getMajorRadius();
+                double minord = geosymaoe->getMinorRadius();
+                double df = sqrt(majord * majord + minord * minord);
+                Base::Vector3d f1 = cp + df * majdir;
+
+                Base::Vector3d sf1 = f1 + 2.0 * (f1.Perpendicular(refGeoLine->getStartPoint(), vectline) - f1);
+                Base::Vector3d scp = cp + 2.0 * (cp.Perpendicular(refGeoLine->getStartPoint(), vectline) - cp);
+
+                geosymaoe->setMajorAxisDir(sf1 - scp);
+
+                geosymaoe->setCenter(scp);
+
+                double theta1, theta2;
+                geosymaoe->getRange(theta1, theta2, true);
+                theta1 = -theta1;
+                theta2 = -theta2;
+                std::swap(theta1, theta2);
+
+                geosymaoe->setRange(theta1, theta2, true);
+                isStartEndInverted.insert(std::make_pair(*it, true));
+            }
+            else if (geosym->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                Part::GeomArcOfParabola* geosymaoe = static_cast<Part::GeomArcOfParabola*>(geosym);
+                Base::Vector3d cp = geosymaoe->getCenter();
+
+                //double df= geosymaoe->getFocal();
+                Base::Vector3d f1 = geosymaoe->getFocus();
+
+                Base::Vector3d sf1 = f1 + 2.0 * (f1.Perpendicular(refGeoLine->getStartPoint(), vectline) - f1);
+                Base::Vector3d scp = cp + 2.0 * (cp.Perpendicular(refGeoLine->getStartPoint(), vectline) - cp);
+
+                geosymaoe->setXAxisDir(sf1 - scp);
+                geosymaoe->setCenter(scp);
+
+                double theta1, theta2;
+                geosymaoe->getRange(theta1, theta2, true);
+                theta1 = -theta1;
+                theta2 = -theta2;
+                std::swap(theta1, theta2);
+
+                geosymaoe->setRange(theta1, theta2, true);
+                isStartEndInverted.insert(std::make_pair(*it, true));
+            }
+            else if (geosym->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                Part::GeomBSplineCurve* geosymbsp = static_cast<Part::GeomBSplineCurve*>(geosym);
+
+                std::vector<Base::Vector3d> poles = geosymbsp->getPoles();
+
+                for (std::vector<Base::Vector3d>::iterator jt = poles.begin(); jt != poles.end(); ++jt) {
+
+                    (*jt) = (*jt) + 2.0 * ((*jt).Perpendicular(refGeoLine->getStartPoint(), vectline) - (*jt));
+                }
+
+                geosymbsp->setPoles(poles);
+
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+                Part::GeomPoint* geosympoint = static_cast<Part::GeomPoint*>(geosym);
+                Base::Vector3d cp = geosympoint->getPoint();
+
+                geosympoint->setPoint(cp + 2.0 * (cp.Perpendicular(refGeoLine->getStartPoint(), vectline) - cp));
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else {
+                Base::Console().Error("Unsupported Geometry!! Just copying it.\n");
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+
+            newgeoVals.push_back(geosym);
+            geoIdMap.insert(std::make_pair(*it, cgeoid));
+            cgeoid++;
+        }
+    }
+    else { //reference is a point
+        Vector3d refpoint;
+        const Part::Geometry* georef = getGeometry(refGeoId);
+
+        if (georef->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+            refpoint = static_cast<const Part::GeomPoint*>(georef)->getPoint();
+        }
+        else if (refGeoId == -1 && refPosId == Sketcher::PointPos::start) {
+            refpoint = Vector3d(0, 0, 0);
+        }
+        else {
+            switch (refPosId) {
+            case Sketcher::PointPos::start:
+                if (georef->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                    const Part::GeomLineSegment* geosymline = static_cast<const Part::GeomLineSegment*>(georef);
+                    refpoint = geosymline->getStartPoint();
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                    const Part::GeomArcOfCircle* geoaoc = static_cast<const Part::GeomArcOfCircle*>(georef);
+                    refpoint = geoaoc->getStartPoint(true);
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                    const Part::GeomArcOfEllipse* geosymaoe = static_cast<const Part::GeomArcOfEllipse*>(georef);
+                    refpoint = geosymaoe->getStartPoint(true);
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+                    const Part::GeomArcOfHyperbola* geosymaoe = static_cast<const Part::GeomArcOfHyperbola*>(georef);
+                    refpoint = geosymaoe->getStartPoint(true);
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                    const Part::GeomArcOfParabola* geosymaoe = static_cast<const Part::GeomArcOfParabola*>(georef);
+                    refpoint = geosymaoe->getStartPoint(true);
+                }
+                else if (georef->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                    const Part::GeomBSplineCurve* geosymbsp = static_cast<const Part::GeomBSplineCurve*>(georef);
+                    refpoint = geosymbsp->getStartPoint();
+                }
+                break;
+            case Sketcher::PointPos::end:
+                if (georef->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                    const Part::GeomLineSegment* geosymline = static_cast<const Part::GeomLineSegment*>(georef);
+                    refpoint = geosymline->getEndPoint();
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                    const Part::GeomArcOfCircle* geoaoc = static_cast<const Part::GeomArcOfCircle*>(georef);
+                    refpoint = geoaoc->getEndPoint(true);
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                    const Part::GeomArcOfEllipse* geosymaoe = static_cast<const Part::GeomArcOfEllipse*>(georef);
+                    refpoint = geosymaoe->getEndPoint(true);
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+                    const Part::GeomArcOfHyperbola* geosymaoe = static_cast<const Part::GeomArcOfHyperbola*>(georef);
+                    refpoint = geosymaoe->getEndPoint(true);
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                    const Part::GeomArcOfParabola* geosymaoe = static_cast<const Part::GeomArcOfParabola*>(georef);
+                    refpoint = geosymaoe->getEndPoint(true);
+                }
+                else if (georef->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                    const Part::GeomBSplineCurve* geosymbsp = static_cast<const Part::GeomBSplineCurve*>(georef);
+                    refpoint = geosymbsp->getEndPoint();
+                }
+                break;
+            case Sketcher::PointPos::mid:
+                if (georef->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                    const Part::GeomCircle* geosymcircle = static_cast<const Part::GeomCircle*>(georef);
+                    refpoint = geosymcircle->getCenter();
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                    const Part::GeomArcOfCircle* geoaoc = static_cast<const Part::GeomArcOfCircle*>(georef);
+                    refpoint = geoaoc->getCenter();
+                }
+                else if (georef->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                    const Part::GeomEllipse* geosymellipse = static_cast<const Part::GeomEllipse*>(georef);
+                    refpoint = geosymellipse->getCenter();
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                    const Part::GeomArcOfEllipse* geosymaoe = static_cast<const Part::GeomArcOfEllipse*>(georef);
+                    refpoint = geosymaoe->getCenter();
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+                    const Part::GeomArcOfHyperbola* geosymaoe = static_cast<const Part::GeomArcOfHyperbola*>(georef);
+                    refpoint = geosymaoe->getCenter();
+                }
+                else if (georef->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                    const Part::GeomArcOfParabola* geosymaoe = static_cast<const Part::GeomArcOfParabola*>(georef);
+                    refpoint = geosymaoe->getCenter();
+                }
+                break;
+            default:
+                Base::Console().Error("Wrong PointPosId.\n");
+                return {};
+            }
+        }
+
+        for (std::vector<int>::const_iterator it = geoIdList.begin(); it != geoIdList.end(); ++it) {
+            const Part::Geometry* geo = getGeometry(*it);
+
+            Part::Geometry* geosym;
+
+            auto gf = GeometryFacade::getFacade(geo);
+
+            if (gf->isInternalAligned()) {
+                // only add this geometry if the corresponding geometry it defines is also in the list.
+                int definedGeo = GeoEnum::GeoUndef;
+
+                for (auto c : Constraints.getValues()) {
+                    if (c->Type == Sketcher::InternalAlignment && c->First == *it) {
+                        definedGeo = c->Second;
+                        break;
+                    }
+                }
+
+                if (std::find(geoIdList.begin(), geoIdList.end(), definedGeo) != geoIdList.end())
+                    geosym = geo->copy();
+                else
+                    continue; // we should not mirror internal alignment geometry, unless the element they define is also mirrored
+
+            }
+            else {
+                geosym = geo->copy();
+            }
+
+            // Handle Geometry
+            if (geosym->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                Part::GeomLineSegment* geosymline = static_cast<Part::GeomLineSegment*>(geosym);
+                Base::Vector3d sp = geosymline->getStartPoint();
+                Base::Vector3d ep = geosymline->getEndPoint();
+                Base::Vector3d ssp = sp + 2.0 * (refpoint - sp);
+                Base::Vector3d sep = ep + 2.0 * (refpoint - ep);
+
+                geosymline->setPoints(ssp, sep);
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                Part::GeomCircle* geosymcircle = static_cast<Part::GeomCircle*>(geosym);
+                Base::Vector3d cp = geosymcircle->getCenter();
+
+                geosymcircle->setCenter(cp + 2.0 * (refpoint - cp));
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                Part::GeomArcOfCircle* geoaoc = static_cast<Part::GeomArcOfCircle*>(geosym);
+                Base::Vector3d sp = geoaoc->getStartPoint(true);
+                Base::Vector3d ep = geoaoc->getEndPoint(true);
+                Base::Vector3d cp = geoaoc->getCenter();
+
+                Base::Vector3d ssp = sp + 2.0 * (refpoint - sp);
+                Base::Vector3d sep = ep + 2.0 * (refpoint - ep);
+                Base::Vector3d scp = cp + 2.0 * (refpoint - cp);
+
+                double theta1 = Base::fmod(atan2(ssp.y - scp.y, ssp.x - scp.x), 2.f * M_PI);
+                double theta2 = Base::fmod(atan2(sep.y - scp.y, sep.x - scp.x), 2.f * M_PI);
+
+                geoaoc->setCenter(scp);
+                geoaoc->setRange(theta1, theta2, true);
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomEllipse::getClassTypeId()) {
+                Part::GeomEllipse* geosymellipse = static_cast<Part::GeomEllipse*>(geosym);
+                Base::Vector3d cp = geosymellipse->getCenter();
+
+                Base::Vector3d majdir = geosymellipse->getMajorAxisDir();
+                double majord = geosymellipse->getMajorRadius();
+                double minord = geosymellipse->getMinorRadius();
+                double df = sqrt(majord * majord - minord * minord);
+                Base::Vector3d f1 = cp + df * majdir;
+
+                Base::Vector3d sf1 = f1 + 2.0 * (refpoint - f1);
+                Base::Vector3d scp = cp + 2.0 * (refpoint - cp);
+
+                geosymellipse->setMajorAxisDir(sf1 - scp);
+
+                geosymellipse->setCenter(scp);
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {
+                Part::GeomArcOfEllipse* geosymaoe = static_cast<Part::GeomArcOfEllipse*>(geosym);
+                Base::Vector3d cp = geosymaoe->getCenter();
+
+                Base::Vector3d majdir = geosymaoe->getMajorAxisDir();
+                double majord = geosymaoe->getMajorRadius();
+                double minord = geosymaoe->getMinorRadius();
+                double df = sqrt(majord * majord - minord * minord);
+                Base::Vector3d f1 = cp + df * majdir;
+
+                Base::Vector3d sf1 = f1 + 2.0 * (refpoint - f1);
+                Base::Vector3d scp = cp + 2.0 * (refpoint - cp);
+
+                geosymaoe->setMajorAxisDir(sf1 - scp);
+
+                geosymaoe->setCenter(scp);
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {
+                Part::GeomArcOfHyperbola* geosymaoe = static_cast<Part::GeomArcOfHyperbola*>(geosym);
+                Base::Vector3d cp = geosymaoe->getCenter();
+
+                Base::Vector3d majdir = geosymaoe->getMajorAxisDir();
+                double majord = geosymaoe->getMajorRadius();
+                double minord = geosymaoe->getMinorRadius();
+                double df = sqrt(majord * majord + minord * minord);
+                Base::Vector3d f1 = cp + df * majdir;
+
+                Base::Vector3d sf1 = f1 + 2.0 * (refpoint - f1);
+                Base::Vector3d scp = cp + 2.0 * (refpoint - cp);
+
+                geosymaoe->setMajorAxisDir(sf1 - scp);
+
+                geosymaoe->setCenter(scp);
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {
+                Part::GeomArcOfParabola* geosymaoe = static_cast<Part::GeomArcOfParabola*>(geosym);
+                Base::Vector3d cp = geosymaoe->getCenter();
+
+                /*double df= geosymaoe->getFocal();*/
+                Base::Vector3d f1 = geosymaoe->getFocus();
+
+                Base::Vector3d sf1 = f1 + 2.0 * (refpoint - f1);
+                Base::Vector3d scp = cp + 2.0 * (refpoint - cp);
+
+                geosymaoe->setXAxisDir(sf1 - scp);
+                geosymaoe->setCenter(scp);
+
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {
+                Part::GeomBSplineCurve* geosymbsp = static_cast<Part::GeomBSplineCurve*>(geosym);
+
+                std::vector<Base::Vector3d> poles = geosymbsp->getPoles();
+
+                for (std::vector<Base::Vector3d>::iterator it = poles.begin(); it != poles.end(); ++it) {
+                    (*it) = (*it) + 2.0 * (refpoint - (*it));
+                }
+
+                geosymbsp->setPoles(poles);
+
+                //isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else if (geosym->getTypeId() == Part::GeomPoint::getClassTypeId()) {
+                Part::GeomPoint* geosympoint = static_cast<Part::GeomPoint*>(geosym);
+                Base::Vector3d cp = geosympoint->getPoint();
+
+                geosympoint->setPoint(cp + 2.0 * (refpoint - cp));
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+            else {
+                Base::Console().Error("Unsupported Geometry!! Just copying it.\n");
+                isStartEndInverted.insert(std::make_pair(*it, false));
+            }
+
+            newgeoVals.push_back(geosym);
+            geoIdMap.insert(std::make_pair(*it, cgeoid));
+            cgeoid++;
+        }
+    }
+    return newgeoVals;
+}
+
+
+
 
 int SketchObject::addCopy(const std::vector<int> &geoIdList, const Base::Vector3d& displacement, bool moveonly /*=false*/,
                           bool clone /*=false*/, int csize/*=2*/, int rsize/*=1*/, bool constraindisplacement /*= false*/,

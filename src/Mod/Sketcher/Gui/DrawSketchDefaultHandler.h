@@ -32,6 +32,15 @@ namespace bp = boost::placeholders;
 
 namespace SketcherGui {
 
+
+/************************ List of snap mods ************************************/
+
+    enum class SnapMode {
+        Free,
+        Snap5Degree,
+        SnapToObject,
+        SnapToGrid
+    };
 /*********************** Ancillary classes for DrawSketch Hierarchy *******************************/
 
 namespace StateMachines {
@@ -212,6 +221,106 @@ public:
     }
     //@}
 
+    bool getSnapPosition(SnapMod snapMod, Base::Vector2d& pointToOverride, Base::Vector2d referencePoint = Base::Vector2d(0., 0.)) {
+        //Snap to grid should probably be a toggle button. I would say in taskview near 'show grid' and 'grid size' we could add a checkbox 'Snap to grid'.
+        //Then the snap mod should be set here to SnapToGrid by looking at the pref.
+
+        if (snapMod == SnapMod::Free)
+            return false;
+        else if (snapMod == SnapMod::SnapToObject || snapMod == SnapMod::Snap5Degree || snapMod == SnapMod::SnapToGrid) {
+            //If we are using Snap5Degree or SnapToGrid we still want to snap to object if there is an object preselected. They are kind of a sub-type of SnapToObject.
+            Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
+            int geoId = GeoEnum::GeoUndef;
+            Sketcher::PointPos posId = Sketcher::PointPos::none;
+
+            int VtId = getPreselectPoint();
+            int CrsId = getPreselectCross();
+            int CrvId = getPreselectCurve();
+
+            if (CrsId == 0 || VtId >= 0) {
+                if (CrsId == 0) {
+                    geoId = Sketcher::GeoEnum::RtPnt;
+                    posId = Sketcher::PointPos::start;
+                }
+                else if (VtId >= 0) {
+                    Obj->getGeoVertexIndex(VtId, geoId, posId);
+                }
+
+                if (geoId != GeoEnum::GeoUndef) {
+                    pointToOverride.x = Obj->getPoint(geoId, posId).x;
+                    pointToOverride.y = Obj->getPoint(geoId, posId).y;
+                    return true;
+                }
+            }
+            else if (CrsId == 1) { //H_Axis
+                pointToOverride.y = 0;
+                return true;
+            }
+            else if (CrsId == 2) { //V_Axis
+                pointToOverride.x = 0;
+                return true;
+            }
+            else if (CrvId >= 0 || CrvId <= Sketcher::GeoEnum::RefExt) { //Curves
+                const Part::Geometry* geo = Obj->getGeometry(CrvId);
+                //Todo: find a way to snap to infinite line (if line is in view). Currently it's not possible because infinite line doesn't get preselected.
+                //Todo: find how to project point on ellipse/parabola/hyperbola...
+                if (geo->getTypeId() == Part::GeomLineSegment::getClassTypeId()) {
+                    Part::GeomLineSegment* line = static_cast<Part::GeomLineSegment*>(geo);
+                    Base::Vector2d startPoint = Base::Vector2d(line->getStartPoint().x, line->getStartPoint().y);
+                    Base::Vector2d endPoint = Base::Vector2d(line->getEndPoint().x, line->getEndPoint().y);
+                    pointToOverride.ProjectToLine(pointToOverride - startPoint, endPoint - startPoint);
+                    pointToOverride = startPoint + pointToOverride;
+                    return true;
+                }
+                else if (geo->getTypeId() == Part::GeomCircle::getClassTypeId()) {
+                    Part::GeomCircle* circle = static_cast<Part::GeomCircle*>(geo);
+                    Base::Vector2d centerPoint = Base::Vector2d(circle->getCenter().x, circle->getCenter().y);
+
+                    Base::Vector2d v = pointToOverride - centerPoint;
+                    pointToOverride = centerPoint + v * circle->getRadius() / v.Length();
+                    return true;
+                }
+                else if (geo->getTypeId() == Part::GeomArcOfCircle::getClassTypeId()) {
+                    Part::GeomArcOfCircle* circle = static_cast<Part::GeomArcOfCircle*>(geo);
+                    Base::Vector2d centerPoint = Base::Vector2d(circle->getCenter().x, circle->getCenter().y);
+
+                    Base::Vector2d v = pointToOverride - centerPoint;
+                    pointToOverride = centerPoint + v * circle->getRadius() / v.Length();
+                    return true;
+                }
+                else if (geo->getTypeId() == Part::GeomEllipse::getClassTypeId()) {}
+                else if (geo->getTypeId() == Part::GeomArcOfEllipse::getClassTypeId()) {}
+                else if (geo->getTypeId() == Part::GeomArcOfHyperbola::getClassTypeId()) {}
+                else if (geo->getTypeId() == Part::GeomArcOfParabola::getClassTypeId()) {}
+                else if (geo->getTypeId() == Part::GeomBSplineCurve::getClassTypeId()) {}
+            }
+        }
+        else if (snapMod == SnapMod::Snap5Degree) {
+            double length = (pointToOverride - referencePoint).Length();
+            double angle = (pointToOverride - referencePoint).Angle();
+            angle = round(angle / (M_PI / 36)) * M_PI / 36;
+            pointToOverride = referencePoint + length * Base::Vector2d(cos(angle), sin(angle));
+            return true;
+        }
+        else if (snapMod == SnapMod::SnapToGrid) {
+            double gridSize = sketchgui->GridSize.getValue();
+            int nx = floor(pointToOverride.x / gridSize);
+            int ny = floor(pointToOverride.y / gridSize);
+            int signX = static_cast<int>(Base::sgn(pointToOverride.x));
+            int signY = static_cast<int>(Base::sgn(pointToOverride.y));
+            if (pointToOverride.x < (nx + signX * 0.5) * gridSize)
+                pointToOverride.x = nx * gridSize;
+            else
+                pointToOverride.x = (nx + signX * 1) * gridSize;
+
+            if (pointToOverride.y < (ny + signY * 0.5) * gridSize)
+                pointToOverride.y = ny * gridSize;
+            else
+                pointToOverride.y = (ny + signY * 1) * gridSize;
+            return true;
+        }
+        return false;
+    }
 
 protected:
     using SelectMode = SelectModeT;

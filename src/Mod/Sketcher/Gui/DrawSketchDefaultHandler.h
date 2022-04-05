@@ -25,6 +25,7 @@
 #define SKETCHERGUI_DrawSketchDefaultHandler_H
 
 #include "DrawSketchHandler.h"
+#include <Base/Tools.h>
 
 #include "Utils.h"
 
@@ -35,12 +36,12 @@ namespace SketcherGui {
 
 /************************ List of snap mods ************************************/
 
-    enum class SnapMode {
-        Free,
-        Snap5Degree,
-        SnapToObject,
-        SnapToGrid
-    };
+enum class SnapMode {
+    Free,
+    Snap5Degree,
+    SnapToObject,
+    SnapToGrid //NOTE: I didn't realize but snap to grid already exist in Sketcher. So this code is duplicate. All snap override should be implemented on the same place no?
+};
 /*********************** Ancillary classes for DrawSketch Hierarchy *******************************/
 
 namespace StateMachines {
@@ -185,7 +186,7 @@ template < typename HandlerT,         // The geometry tool for which the templat
            typename SelectModeT,        // The state machine defining the states that the handle iterates
            int PInitEditCurveSize,      // The initial size of the EditCurve
            int PInitAutoConstraintSize, // The initial size of the AutoConstraint>
-           int PToolSnapMode>       //The snap mode used by the tool by default when snapping.
+           SnapMode PToolSnapMode>       //The snap mode used by the tool by default when snapping.
 class DrawSketchDefaultHandler: public DrawSketchHandler, public StateMachine<SelectModeT>
 {
 public:
@@ -193,7 +194,7 @@ public:
                                 , EditCurve(PInitEditCurveSize)
                                 ,sugConstraints(PInitAutoConstraintSize)
                                 ,snapMode(SnapMode::Free)
-                                ,toolSnapMode(static_cast<SnapMode>(PToolSnapMode))
+                                ,toolSnapMode(PToolSnapMode)
                                 ,snapRef(Base::Vector2d(0., 0.))
     {
         applyCursor();
@@ -314,19 +315,20 @@ public:
             return true;
         }
         if (snapMode == SnapMode::SnapToGrid) {
+            //NOTE: I didn't realize but snap to grid already exist in Sketcher. So this code is duplicate. All snap override should be implemented on the same place no?
             double gridSize = sketchgui->GridSize.getValue();
             int nx = floor(pointToOverride.x / gridSize);
             int ny = floor(pointToOverride.y / gridSize);
             int signX = static_cast<int>(Base::sgn(pointToOverride.x));
             int signY = static_cast<int>(Base::sgn(pointToOverride.y));
-            if (pointToOverride.x < (nx + signX * 0.5) * gridSize)
+            if (pointToOverride.x < (nx + signX * 0.2) * gridSize)
                 pointToOverride.x = nx * gridSize;
-            else
+            else if (pointToOverride.x > (nx + signX * 0.8)* gridSize)
                 pointToOverride.x = (nx + signX * 1) * gridSize;
 
-            if (pointToOverride.y < (ny + signY * 0.5) * gridSize)
+            if (pointToOverride.y < (ny + signY * 0.2) * gridSize)
                 pointToOverride.y = ny * gridSize;
-            else
+            else if (pointToOverride.y > (ny + signY * 0.8) * gridSize)
                 pointToOverride.y = (ny + signY * 1) * gridSize;
             return true;
         }
@@ -463,7 +465,7 @@ protected:
     bool continuousMode;
 
     SnapMode snapMode;
-    SnapeMode toolSnapMode;
+    SnapMode toolSnapMode;
     Base::Vector2d snapRef;
 };
 

@@ -1076,7 +1076,7 @@ using DrawSketchHandlerSymmetryBase = DrawSketchDefaultWidgetHandler< DrawSketch
     StateMachines::OneSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::Free),
+    /*ToolSnapMode*/ SnapMode::Free,
     /*PNumToolwidgetparameters =*/0,
     /*PNumToolwidgetCheckboxes =*/ 2,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -1321,7 +1321,7 @@ using DrawSketchHandlerTranslateBase = DrawSketchDefaultWidgetHandler< DrawSketc
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
+    /*ToolSnapMode*/ SnapMode::Snap5Degree,
     /*PNumToolwidgetparameters =*/6,
     /*PNumToolwidgetCheckboxes =*/ 1,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -1943,7 +1943,7 @@ using DrawSketchHandlerRotateBase = DrawSketchDefaultWidgetHandler< DrawSketchHa
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
+    /*ToolSnapMode*/ SnapMode::Snap5Degree,
     /*PNumToolwidgetparameters =*/4,
     /*PNumToolwidgetCheckboxes =*/ 1,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -1954,7 +1954,7 @@ class DrawSketchHandlerRotate : public DrawSketchHandlerRotateBase
 
 public:
     DrawSketchHandlerRotate(std::vector<int> listOfGeoIds)
-        , listOfGeoIds(listOfGeoIds)
+        : listOfGeoIds(listOfGeoIds)
         , deleteOriginal(false)
         , cloneConstraints(false)
         , numberOfCopies(0) {}
@@ -2521,7 +2521,7 @@ using DrawSketchHandlerScaleBase = DrawSketchDefaultWidgetHandler< DrawSketchHan
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
+    /*ToolSnapMode*/ SnapMode::SnapToObject,
     /*PNumToolwidgetparameters =*/3,
     /*PNumToolwidgetCheckboxes =*/ 1,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -2532,7 +2532,7 @@ class DrawSketchHandlerScale : public DrawSketchHandlerScaleBase
 
 public:
     DrawSketchHandlerScale(std::vector<int> listOfGeoIds)
-        , listOfGeoIds(listOfGeoIds)
+        : listOfGeoIds(listOfGeoIds)
         , deleteOriginal(false) {}
     virtual ~DrawSketchHandlerScale() {}
 
@@ -3038,7 +3038,7 @@ using DrawSketchHandlerOffsetBase = DrawSketchDefaultWidgetHandler< DrawSketchHa
     StateMachines::OneSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
+    /*ToolSnapMode*/ SnapMode::SnapToObject,
     /*PNumToolwidgetparameters =*/1,
     /*PNumToolwidgetCheckboxes =*/ 2,
     /*PNumToolwidgetComboboxes =*/ 1>;

@@ -96,7 +96,7 @@ template< typename HandlerT,          // The geometry tool for which the templat
           typename SelectModeT,         // The state machine defining the states that the handle iterates
           int PEditCurveSize,           // The initial size of the EditCurve
           int PAutoConstraintSize,      // The initial size of the AutoConstraint
-          int PToolSnapMode,        //The snap mode used by the tool by default when snapping.
+          SnapMode PToolSnapMode,        //The snap mode used by the tool by default when snapping.
           int PNumToolwidgetparameters, // The number of parameter spinboxes in the default widget
           int PNumToolwidgetCheckboxes, // The number of checkboxes in the default widget
           int PNumToolwidgetComboboxes > // The number of comboboxes in the default widget
@@ -776,8 +776,18 @@ public:
     //@{
     virtual void mouseMove(Base::Vector2d onSketchPos) override
     {
+        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+            snapMode = toolSnapMode;
+        else
+            snapMode = SnapMode::Free;
+        if (snapMode == SnapMode::SnapToObject)
+            getSnapPosition(onSketchPos);
+        if (snapMode == SnapMode::Snap5Degree)
+            getSnapPosition(onSketchPos, snapRef);
+
         toolWidgetManager.enforceWidgetParameters(onSketchPos);
         toolWidgetManager.updateVisualValues(onSketchPos);
+
         updateDataAndDrawToPosition (onSketchPos);
     }
 

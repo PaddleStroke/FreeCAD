@@ -233,7 +233,7 @@ using DrawSketchHandlerLineBase = DrawSketchDefaultWidgetHandler<   DrawSketchHa
                                                                     /*SelectModeT*/ StateMachines::TwoSeekEnd,
                                                                     /*PEditCurveSize =*/ 2,
                                                                     /*PAutoConstraintSize =*/ 2,
-                                                                    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
+                                                                    /*ToolSnapMode*/ SnapMode::Snap5Degree,
                                                                     /*PNumToolwidgetparameters =*/ 4,
                                                                     /*PNumToolwidgetCheckboxes =*/ 0,
                                                                     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -435,7 +435,7 @@ using DrawSketchHandlerRectangleBase = DrawSketchDefaultWidgetHandler<  DrawSket
                                                                         StateMachines::ThreeSeekEnd,
                                                                         /*PEditCurveSize =*/ 5,
                                                                         /*PAutoConstraintSize =*/ 2,
-                                                                        /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
+                                                                        /*ToolSnapMode*/ SnapMode::SnapToObject,
                                                                         /*PNumToolwidgetparameters =*/4,
                                                                         /*PNumToolwidgetCheckboxes =*/ 1,
                                                                         /*PNumToolwidgetComboboxes =*/ 1>;
@@ -1178,7 +1178,7 @@ using DrawSketchHandlerFrameBase = DrawSketchDefaultWidgetHandler<  DrawSketchHa
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 5,
     /*PAutoConstraintSize =*/ 2,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
+    /*ToolSnapMode*/ SnapMode::SnapToObject,
     /*PNumToolwidgetparameters =*/5,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -1669,7 +1669,7 @@ using DrawSketchHandlerPolygonBase = DrawSketchDefaultWidgetHandler<  DrawSketch
     StateMachines::TwoSeekEnd,
     /*PEditCurveSize =*/ 7,
     /*PAutoConstraintSize =*/ 2,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
+    /*ToolSnapMode*/ SnapMode::Snap5Degree,
     /*PNumToolwidgetparameters =*/5,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -2786,7 +2786,7 @@ using DrawSketchHandlerCircleBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
+    /*ToolSnapMode*/ SnapMode::SnapToObject,
     /*PNumToolwidgetparameters =*/3,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -3249,7 +3249,7 @@ using DrawSketchHandlerEllipseBase = DrawSketchDefaultWidgetHandler<  DrawSketch
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
+    /*ToolSnapMode*/ SnapMode::Snap5Degree,
     /*PNumToolwidgetparameters =*/5,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -3911,7 +3911,7 @@ using DrawSketchHandlerArcBase = DrawSketchDefaultWidgetHandler < DrawSketchHand
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
+    /*ToolSnapMode*/ SnapMode::Snap5Degree,
     /*PNumToolwidgetparameters =*/5,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -6293,7 +6293,7 @@ using DrawSketchHandlerPointBase = DrawSketchDefaultWidgetHandler<  DrawSketchHa
     StateMachines::OneSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 1,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
+    /*ToolSnapMode*/ SnapMode::SnapToObject,
     /*PNumToolwidgetparameters =*/2,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -6541,7 +6541,7 @@ using DrawSketchHandlerFilletBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
     StateMachines::TwoSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 0,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::Free),
+    /*ToolSnapMode*/ SnapMode::Free,
     /*PNumToolwidgetparameters =*/1,
     /*PNumToolwidgetCheckboxes =*/ 2,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -7518,7 +7518,7 @@ using DrawSketchHandlerInsertBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 2,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::SnapToObject),
+    /*ToolSnapMode*/ SnapMode::SnapToObject,
     /*PNumToolwidgetparameters =*/ 3,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 1>;
@@ -8645,7 +8645,7 @@ using DrawSketchHandlerSlotBase = DrawSketchDefaultWidgetHandler<  DrawSketchHan
     StateMachines::ThreeSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
+    /*ToolSnapMode*/ SnapMode::Snap5Degree,
     /*PNumToolwidgetparameters =*/5,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 0>;
@@ -9071,7 +9071,7 @@ using DrawSketchHandlerArcSlotBase = DrawSketchDefaultWidgetHandler<  DrawSketch
     StateMachines::FourSeekEnd,
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
-    /*ToolSnapMode*/ static_cast<int>(SnapMode::Snap5Degree),
+    /*ToolSnapMode*/ SnapMode::Snap5Degree,
     /*PNumToolwidgetparameters =*/6,
     /*PNumToolwidgetCheckboxes =*/ 0,
     /*PNumToolwidgetComboboxes =*/ 1>;

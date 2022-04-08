@@ -3975,11 +3975,13 @@ private:
             circle->setCenter(Base::Vector3d(centerPoint.x, centerPoint.y, 0.));
             geometriesToAdd.push_back(circle);
 
-            //add line to show the snap at 5 degree.
-            Part::GeomLineSegment* line = new Part::GeomLineSegment();
-            line->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
-                Base::Vector3d(centerPoint.x + cos(startAngle) * 0.8 * radius, centerPoint.y + sin(startAngle) * 0.8 * radius, 0.));
-            geometriesToAdd.push_back(line);
+            if (constructionMethod == ConstructionMethod::Center) {
+                //add line to show the snap at 5 degree.
+                Part::GeomLineSegment* line = new Part::GeomLineSegment();
+                line->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
+                    Base::Vector3d(centerPoint.x + cos(startAngle) * 0.8 * radius, centerPoint.y + sin(startAngle) * 0.8 * radius, 0.));
+                geometriesToAdd.push_back(line);
+            }
 
             drawEdit(geometriesToAdd);
 
@@ -4063,6 +4065,19 @@ private:
                 arc->setRange(startAngleToDraw, endAngle, true);
                 arc->setCenter(Base::Vector3d(centerPoint.x, centerPoint.y, 0.));
                 geometriesToAdd.push_back(arc);
+
+                if (constructionMethod == ConstructionMethod::Center) {
+                    //add line to show the snap at 5 degree.
+                    Part::GeomLineSegment* line = new Part::GeomLineSegment();
+                    if (arcAngle > 0)
+                        line->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
+                            Base::Vector3d(centerPoint.x + cos(endAngle) * 0.8 * radius, centerPoint.y + sin(endAngle) * 0.8 * radius, 0.));
+                    else
+                        line->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
+                            Base::Vector3d(centerPoint.x + cos(startAngleToDraw) * 0.8 * radius, centerPoint.y + sin(startAngleToDraw) * 0.8 * radius, 0.));
+                    geometriesToAdd.push_back(line);
+                }
+
                 drawEdit(geometriesToAdd);
 
                 SbString text;

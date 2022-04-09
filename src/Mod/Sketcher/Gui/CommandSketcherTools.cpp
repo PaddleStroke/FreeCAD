@@ -1357,7 +1357,6 @@ private:
         case SelectMode::SeekFirst:
         {
             referencePoint = onSketchPos;
-            snapRef = onSketchPos;
             drawPositionAtCursor(onSketchPos);
         }
         break;
@@ -1435,6 +1434,9 @@ private:
         firstCurveCreated = getHighestCurveIndex() + 1;
     }
 
+    virtual Base::Vector2d* getSnapRef() {
+        return &referencePoint;
+    }
 private:
     ConstructionMethod constructionMethod;
     std::vector<int> listOfGeoIds;
@@ -1967,7 +1969,6 @@ private:
         case SelectMode::SeekFirst:
         {
             centerPoint = onSketchPos;
-            snapRef = onSketchPos;
             drawPositionAtCursor(onSketchPos);
         }
         break;
@@ -2038,6 +2039,9 @@ private:
         firstCurveCreated = getHighestCurveIndex() + 1;
     }
 
+    virtual Base::Vector2d* getSnapRef() {
+        return &centerPoint;
+    }
 private:
     std::vector<int> listOfGeoIds;
     Base::Vector2d centerPoint, startPoint, endpoint;

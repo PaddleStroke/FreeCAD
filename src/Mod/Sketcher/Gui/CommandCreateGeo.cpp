@@ -259,7 +259,6 @@ private:
                 drawPositionAtCursor(onSketchPos);
 
                 EditCurve[0] = onSketchPos;
-                snapRef = onSketchPos;
 
                 if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f,0.f))) {
                     renderSuggestConstraintsCursor(sugConstraints[0]);
@@ -324,6 +323,10 @@ private:
 
     virtual QString getCrosshairCursorString() const override {
         return QString::fromLatin1("Sketcher_Pointer_Create_Line");
+    }
+
+    virtual Base::Vector2d* getSnapRef() {
+        return &EditCurve[0];
     }
 
 private:
@@ -1773,7 +1776,6 @@ private:
         {
             drawPositionAtCursor(onSketchPos);
             centerPoint = onSketchPos;
-            snapRef = onSketchPos;
 
             if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f, 0.f))) {
                 renderSuggestConstraintsCursor(sugConstraints[0]);
@@ -1863,6 +1865,10 @@ private:
 
     virtual QString getCrosshairCursorString() const override {
         return QString::fromLatin1("Sketcher_Pointer_Regular_Polygon");
+    }
+
+    virtual Base::Vector2d* getSnapRef() {
+        return &centerPoint;
     }
 
 private:
@@ -3344,7 +3350,6 @@ private:
         switch (state()) {
         case SelectMode::SeekFirst:
         {
-            snapRef = onSketchPos;
             drawPositionAtCursor(onSketchPos);
             if (constructionMethod == ConstructionMethod::Center) {
                 centerPoint = onSketchPos;
@@ -3535,6 +3540,13 @@ private:
             return QString::fromLatin1("Sketcher_Pointer_Create_Ellipse");
         else // constructionMethod == DrawSketchHandlerCircle::ConstructionMethod::ThreeRim
             return QString::fromLatin1("Sketcher_Pointer_Create_3PointEllipse");
+    }
+
+    virtual Base::Vector2d* getSnapRef() {
+        if (constructionMethod == ConstructionMethod::Center)
+            return &centerPoint;
+        else
+            return &periapsis;
     }
 
 private:
@@ -4009,7 +4021,6 @@ private:
         switch (state()) {
         case SelectMode::SeekFirst:
         {
-            snapRef = onSketchPos;
             drawPositionAtCursor(onSketchPos);
             if (constructionMethod == ConstructionMethod::Center) {
                 centerPoint = onSketchPos;
@@ -4256,6 +4267,13 @@ private:
             return QString::fromLatin1("Sketcher_Pointer_Create_Arc");
         else // constructionMethod == DrawSketchHandlerArc::ConstructionMethod::ThreeRim
             return QString::fromLatin1("Sketcher_Pointer_Create_3PointArc");
+    }
+
+    virtual Base::Vector2d* getSnapRef() {
+        if (constructionMethod == ConstructionMethod::Center)
+            return &centerPoint;
+        else
+            return &firstPoint;
     }
 
 private:
@@ -8754,7 +8772,6 @@ private:
         {
             drawPositionAtCursor(onSketchPos);
             startPoint = onSketchPos;
-            snapRef = onSketchPos;
 
             if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f, 0.f))) {
                 renderSuggestConstraintsCursor(sugConstraints[0]);
@@ -8882,6 +8899,11 @@ private:
 
     virtual QString getCrosshairCursorString() const override {
         return QString::fromLatin1("Sketcher_Pointer_Slot");
+    }
+
+
+    virtual Base::Vector2d* getSnapRef() {
+        return &startPoint;
     }
 
 private:

@@ -780,10 +780,8 @@ public:
             snapMode = toolSnapMode;
         else
             snapMode = SnapMode::Free;
-        if (snapMode == SnapMode::SnapToObject)
-            getSnapPosition(onSketchPos);
-        if (snapMode == SnapMode::Snap5Degree)
-            getSnapPosition(onSketchPos, snapRef);
+
+        getSnapPosition(onSketchPos);
 
         toolWidgetManager.enforceWidgetParameters(onSketchPos);
         toolWidgetManager.updateVisualValues(onSketchPos);
@@ -793,6 +791,8 @@ public:
 
     virtual bool pressButton(Base::Vector2d onSketchPos) override
     {
+        getSnapPosition(onSketchPos);
+
         toolWidgetManager.enforceWidgetParameters(onSketchPos);
 
         onButtonPressed(onSketchPos);

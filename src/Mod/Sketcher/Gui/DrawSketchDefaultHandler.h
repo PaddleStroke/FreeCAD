@@ -195,7 +195,7 @@ public:
                                 ,sugConstraints(PInitAutoConstraintSize)
                                 ,snapMode(SnapMode::Free)
                                 ,toolSnapMode(PToolSnapMode)
-                                ,snapRef(Base::Vector2d(0., 0.))
+                                ,snapRef(NULL)
     {
         applyCursor();
     }
@@ -213,16 +213,15 @@ public:
             snapMode = toolSnapMode;
         else
             snapMode = SnapMode::Free;
-        if (snapMode == SnapMode::SnapToObject)
-            getSnapPosition(onSketchPos);
-        if (snapMode == SnapMode::Snap5Degree)
-            getSnapPosition(onSketchPos, snapRef);
+
+        getSnapPosition(onSketchPos);
 
         updateDataAndDrawToPosition(onSketchPos);
     }
 
     virtual bool pressButton(Base::Vector2d onSketchPos) override
     {
+        getSnapPosition(onSketchPos);
 
         onButtonPressed(onSketchPos);
         return true;
@@ -235,7 +234,7 @@ public:
     }
     //@}
 
-    bool getSnapPosition(Base::Vector2d& pointToOverride, Base::Vector2d referencePoint = Base::Vector2d(0., 0.)) {
+    bool getSnapPosition(Base::Vector2d& pointToOverride) {
         //Snap to grid should probably be a toggle button. I would say in taskview near 'show grid' and 'grid size' we could add a checkbox 'Snap to grid'.
         //Then the snap mod should be set here to SnapToGrid by looking at the pref.
 
@@ -308,10 +307,10 @@ public:
             }
         }
         if (snapMode == SnapMode::Snap5Degree) {
-            double length = (pointToOverride - referencePoint).Length();
-            double angle = (pointToOverride - referencePoint).Angle();
+            double length = (pointToOverride - *snapRef).Length();
+            double angle = (pointToOverride - *snapRef).Angle();
             angle = round(angle / (M_PI / 36)) * M_PI / 36;
-            pointToOverride = referencePoint + length * Base::Vector2d(cos(angle), sin(angle));
+            pointToOverride = *snapRef + length * Base::Vector2d(cos(angle), sin(angle));
             return true;
         }
         if (snapMode == SnapMode::SnapToGrid) {
@@ -394,6 +393,7 @@ protected:
 
         onReset();
         applyCursor();
+        snapRef = getSnapRef();
     }
 
     /** @brief This function handles the geometry continuous mode.
@@ -442,6 +442,8 @@ protected:
         ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher");
 
         continuousMode = hGrp->GetBool("ContinuousCreationMode",true);
+
+        snapRef = getSnapRef();
     }
 
     // Default implementation is that on every mouse click it redraws and the mode is changed to the next seek
@@ -452,6 +454,10 @@ protected:
         this->moveToNextMode();
     }
     //@}
+
+    virtual Base::Vector2d* getSnapRef() {
+        return NULL;
+    }
 
 protected:
     // The initial size may need to change in some tools due to the configuration of the tool, so resetting may lead to a
@@ -466,7 +472,7 @@ protected:
 
     SnapMode snapMode;
     SnapMode toolSnapMode;
-    Base::Vector2d snapRef;
+    Base::Vector2d* snapRef;
 };
 
 } // namespace SketcherGui

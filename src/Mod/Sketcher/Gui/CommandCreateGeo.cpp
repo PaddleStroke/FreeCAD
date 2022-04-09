@@ -3378,6 +3378,7 @@ private:
                 periapsis = onSketchPos;
             }
 
+            double angle = GetPointAngle(centerPoint, onSketchPos);
             firstAxis = periapsis - centerPoint;
             firstRadius = firstAxis.Length();
 
@@ -3387,10 +3388,21 @@ private:
             ellipse->setRadius(firstRadius);
             ellipse->setCenter(Base::Vector3d(centerPoint.x, centerPoint.y, 0.));
             geometriesToAdd.push_back(ellipse);
+
+            //add line to show the snap at 5 degree.
+            Part::GeomLineSegment* line = new Part::GeomLineSegment();
+            if (constructionMethod == ConstructionMethod::Center)
+                line->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
+                    Base::Vector3d(centerPoint.x + cos(angle) * 0.8 * firstRadius, centerPoint.y + sin(angle) * 0.8 * firstRadius, 0.));
+            else
+                line->setPoints(Base::Vector3d(periapsis.x, periapsis.y, 0.),
+                    Base::Vector3d(periapsis.x + cos(angle) * 1.8 * firstRadius, periapsis.y + sin(angle) * 1.8 * firstRadius, 0.));
+
+            geometriesToAdd.push_back(line);
+
             drawEdit(geometriesToAdd);
 
             SbString text;
-            double angle = GetPointAngle(centerPoint, onSketchPos);
             text.sprintf(" (%.1fR,%.1fdeg)", (float)firstRadius, (float)angle * 180 / M_PI);
             setPositionText(onSketchPos, text);
 

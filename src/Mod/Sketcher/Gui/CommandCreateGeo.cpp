@@ -236,12 +236,19 @@ using DrawSketchHandlerLineBase = DrawSketchDefaultWidgetHandler<   DrawSketchHa
                                                                     /*ToolSnapMode*/ SnapMode::Snap5Degree,
                                                                     /*PNumToolwidgetparameters =*/ 4,
                                                                     /*PNumToolwidgetCheckboxes =*/ 0,
-                                                                    /*PNumToolwidgetComboboxes =*/ 0>;
+                                                                    /*PNumToolwidgetComboboxes =*/ 1>;
 
 class DrawSketchHandlerLine: public DrawSketchHandlerLineBase
 {
+    friend DrawSketchHandlerLineBase; // allow DrawSketchHandlerRectangleBase specialisations access DrawSketchHandlerRectangle private members
 public:
-    DrawSketchHandlerLine() = default;
+    enum class ConstructionMethod {
+        OnePointLengthAngle,
+        TwoPoints
+    };
+
+    DrawSketchHandlerLine(ConstructionMethod constrMethod = ConstructionMethod::OnePointLengthAngle) :
+        constructionMethod(constrMethod){}
     virtual ~DrawSketchHandlerLine() = default;
 
 private:
@@ -262,7 +269,6 @@ private:
             break;
             case SelectMode::SeekSecond:
             {
-                //Check if user changed first parameters, if so go back to SEEK_first. This way we don't have to disable parameters after they are set.
                 drawDirectionAtCursor(onSketchPos, EditCurve[0]);
 
                 EditCurve[1] = onSketchPos;
@@ -320,24 +326,180 @@ private:
         return QString::fromLatin1("Sketcher_Pointer_Create_Line");
     }
 
+private:
+    ConstructionMethod constructionMethod;
 };
 
 // Function responsible for updating the DrawSketchHandler data members when widget parameters change
 template <> void DrawSketchHandlerLineBase::ToolWidgetManager::adaptDrawingToParameterChange(int parameterindex, double value) {
-    switch(parameterindex) {
+    if (dHandler->constructionMethod == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
+        switch(parameterindex) {
+            case WParameter::First:
+                handler->EditCurve[0].x = value;
+                break;
+            case WParameter::Second:
+                handler->EditCurve[0].y = value;
+                break;
+            case WParameter::Third:
+                handler->EditCurve[1].x = value;
+                break;
+            case WParameter::Fourth:
+                handler->EditCurve[1].y = value;
+                break;
+        }
+    }
+    else {
+        switch (parameterindex) {
         case WParameter::First:
             handler->EditCurve[0].x = value;
             break;
         case WParameter::Second:
             handler->EditCurve[0].y = value;
             break;
-        case WParameter::Third:
-            handler->EditCurve[1].x = value;
-            break;
-        case WParameter::Fourth:
-            handler->EditCurve[1].y = value;
-            break;
+        }
     }
+}
+
+template <> void DrawSketchHandlerLineBase::ToolWidgetManager::configureToolWidget() {
+    if (!init) { // Code to be executed only upon initialisation
+        QStringList names = { QStringLiteral("Point, length, angle"), QStringLiteral("2 points") };
+        toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
+    }
+
+    if (dHandler->constructionMethod == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
+        toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 1st point"));
+        toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 1st point"));
+        toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_p3_rectangle", "Length"));
+        toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("TaskSketcherTool_p4_rectangle", "Angle"));
+        toolWidget->configureParameterUnit(WParameter::Fourth, Base::Unit::Angle);
+    }
+    else {
+        toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_rectangle", "x of 2nd point"));
+        toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_rectangle", "y of 2nd point"));
+        toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_p3_rectangle", "x of 2nd point"));
+        toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("TaskSketcherTool_p4_rectangle", "x of 2nd point"));
+    }
+}
+
+template <> void DrawSketchHandlerLineBase::ToolWidgetManager::adaptDrawingToComboboxChange(int comboboxindex, int value) {
+    if (comboboxindex == WCombobox::FirstCombo)
+        this->setMode(dHandler->constructionMethod, value);
+}
+
+template <> void DrawSketchHandlerLineBase::ToolWidgetManager::doEnforceWidgetParameters(Base::Vector2d& onSketchPos) {
+    prevCursorPosition = onSketchPos;
+
+    switch (handler->state()) {
+    case SelectMode::SeekFirst:
+    {
+        if (toolWidget->isParameterSet(WParameter::First))
+            onSketchPos.x = toolWidget->getParameter(WParameter::First);
+
+        if (toolWidget->isParameterSet(WParameter::Second))
+            onSketchPos.y = toolWidget->getParameter(WParameter::Second);
+    }
+    break;
+    case SelectMode::SeekSecond:
+    {
+        if (dHandler->constructionMethod == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
+
+            double length = (onSketchPos - dHandler->EditCurve[0]).Length();
+
+            if (toolWidget->isParameterSet(WParameter::Third)) {
+                length = toolWidget->getParameter(WParameter::Third);
+                Base::Vector2d v = onSketchPos - dHandler->EditCurve[0];
+                onSketchPos = dHandler->EditCurve[0] + v * length / v.Length();
+            }
+
+            if (toolWidget->isParameterSet(WParameter::Fourth)) {
+                double angle = toolWidget->getParameter(WParameter::Fourth) * M_PI / 180;
+                onSketchPos.x = dHandler->EditCurve[0].x + cos(angle) * length;
+                onSketchPos.y = dHandler->EditCurve[0].y + sin(angle) * length;
+            }
+        }
+        else {
+            if (toolWidget->isParameterSet(WParameter::Third)) {
+                onSketchPos.x = toolWidget->getParameter(WParameter::Third);
+            }
+            if (toolWidget->isParameterSet(WParameter::Fourth)) {
+                onSketchPos.y = toolWidget->getParameter(WParameter::Fourth);
+            }
+        }
+    }
+    break;
+    default:
+        break;
+    }
+}
+
+template <> void DrawSketchHandlerLineBase::ToolWidgetManager::updateVisualValues(Base::Vector2d onSketchPos) {
+    switch (handler->state()) {
+    case SelectMode::SeekFirst:
+    {
+        if (!toolWidget->isParameterSet(WParameter::First))
+            toolWidget->updateVisualValue(WParameter::First, onSketchPos.x);
+
+        if (!toolWidget->isParameterSet(WParameter::Second))
+            toolWidget->updateVisualValue(WParameter::Second, onSketchPos.y);
+    }
+    break;
+    case SelectMode::SeekSecond:
+    {
+        if (dHandler->constructionMethod == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
+            if (!toolWidget->isParameterSet(WParameter::Third))
+                toolWidget->updateVisualValue(WParameter::Third, (onSketchPos - dHandler->EditCurve[0]).Length());
+
+            if (!toolWidget->isParameterSet(WParameter::Fourth))
+                toolWidget->updateVisualValue(WParameter::Fourth, (onSketchPos - dHandler->EditCurve[0]).Angle() * 180 / M_PI, Base::Unit::Angle);
+        }
+        else {
+            if (!toolWidget->isParameterSet(WParameter::Third))
+                toolWidget->updateVisualValue(WParameter::Third, onSketchPos.x);
+
+            if (!toolWidget->isParameterSet(WParameter::Fourth))
+                toolWidget->updateVisualValue(WParameter::Fourth,onSketchPos.y);
+        }
+    }
+    break;
+    default:
+        break;
+    }
+}
+
+template <> void DrawSketchHandlerLineBase::ToolWidgetManager::doChangeDrawSketchHandlerMode() {
+    switch (handler->state()) {
+    case SelectMode::SeekFirst:
+    {
+        if (toolWidget->isParameterSet(WParameter::First) &&
+            toolWidget->isParameterSet(WParameter::Second)) {
+
+            handler->setState(SelectMode::SeekSecond);
+
+            handler->updateDataAndDrawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
+        }
+    }
+    break;
+    case SelectMode::SeekSecond:
+    {
+        if (toolWidget->isParameterSet(WParameter::Third) ||
+            toolWidget->isParameterSet(WParameter::Fourth)) {
+
+            doEnforceWidgetParameters(prevCursorPosition);
+            handler->updateDataAndDrawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
+
+            if (toolWidget->isParameterSet(WParameter::Third) &&
+                toolWidget->isParameterSet(WParameter::Fourth)) {
+
+                handler->setState(SelectMode::End);
+                handler->finish();
+            }
+        }
+    }
+    break;
+    default:
+        break;
+    }
+
 }
 
 // Function responsible to add widget mandated constraints (it is executed before creating autoconstraints)
@@ -346,42 +508,68 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::addConstraints() 
 
     auto x0 = toolWidget->getParameter(WParameter::First);
     auto y0 = toolWidget->getParameter(WParameter::Second);
-    auto x1 = toolWidget->getParameter(WParameter::Third);
-    auto y1 = toolWidget->getParameter(WParameter::Fourth);
+    auto p3 = toolWidget->getParameter(WParameter::Third);
+    auto p4 = toolWidget->getParameter(WParameter::Fourth);
 
     auto x0set = toolWidget->isParameterSet(WParameter::First);
     auto y0set = toolWidget->isParameterSet(WParameter::Second);
-    auto x1set = toolWidget->isParameterSet(WParameter::Third);
-    auto y1set = toolWidget->isParameterSet(WParameter::Fourth);
+    auto p3set = toolWidget->isParameterSet(WParameter::Third);
+    auto p4set = toolWidget->isParameterSet(WParameter::Fourth);
 
     using namespace Sketcher;
 
-    if(x0set && y0set && x0 == 0. && y0 == 0.) {
+    if (x0set && y0set && x0 == 0. && y0 == 0.) {
         ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::RtPnt,
-                                    x0, handler->sketchgui->getObject());
-    } else {
+            x0, handler->sketchgui->getObject());
+    }
+    else {
         if (x0set)
             ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::VAxis,
-                                    x0, handler->sketchgui->getObject());
+                x0, handler->sketchgui->getObject());
 
         if (y0set)
             ConstraintToAttachment(GeoElementId(firstCurve, PointPos::start), GeoElementId::HAxis,
-                                    y0,  handler->sketchgui->getObject());
+                y0, handler->sketchgui->getObject());
     }
 
-    if(x1set && y1set && x1 == 0. && y1 == 0.) {
-        ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::RtPnt,
-                                    x1, handler->sketchgui->getObject());
-    } else {
-        if (x1set)
-            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis,
-                                    x1,  handler->sketchgui->getObject());
+    if (dHandler->constructionMethod == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
 
-        if (y1set)
-            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::HAxis,
-                                    y1,  handler->sketchgui->getObject());
+        if (p3set)
+            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%f)) ",
+                firstCurve, p3);
+
+        if (p4set) {
+            double angle = p4 / 180 * M_PI;
+            if (fabs(angle - M_PI) < Precision::Confusion() || fabs(angle + M_PI) < Precision::Confusion() || fabs(angle) < Precision::Confusion()) {
+                Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Horizontal',%d)) ", firstCurve);
+            }
+            else if (fabs(angle - M_PI / 2) < Precision::Confusion() || fabs(angle + M_PI / 2) < Precision::Confusion()) {
+                Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Vertical',%d)) ", firstCurve);
+            }
+            else {
+                Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Angle',%d,%d,%f)) ",
+                    Sketcher::GeoEnum::HAxis, firstCurve, angle);
+            }
+        }
+
+    }
+    else {
+        if (p3set && p4set && p3 == 0. && p4 == 0.) {
+            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::RtPnt,
+                p3, handler->sketchgui->getObject());
+        }
+        else {
+            if (p3set)
+                ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis,
+                    p3, handler->sketchgui->getObject());
+
+            if (p4set)
+                ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::HAxis,
+                    p4, handler->sketchgui->getObject());
+        }
     }
 }
+
 
 DEF_STD_CMD_AU(CmdSketcherCreateLine)
 

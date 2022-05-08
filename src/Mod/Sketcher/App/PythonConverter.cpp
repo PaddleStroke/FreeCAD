@@ -24,7 +24,6 @@
 #include "PreCompiled.h"
 
 #ifndef _PreComp_
-
 #endif  // #ifndef _PreComp_
 
 #include <boost/format.hpp>
@@ -33,6 +32,8 @@
 
 #include <Mod/Part/App/Geometry.h>
 #include <Mod/Sketcher/App/GeometryFacade.h>
+
+#include <Mod/Sketcher/App/Constraint.h>
 
 #include "PythonConverter.h"
 
@@ -48,6 +49,17 @@ std::string PythonConverter::convert(const Part::Geometry * geo)
 
     command = boost::str(boost::format("addGeometry(%s,%s)\n") %
                     sg.creation % (sg.construction ? "True":"False"));
+
+    return command;
+}
+
+std::string PythonConverter::convert(const Sketcher::Constraint * constraint)
+{
+    // addConstraint(Sketcher.Constraint('Distance',%d,%f))
+    std::string command;
+    auto cg = process(constraint);
+
+    command = boost::str(boost::format("addConstraint(%s)\n") % cg);
 
     return command;
 }
@@ -96,6 +108,32 @@ std::string PythonConverter::convert(const std::string & doc, const std::vector<
     return command;
 }
 
+std::string PythonConverter::convert(const std::string & doc, const std::vector<Sketcher::Constraint *> & constraints)
+{
+    if(constraints.size() == 1) {
+        auto cg = convert(constraints[0]);
+
+        return boost::str(boost::format("%s.%s\n") %
+                               doc % cg);
+    }
+
+    std::string constraintlist = "constraintList = []";
+
+    for(auto constraint : constraints) {
+        auto cg = process(constraint);
+
+        constraintlist = boost::str(boost::format("%s\nconstraintList.append(%s)") %
+            constraintlist % cg);
+    }
+
+    if(constraints.size() > 0) {
+        constraintlist = boost::str(boost::format("%s\n%s.addConstraint(constraintList)\ndel constraintList\n") %
+                               constraintlist % doc);
+    }
+
+    return constraintlist;
+}
+
 PythonConverter::SingleGeometry PythonConverter::process(const Part::Geometry * geo)
 {
     static std::map<const Base::Type, std::function<SingleGeometry(const Part::Geometry * geo)>> converterMap = {
@@ -131,4 +169,211 @@ PythonConverter::SingleGeometry PythonConverter::process(const Part::Geometry * 
     auto creator = result->second;
 
     return creator(geo);
+}
+
+std::string PythonConverter::process(const Sketcher::Constraint * constraint)
+{
+    static std::map<const Sketcher::ConstraintType, std::function<std::string(const Sketcher::Constraint *)>> converterMap = {
+    { Sketcher::Coincident,
+        [](const Sketcher::Constraint * constr){
+            return boost::str(boost::format("Sketcher.Constraint('Coincident', %i, %i, %i, %i)") %
+                    constr->First % static_cast<int>(constr->FirstPos) % constr->Second % static_cast<int>(constr->SecondPos));
+        }},
+    { Sketcher::Horizontal,
+        [](const Sketcher::Constraint * constr){
+            if(constr->Second == GeoEnum::GeoUndef) {
+                return boost::str(boost::format("Sketcher.Constraint('Horizontal', %i)") % constr->First);
+            }
+            else {
+                return boost::str(boost::format("Sketcher.Constraint('Horizontal', %i, %i, %i, %i)") %
+                    constr->First % static_cast<int>(constr->FirstPos) % constr->Second % static_cast<int>(constr->SecondPos));
+            }
+        }},
+    { Sketcher::Vertical,
+        [](const Sketcher::Constraint * constr){
+            if(constr->Second == GeoEnum::GeoUndef) {
+                return boost::str(boost::format("Sketcher.Constraint('Vertical', %i)") % constr->First);
+            }
+            else {
+                return boost::str(boost::format("Sketcher.Constraint('Vertical', %i, %i, %i, %i)") %
+                    constr->First % static_cast<int>(constr->FirstPos) % constr->Second % static_cast<int>(constr->SecondPos));
+            }
+        }},
+    { Sketcher::Block,
+        [](const Sketcher::Constraint * constr){
+            return boost::str(boost::format("Sketcher.Constraint('Block', %i)") % constr->First);
+        }},
+    { Sketcher::Tangent,
+        [](const Sketcher::Constraint * constr){
+            if(constr->FirstPos == Sketcher::PointPos::none) {
+                return boost::str(boost::format("Sketcher.Constraint('Tangent', %i, %i)") %
+                        constr->First % constr->Second);
+            }
+            else if(constr->SecondPos == Sketcher::PointPos::none){
+                return boost::str(boost::format("Sketcher.Constraint('Tangent', %i, %i, %i)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->Second);
+            }
+            else {
+                return boost::str(boost::format("Sketcher.Constraint('Tangent', %i, %i, %i, %i)") %
+                    constr->First % static_cast<int>(constr->FirstPos) % constr->Second % static_cast<int>(constr->SecondPos));
+            }
+        }},
+    { Sketcher::Parallel,
+        [](const Sketcher::Constraint * constr){
+            return boost::str(boost::format("Sketcher.Constraint('Parallel', %i, %i)") %
+                    constr->First % constr->Second);
+        }},
+    { Sketcher::Perpendicular,
+        [](const Sketcher::Constraint * constr){
+            if(constr->FirstPos == Sketcher::PointPos::none) {
+                return boost::str(boost::format("Sketcher.Constraint('Perpendicular', %i, %i)") %
+                        constr->First % constr->Second);
+            }
+            else if(constr->SecondPos == Sketcher::PointPos::none){
+                return boost::str(boost::format("Sketcher.Constraint('Perpendicular', %i, %i, %i)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->Second);
+            }
+            else {
+                return boost::str(boost::format("Sketcher.Constraint('Perpendicular', %i, %i, %i, %i)") %
+                    constr->First % static_cast<int>(constr->FirstPos) % constr->Second % static_cast<int>(constr->SecondPos));
+            }
+        }},
+    { Sketcher::Equal,
+        [](const Sketcher::Constraint * constr){
+            return boost::str(boost::format("Sketcher.Constraint('Equal', %i, %i)") %
+                    constr->First % constr->Second);
+        }},
+    { Sketcher::InternalAlignment,
+        [](const Sketcher::Constraint * constr){
+            if(constr->InternalAlignmentIndex == EllipseMajorDiameter ||
+               constr->InternalAlignmentIndex == EllipseMinorDiameter) {
+                return boost::str(boost::format("Sketcher.Constraint('InternalAlignment:%s', %i, %i)") %
+                    constr->internalAlignmentTypeToString() % constr->First % constr->Second);
+            }
+            else if(constr->InternalAlignmentIndex == EllipseFocus1 ||
+                    constr->InternalAlignmentIndex == EllipseFocus2) {
+                return boost::str(boost::format("Sketcher.Constraint('InternalAlignment:%s', %i, %i, %i)") %
+                    constr->internalAlignmentTypeToString() % constr->First % static_cast<int>(constr->FirstPos) % constr->Second);
+            }
+            else if(constr->InternalAlignmentIndex == BSplineControlPoint) {
+                return boost::str(boost::format("Sketcher.Constraint('InternalAlignment:%s', %i, %i, %i, %i)") %
+                    constr->internalAlignmentTypeToString() % constr->First % static_cast<int>(constr->FirstPos) %
+                    constr->Second % constr->InternalAlignmentIndex);
+            }
+
+            THROWM(Base::ValueError, "PythonConverter: Constraint Alignment Type not supported")
+        }},
+    { Sketcher::Distance,
+        [](const Sketcher::Constraint * constr){
+            if(constr->Second == GeoEnum::GeoUndef){
+                return boost::str(boost::format("Sketcher.Constraint('Distance', %i, %f)") %
+                        constr->First % constr->getValue());
+            }
+            else if(constr->SecondPos == Sketcher::PointPos::none){
+                return boost::str(boost::format("Sketcher.Constraint('Distance', %i, %i, %i, %f)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->Second % constr->getValue());
+            }
+            else {
+                return boost::str(boost::format("Sketcher.Constraint('Distance', %i, %i, %i, %i, %f)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->Second %
+                        static_cast<int>(constr->SecondPos) % constr->getValue());
+            }
+        }},
+    { Sketcher::Angle,
+        [](const Sketcher::Constraint * constr){
+            if(constr->Second == GeoEnum::GeoUndef) {
+                return boost::str(boost::format("Sketcher.Constraint('Angle', %i, %f)") %
+                        constr->First % constr->getValue());
+            }
+            else if(constr->SecondPos == Sketcher::PointPos::none){
+                return boost::str(boost::format("Sketcher.Constraint('Angle', %i, %i, %f)") %
+                        constr->First % constr->Second % constr->getValue());
+            }
+            else {
+                return boost::str(boost::format("Sketcher.Constraint('Angle', %i, %i, %i, %i, %f)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->Second %
+                        static_cast<int>(constr->SecondPos) % constr->getValue());
+            }
+        }},
+    { Sketcher::DistanceX,
+        [](const Sketcher::Constraint * constr){
+            if(constr->Second == GeoEnum::GeoUndef) {
+                return boost::str(boost::format("Sketcher.Constraint('DistanceX', %i, %f)") %
+                        constr->First % constr->getValue());
+            }
+            else if(constr->SecondPos == Sketcher::PointPos::none){
+                return boost::str(boost::format("Sketcher.Constraint('DistanceX', %i, %i, %f)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->getValue());
+            }
+            else {
+                return boost::str(boost::format("Sketcher.Constraint('DistanceX', %i, %i, %i, %i, %f)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->Second %
+                        static_cast<int>(constr->SecondPos) % constr->getValue());
+            }
+        }},
+    { Sketcher::DistanceY,
+        [](const Sketcher::Constraint * constr){
+            if(constr->Second == GeoEnum::GeoUndef) {
+                return boost::str(boost::format("Sketcher.Constraint('DistanceY', %i, %f)") %
+                        constr->First % constr->getValue());
+            }
+            else if(constr->SecondPos == Sketcher::PointPos::none){
+                return boost::str(boost::format("Sketcher.Constraint('DistanceY', %i, %i, %f)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->getValue());
+            }
+            else {
+                return boost::str(boost::format("Sketcher.Constraint('DistanceY', %i, %i, %i, %i, %f)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->Second %
+                        static_cast<int>(constr->SecondPos) % constr->getValue());
+            }
+        }},
+    { Sketcher::Radius,
+        [](const Sketcher::Constraint * constr){
+            return boost::str(boost::format("Sketcher.Constraint('Radius', %i, %f)") %
+                    constr->First % constr->getValue());
+        }},
+    { Sketcher::Diameter,
+        [](const Sketcher::Constraint * constr){
+            return boost::str(boost::format("Sketcher.Constraint('Diameter', %i, %f)") %
+                    constr->First % constr->getValue());
+        }},
+    { Sketcher::Weight,
+        [](const Sketcher::Constraint * constr){
+            return boost::str(boost::format("Sketcher.Constraint('Weight', %i, %f)") %
+                    constr->First % constr->getValue());
+        }},
+    { Sketcher::PointOnObject,
+        [](const Sketcher::Constraint * constr){
+            return boost::str(boost::format("Sketcher.Constraint('PointOnObject', %i, %i, %i)") %
+                    constr->First % static_cast<int>(constr->FirstPos) % constr->Second);
+        }},
+    { Sketcher::Symmetric,
+        [](const Sketcher::Constraint * constr){
+            if(constr->ThirdPos==Sketcher::PointPos::none) {
+                return boost::str(boost::format("Sketcher.Constraint('Symmetric', %i, %i, %i, %i, %i)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->Second % static_cast<int>(constr->SecondPos) %
+                        constr->Third);
+            }
+            else {
+                return boost::str(boost::format("Sketcher.Constraint('Symmetric', %i, %i, %i, %i, %i, %i)") %
+                        constr->First % static_cast<int>(constr->FirstPos) % constr->Second % static_cast<int>(constr->SecondPos) %
+                        constr->Third % static_cast<int>(constr->ThirdPos));
+            }
+        }},
+    { Sketcher::SnellsLaw,
+        [](const Sketcher::Constraint * constr){
+            return boost::str(boost::format("Sketcher.Constraint('SnellsLaw', %i, %i, %i, %i, %i, %f)") %
+                    constr->First % static_cast<int>(constr->FirstPos) % constr->Second % static_cast<int>(constr->SecondPos) %
+                    constr->Third % constr->getValue());
+        }},
+    };
+
+    auto result = converterMap.find(constraint->Type);
+
+    if( result == converterMap.end())
+        THROWM(Base::ValueError, "PythonConverter: Constraint Type not supported")
+
+    auto creator = result->second;
+
+    return creator(constraint);
 }

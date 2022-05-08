@@ -29,6 +29,7 @@ namespace Part {
 }
 
 namespace Sketcher {
+    class Constraint;
 
 /** @brief      Class for generating python code
  *  @details
@@ -55,8 +56,14 @@ public:
     /// Convert a vector of geometries into the string representing the command creating them
     static std::string convert(const std::string & doc, const std::vector<Part::Geometry *> & geos);
 
+    static std::string convert(const Sketcher::Constraint * constraint);
+
+    static std::string convert(const std::string & doc, const std::vector<Sketcher::Constraint *> & constraints);
+
 private:
     static SingleGeometry process(const Part::Geometry * geo);
+
+    static std::string process(const Sketcher::Constraint * constraint);
 
 };
 

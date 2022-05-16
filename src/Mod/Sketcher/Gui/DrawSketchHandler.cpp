@@ -54,7 +54,6 @@
 #include "ViewProviderSketch.h"
 #include "CommandConstraints.h"
 
-
 using namespace SketcherGui;
 using namespace Sketcher;
 
@@ -241,10 +240,7 @@ void DrawSketchHandler::activate(ViewProviderSketch * vp)
 {
     sketchgui = vp;
 
-    auto cursorstring = getCrosshairCursorString();
-
-    if(cursorstring != QString::fromLatin1("None"))
-        setCrosshairCursor(cursorstring);
+    updateCursor();
 
     this->signalToolChanged();
 
@@ -445,6 +441,14 @@ void DrawSketchHandler::addCursorTail( std::vector<QPixmap> &pixmaps ) {
         QCursor newCursor(newIcon, p.x(), p.y());
         applyCursor(newCursor);
     }
+}
+
+void DrawSketchHandler::updateCursor()
+{
+    auto cursorstring = getCrosshairCursorString();
+
+    if(cursorstring != QString::fromLatin1("None"))
+        setCrosshairCursor(cursorstring);
 }
 
 void DrawSketchHandler::applyCursor(void)

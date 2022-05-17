@@ -72,6 +72,7 @@ SET(SketcherGui_SRCS
     DrawSketchHandlerLineSet.h
     DrawSketchHandlerCircle.h
     DrawSketchHandlerEllipse.h
+    DrawSketchHandlerArc.h
     CommandCreateGeo.cpp
     CommandConstraints.h
     CommandConstraints.cpp

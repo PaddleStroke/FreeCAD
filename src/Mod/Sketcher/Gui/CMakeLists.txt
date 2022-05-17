@@ -85,6 +85,7 @@ SET(SketcherGui_SRCS
     DrawSketchHandlerInsert.h
     DrawSketchHandlerExternal.h
     DrawSketchHandlerCarbonCopy.h
+    DrawSketchHandlerSlot.h
     CommandCreateGeo.cpp
     CommandConstraints.h
     CommandConstraints.cpp

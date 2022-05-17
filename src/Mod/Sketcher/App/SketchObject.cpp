@@ -2375,12 +2375,12 @@ int SketchObject::makeChamfers(Part::GeomArcOfCircle* arc, int nAngles) {
     /*if (nAngles == -2) {
         nAngles = 2;
     }*/
-    if (nAngles < 0) { //case of inward fillet or chamfer. 
+    if (nAngles < 0) { //case of inward fillet or chamfer.
         Part::GeomArcOfCircle* inwardArc = new Part::GeomArcOfCircle();
         inwardArc->setRadius(arc->getRadius());
         inwardArc->setCenter(arc->getCenter());
         inwardArc->setRange(endAngle, startAngle, /*emulateCCWXY=*/true);
-        if (nAngles != -1) { //not the case of an inward fillet 
+        if (nAngles != -1) { //not the case of an inward fillet
             //Set the arc as construction.
             GeometryFacade::setConstruction(inwardArc, true);
         }
@@ -7446,7 +7446,7 @@ void SketchObject::rebuildVertexIndex(void)
     }
 }
 
-const std::vector< std::map<int, Sketcher::PointPos> > SketchObject::getCoincidenceGroups()
+const std::vector< std::map<int, Sketcher::PointPos> > SketchObject::getCoincidenceGroups() const
 {
     // this function is different from that in getCoincidentPoints in that:
     // - getCoincidentPoints only considers direct coincidence (the points that are linked via a single coincidence)
@@ -7535,7 +7535,7 @@ void SketchObject::isCoincidentWithExternalGeometry(int GeoId, bool &start_exter
     }
 }
 
-const std::map<int, Sketcher::PointPos> SketchObject::getAllCoincidentPoints(int GeoId, PointPos PosId) {
+const std::map<int, Sketcher::PointPos> SketchObject::getAllCoincidentPoints(int GeoId, PointPos PosId) const {
 
     const std::vector< std::map<int, Sketcher::PointPos> > coincidenttree = getCoincidenceGroups();
 

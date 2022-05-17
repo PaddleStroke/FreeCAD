@@ -65,6 +65,7 @@ SET(SketcherGui_SRCS
     AutoConstraint.h
     Utils.h
     Utils.cpp
+    DrawSketchHandlerLine.h
     CommandCreateGeo.cpp
     CommandConstraints.h
     CommandConstraints.cpp

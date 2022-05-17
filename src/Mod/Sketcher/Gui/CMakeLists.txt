@@ -75,6 +75,7 @@ SET(SketcherGui_SRCS
     DrawSketchHandlerArc.h
     DrawSketchHandlerArcOfEllipse.h
     DrawSketchHandlerArcOfHyperbola.h
+    DrawSketchHandlerArcOfParabola.h
     CommandCreateGeo.cpp
     CommandConstraints.h
     CommandConstraints.cpp

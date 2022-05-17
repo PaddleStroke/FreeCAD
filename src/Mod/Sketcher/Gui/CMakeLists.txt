@@ -78,6 +78,7 @@ SET(SketcherGui_SRCS
     DrawSketchHandlerArcOfParabola.h
     DrawSketchHandlerBSpline.h
     DrawSketchHandlerPoint.h
+    DrawSketchHandlerFillet.h
     CommandCreateGeo.cpp
     CommandConstraints.h
     CommandConstraints.cpp

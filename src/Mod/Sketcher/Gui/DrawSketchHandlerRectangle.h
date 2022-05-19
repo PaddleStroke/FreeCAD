@@ -119,7 +119,8 @@ private:
                 }
 
                 try {
-                    drawEdit(getRectangleGeometries());
+                    createShape(true);
+                    drawEdit(toPointerVector(ShapeGeometry));
                 }
                 catch(const Base::ValueError &) {} // equal points while hovering raise an objection that can be safely ignored
 
@@ -187,8 +188,8 @@ private:
                     text.sprintf(" (%.1fT)", thickness);
                     setPositionText(onSketchPos, text);
                 }
-
-                drawEdit(getRectangleGeometries());
+                createShape(true);
+                drawEdit(toPointerVector(ShapeGeometry));
             }
             break;
             case SelectMode::SeekFourth:
@@ -222,7 +223,8 @@ private:
                 text.sprintf(" (%.1fT)", thickness);
                 setPositionText(onSketchPos, text);
 
-                drawEdit(getRectangleGeometries());
+                createShape(true);
+                drawEdit(toPointerVector(ShapeGeometry));
             }
             break;
             default:
@@ -1366,30 +1368,32 @@ private:
     double radius, length, width, thickness, radiusFrame;
     int signX, signY, firstCurve, constructionPointOneId, constructionPointTwoId, centerPointId;
 
-    std::vector<Part::Geometry*> getRectangleGeometries() {
-        std::vector<Part::Geometry*> geometriesToAdd;
+    virtual void createShape(bool onlygeometry) override {
+        Q_UNUSED(onlygeometry);
+
+        ShapeGeometry.clear();
 
         length = thirdCorner.x - firstCorner.x;
         width = thirdCorner.y - firstCorner.y;
         signX = Base::sgn(length);
         signY = Base::sgn(width);
 
-        Part::GeomLineSegment* line1 = new Part::GeomLineSegment();
-        Part::GeomLineSegment* line2 = new Part::GeomLineSegment();
-        Part::GeomLineSegment* line3 = new Part::GeomLineSegment();
-        Part::GeomLineSegment* line4 = new Part::GeomLineSegment();
+        auto line1 = std::make_unique<Part::GeomLineSegment>();
+        auto line2 = std::make_unique<Part::GeomLineSegment>();
+        auto line3 = std::make_unique<Part::GeomLineSegment>();
+        auto line4 = std::make_unique<Part::GeomLineSegment>();
         line1->setPoints(Base::Vector3d(firstCorner.x + signX * radius, firstCorner.y, 0.), Base::Vector3d(secondCorner.x - signX * radius, secondCorner.y, 0.));
         line2->setPoints(Base::Vector3d(secondCorner.x, secondCorner.y + signY * radius, 0.), Base::Vector3d(thirdCorner.x, thirdCorner.y - signY * radius, 0.));
         line3->setPoints(Base::Vector3d(thirdCorner.x - signX * radius, thirdCorner.y, 0.), Base::Vector3d(fourthCorner.x + signX * radius, fourthCorner.y, 0.));
         line4->setPoints(Base::Vector3d(fourthCorner.x, fourthCorner.y - signY * radius, 0.), Base::Vector3d(firstCorner.x, firstCorner.y + signY * radius, 0.));
-        Sketcher::GeometryFacade::setConstruction(line1, geometryCreationMode);
-        Sketcher::GeometryFacade::setConstruction(line2, geometryCreationMode);
-        Sketcher::GeometryFacade::setConstruction(line3, geometryCreationMode);
-        Sketcher::GeometryFacade::setConstruction(line4, geometryCreationMode);
-        geometriesToAdd.push_back(line1);
-        geometriesToAdd.push_back(line2);
-        geometriesToAdd.push_back(line3);
-        geometriesToAdd.push_back(line4);
+        Sketcher::GeometryFacade::setConstruction(line1.get(), geometryCreationMode);
+        Sketcher::GeometryFacade::setConstruction(line2.get(), geometryCreationMode);
+        Sketcher::GeometryFacade::setConstruction(line3.get(), geometryCreationMode);
+        Sketcher::GeometryFacade::setConstruction(line4.get(), geometryCreationMode);
+        ShapeGeometry.push_back(std::move(line1));
+        ShapeGeometry.push_back(std::move(line2));
+        ShapeGeometry.push_back(std::move(line3));
+        ShapeGeometry.push_back(std::move(line4));
 
         if (roundCorners && radius > Precision::Confusion()) {
             double start = 0;
@@ -1407,10 +1411,10 @@ private:
                 end = 0;
             }
 
-            Part::GeomArcOfCircle* arc1 = new Part::GeomArcOfCircle();
-            Part::GeomArcOfCircle* arc2 = new Part::GeomArcOfCircle();
-            Part::GeomArcOfCircle* arc3 = new Part::GeomArcOfCircle();
-            Part::GeomArcOfCircle* arc4 = new Part::GeomArcOfCircle();
+            auto arc1 = std::make_unique<Part::GeomArcOfCircle>();
+            auto arc2 = std::make_unique<Part::GeomArcOfCircle>();
+            auto arc3 = std::make_unique<Part::GeomArcOfCircle>();
+            auto arc4 = std::make_unique<Part::GeomArcOfCircle>();
 
             //center points required later for special case of round corner frame with radiusFrame = 0.
             arc1Center = Base::Vector3d(firstCorner.x + signX * radius, firstCorner.y + signY * radius, 0.);
@@ -1429,14 +1433,14 @@ private:
             arc2->setRadius(radius);
             arc3->setRadius(radius);
             arc4->setRadius(radius);
-            Sketcher::GeometryFacade::setConstruction(arc1, geometryCreationMode);
-            Sketcher::GeometryFacade::setConstruction(arc2, geometryCreationMode);
-            Sketcher::GeometryFacade::setConstruction(arc3, geometryCreationMode);
-            Sketcher::GeometryFacade::setConstruction(arc4, geometryCreationMode);
-            geometriesToAdd.push_back(arc1);
-            geometriesToAdd.push_back(arc2);
-            geometriesToAdd.push_back(arc3);
-            geometriesToAdd.push_back(arc4);
+            Sketcher::GeometryFacade::setConstruction(arc1.get(), geometryCreationMode);
+            Sketcher::GeometryFacade::setConstruction(arc2.get(), geometryCreationMode);
+            Sketcher::GeometryFacade::setConstruction(arc3.get(), geometryCreationMode);
+            Sketcher::GeometryFacade::setConstruction(arc4.get(), geometryCreationMode);
+            ShapeGeometry.push_back(std::move(arc1));
+            ShapeGeometry.push_back(std::move(arc2));
+            ShapeGeometry.push_back(std::move(arc3));
+            ShapeGeometry.push_back(std::move(arc4));
 
        }
 
@@ -1450,22 +1454,22 @@ private:
                     radiusFrame = 0.;
                 }
             }
-            Part::GeomLineSegment* line5 = new Part::GeomLineSegment();
-            Part::GeomLineSegment* line6 = new Part::GeomLineSegment();
-            Part::GeomLineSegment* line7 = new Part::GeomLineSegment();
-            Part::GeomLineSegment* line8 = new Part::GeomLineSegment();
+            auto line5 = std::make_unique<Part::GeomLineSegment>();
+            auto line6 = std::make_unique<Part::GeomLineSegment>();
+            auto line7 = std::make_unique<Part::GeomLineSegment>();
+            auto line8 = std::make_unique<Part::GeomLineSegment>();
             line5->setPoints(Base::Vector3d(firstCornerFrame.x + signX * radiusFrame, firstCornerFrame.y, 0.), Base::Vector3d(secondCornerFrame.x - signX * radiusFrame, secondCornerFrame.y, 0.));
             line6->setPoints(Base::Vector3d(secondCornerFrame.x, secondCornerFrame.y + signY * radiusFrame, 0.), Base::Vector3d(thirdCornerFrame.x, thirdCornerFrame.y - signY * radiusFrame, 0.));
             line7->setPoints(Base::Vector3d(thirdCornerFrame.x - signX * radiusFrame, thirdCornerFrame.y, 0.), Base::Vector3d(fourthCornerFrame.x + signX * radiusFrame, fourthCornerFrame.y, 0.));
             line8->setPoints(Base::Vector3d(fourthCornerFrame.x, fourthCornerFrame.y - signY * radiusFrame, 0.), Base::Vector3d(firstCornerFrame.x, firstCornerFrame.y + signY * radiusFrame, 0.));
-            Sketcher::GeometryFacade::setConstruction(line5, geometryCreationMode);
-            Sketcher::GeometryFacade::setConstruction(line6, geometryCreationMode);
-            Sketcher::GeometryFacade::setConstruction(line7, geometryCreationMode);
-            Sketcher::GeometryFacade::setConstruction(line8, geometryCreationMode);
-            geometriesToAdd.push_back(line5);
-            geometriesToAdd.push_back(line6);
-            geometriesToAdd.push_back(line7);
-            geometriesToAdd.push_back(line8);
+            Sketcher::GeometryFacade::setConstruction(line5.get(), geometryCreationMode);
+            Sketcher::GeometryFacade::setConstruction(line6.get(), geometryCreationMode);
+            Sketcher::GeometryFacade::setConstruction(line7.get(), geometryCreationMode);
+            Sketcher::GeometryFacade::setConstruction(line8.get(), geometryCreationMode);
+            ShapeGeometry.push_back(std::move(line5));
+            ShapeGeometry.push_back(std::move(line6));
+            ShapeGeometry.push_back(std::move(line7));
+            ShapeGeometry.push_back(std::move(line8));
 
 
             if (roundCorners && radiusFrame > Precision::Confusion()) {
@@ -1484,10 +1488,10 @@ private:
                     end = 0;
                 }
 
-                Part::GeomArcOfCircle* arc5 = new Part::GeomArcOfCircle();
-                Part::GeomArcOfCircle* arc6 = new Part::GeomArcOfCircle();
-                Part::GeomArcOfCircle* arc7 = new Part::GeomArcOfCircle();
-                Part::GeomArcOfCircle* arc8 = new Part::GeomArcOfCircle();
+                auto arc5 = std::make_unique<Part::GeomArcOfCircle>();
+                auto arc6 = std::make_unique<Part::GeomArcOfCircle>();
+                auto arc7 = std::make_unique<Part::GeomArcOfCircle>();
+                auto arc8 = std::make_unique<Part::GeomArcOfCircle>();
                 arc5->setCenter(Base::Vector3d(firstCornerFrame.x + signX * radiusFrame, firstCornerFrame.y + signY * radiusFrame, 0.));
                 arc6->setCenter(Base::Vector3d(secondCornerFrame.x - signX * radiusFrame, secondCornerFrame.y + signY * radiusFrame, 0.));
                 arc7->setCenter(Base::Vector3d(thirdCornerFrame.x - signX * radiusFrame, thirdCornerFrame.y - signY * radiusFrame, 0.));
@@ -1500,18 +1504,16 @@ private:
                 arc6->setRadius(radiusFrame);
                 arc7->setRadius(radiusFrame);
                 arc8->setRadius(radiusFrame);
-                Sketcher::GeometryFacade::setConstruction(arc5, geometryCreationMode);
-                Sketcher::GeometryFacade::setConstruction(arc6, geometryCreationMode);
-                Sketcher::GeometryFacade::setConstruction(arc7, geometryCreationMode);
-                Sketcher::GeometryFacade::setConstruction(arc8, geometryCreationMode);
-                geometriesToAdd.push_back(arc5);
-                geometriesToAdd.push_back(arc6);
-                geometriesToAdd.push_back(arc7);
-                geometriesToAdd.push_back(arc8);
+                Sketcher::GeometryFacade::setConstruction(arc5.get(), geometryCreationMode);
+                Sketcher::GeometryFacade::setConstruction(arc6.get(), geometryCreationMode);
+                Sketcher::GeometryFacade::setConstruction(arc7.get(), geometryCreationMode);
+                Sketcher::GeometryFacade::setConstruction(arc8.get(), geometryCreationMode);
+                ShapeGeometry.push_back(std::move(arc5));
+                ShapeGeometry.push_back(std::move(arc6));
+                ShapeGeometry.push_back(std::move(arc7));
+                ShapeGeometry.push_back(std::move(arc8));
             }
         }
-
-        return geometriesToAdd;
     }
 };
 

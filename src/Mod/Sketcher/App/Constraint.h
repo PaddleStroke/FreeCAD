@@ -24,6 +24,7 @@
 #ifndef SKETCHER_CONSTRAINT_H
 #define SKETCHER_CONSTRAINT_H
 
+#include <array>
 
 #include <Base/Persistence.h>
 #include <Base/Quantity.h>

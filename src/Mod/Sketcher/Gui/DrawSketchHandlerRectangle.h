@@ -1542,6 +1542,7 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::configureToo
     toolWidget->setParameterEnabled(WParameter::Fifth, dHandler->roundCorners);
 
     toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_rectangle", "Rounded corners"));
+    toolWidget->setCheckboxToolTip(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_rectangle", "Create a rectangle with rounded corners."));
 
     syncCheckboxToHandler(WCheckbox::FirstBox, dHandler->roundCorners);
 
@@ -1549,6 +1550,7 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::configureToo
     toolWidget->setParameterEnabled(WParameter::Sixth, dHandler->makeFrame);
 
     toolWidget->setCheckboxLabel(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_rectangle", "Frame"));
+    toolWidget->setCheckboxToolTip(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_rectangle", "Create two rectangles, one in the other with a constant thickness."));
 
     syncCheckboxToHandler(WCheckbox::SecondBox, dHandler->makeFrame);
 

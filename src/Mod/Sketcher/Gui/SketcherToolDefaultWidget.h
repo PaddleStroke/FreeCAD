@@ -155,6 +155,7 @@ public:
     void setCheckboxVisible(int checkboxindex, bool visible);
     void setCheckboxChecked(int checkboxindex, bool checked);
     void setCheckboxLabel(int checkboxindex, const QString& string);
+    void setCheckboxToolTip(int checkboxindex, const QString& string);
     bool getCheckboxChecked(int checkboxindex);
     void setCheckboxPrefEntry(int checkboxindex, const std::string & prefEntry);
     void restoreCheckBoxPref(int checkboxindex);

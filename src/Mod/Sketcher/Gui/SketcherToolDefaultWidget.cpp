@@ -539,6 +539,12 @@ void SketcherToolDefaultWidget::setCheckboxLabel(int checkboxindex, const QStrin
         getCheckBox(checkboxindex)->setText(string);
 }
 
+void SketcherToolDefaultWidget::setCheckboxToolTip(int checkboxindex, const QString& string)
+{
+    if (checkboxindex < nCheckbox)
+        getCheckBox(checkboxindex)->setToolTip(string);
+}
+
 Gui::PrefCheckBox* SketcherToolDefaultWidget::getCheckBox(int checkboxindex)
 {
     switch (checkboxindex) {

@@ -1661,18 +1661,10 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::doEnforceWid
         if (dHandler->constructionMethod() == DrawSketchHandlerRectangle::ConstructionMethod::Diagonal) {
             if (toolWidget->isParameterSet(WParameter::Third)) {
                 double length = toolWidget->getParameter(WParameter::Third);
-                if ((onSketchPos.x - dHandler->firstCorner.x) * length < 0) {
-                    length = -length;
-                    toolWidget->updateVisualValue(WParameter::Third, length);
-                }
                 onSketchPos.x = dHandler->firstCorner.x + length;
             }
             if (toolWidget->isParameterSet(WParameter::Fourth)) {
                 double width = toolWidget->getParameter(WParameter::Fourth);
-                if ((onSketchPos.y - dHandler->firstCorner.y) * width < 0) {
-                    width = -width;
-                    toolWidget->updateVisualValue(WParameter::Fourth, width);
-                }
                 onSketchPos.y = dHandler->firstCorner.y + width;
             }
         }

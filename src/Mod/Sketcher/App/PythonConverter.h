@@ -37,7 +37,7 @@ namespace Sketcher {
  *  create such objects.
  */
 
-class PythonConverter {
+class SketcherExport PythonConverter {
 
     class SingleGeometry {
     public:

@@ -158,6 +158,15 @@ PythonConverter::SingleGeometry PythonConverter::process(const Part::Geometry * 
             sg.construction = Sketcher::GeometryFacade::getConstruction(geo);
             return sg;
         }},
+    { Part::GeomPoint::getClassTypeId(),
+        [](const Part::Geometry* geo) {
+            auto sgeo = static_cast<const Part::GeomPoint*>(geo);
+            SingleGeometry sg;
+            sg.creation = boost::str(boost::format("Part.Point(App.Vector(%f,%f,%f))") %
+                    sgeo->getPoint().x % sgeo->getPoint().y % sgeo->getPoint().z);
+            sg.construction = Sketcher::GeometryFacade::getConstruction(geo);
+            return sg;
+        }},
 
     };
 

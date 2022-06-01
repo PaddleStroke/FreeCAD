@@ -483,35 +483,56 @@ template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::addConstraints(
 
         using namespace Sketcher;
 
-        auto startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::mid));
-
-        // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
-        if(x0set && (handler->AutoConstraints.empty() || startpointinfo.isXDoF())) {
+        auto constraintx0 = [&]() {
             ConstraintToAttachment(GeoElementId(firstCurve,PointPos::mid), GeoElementId::VAxis, x0, handler->sketchgui->getObject());
+        };
 
-            if(!handler->AutoConstraints.empty()) {
+        auto constrainty0 = [&]() {
+            ConstraintToAttachment(GeoElementId(firstCurve,PointPos::mid), GeoElementId::HAxis, y0,  handler->sketchgui->getObject());
+        };
+
+        auto constraintradius = [&]() {
+            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Radius',%d,%f)) ",
+                firstCurve, dHandler->radius);
+        };
+
+        // NOTE: if AutoConstraints is empty, we can add constraints directly without any diagnose. No diagnose was run.
+        if(handler->AutoConstraints.empty()) {
+            if(x0set)
+                constraintx0();
+
+            if(y0set)
+                constrainty0();
+
+            if(radiusSet)
+                constraintradius();
+        }
+        else { // There is a valid diagnose.
+            auto startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::mid));
+
+            // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+            if(x0set && startpointinfo.isXDoF()) {
+                constraintx0();
+
                 handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
 
                 startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::mid)); // get updated point position
             }
-        }
 
-        // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
-        if(y0set && (handler->AutoConstraints.empty() || startpointinfo.isYDoF())) {
-            ConstraintToAttachment(GeoElementId(firstCurve,PointPos::mid), GeoElementId::HAxis, y0,  handler->sketchgui->getObject());
+            // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+            if(y0set && startpointinfo.isYDoF()) {
+                constrainty0();
 
-            if(!handler->AutoConstraints.empty()) {
                 handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
             }
-        }
 
-        auto edgeinfo = handler->getEdgeInfo(firstCurve);
-        auto circle = static_cast<SolverGeometryExtension::Circle &>(edgeinfo);
+            auto edgeinfo = handler->getEdgeInfo(firstCurve);
+            auto circle = static_cast<SolverGeometryExtension::Circle &>(edgeinfo);
 
-        // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
-        if(radiusSet && (handler->AutoConstraints.empty() || circle.isRadiusDoF())) {
-            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Radius',%d,%f)) ",
-                firstCurve, dHandler->radius);
+            // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+            if(radiusSet && circle.isRadiusDoF()) {
+                constraintradius();
+            }
         }
     }
     //No constraint possible for 3 rim circle.

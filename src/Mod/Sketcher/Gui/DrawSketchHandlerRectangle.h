@@ -1517,6 +1517,27 @@ private:
     }
 };
 
+template <> auto DrawSketchHandlerRectangleBase::ToolWidgetManager::getState(int parameterindex) const {
+    switch (parameterindex) {
+    case WParameter::First:
+    case WParameter::Second:
+        return SelectMode::SeekFirst;
+        break;
+    case WParameter::Third:
+    case WParameter::Fourth:
+        return SelectMode::SeekSecond;
+        break;
+    case WParameter::Fifth:
+        return SelectMode::SeekThird;
+        break;
+    case WParameter::Sixth:
+        return SelectMode::SeekFourth;
+        break;
+    default:
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
+    }
+}
+
 template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
         QStringList names = {QStringLiteral("Diagonal corners"), QStringLiteral("Center and corner")};
@@ -1890,47 +1911,79 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::addConstrain
         firstPointId = dHandler->centerPointId;
     }
 
-    auto firstpointinfo = handler->getPointInfo(GeoElementId(firstPointId, PointPos::start));
-
-    if(x0set && firstpointinfo.isXDoF()) {
+    auto constraintx0 = [&]() {
         ConstraintToAttachment(GeoElementId(firstPointId,PointPos::start), GeoElementId::VAxis, x0, handler->sketchgui->getObject());
+    };
 
-        handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+    auto constrainty0 = [&]() {
+        ConstraintToAttachment(GeoElementId(firstPointId,PointPos::start), GeoElementId::HAxis, y0, handler->sketchgui->getObject());
+    };
 
-        firstpointinfo = handler->getPointInfo(GeoElementId(firstPointId, PointPos::start)); // get updated point position
-    }
-
-    if(y0set && firstpointinfo.isYDoF()) {
-        ConstraintToAttachment(GeoElementId(firstPointId,PointPos::start), GeoElementId::HAxis, y0,  handler->sketchgui->getObject());
-
-        handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
-    }
-
-    if (lengthSet) {
-        auto startpointinfo = handler->getPointInfo(GeoElementId(firstCurve + 1, PointPos::start));
-        auto endpointinfo = handler->getPointInfo(GeoElementId(firstCurve + 3, PointPos::end));
-
-        int DoFs = startpointinfo.getDoFs();
-        DoFs += endpointinfo.getDoFs();
-
-        if(DoFs > 0) {
-            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%d,%d,%d,%f)) ",
+    auto constraintlength = [&]() {
+        Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%d,%d,%d,%f)) ",
                 firstCurve + 1, 1, firstCurve + 3, 2, fabs(length));
+    };
+
+    auto constraintwidth = [&]() {
+        Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%d,%d,%d,%f)) ",
+                        firstCurve, 1, firstCurve + 2, 2, fabs(width));
+    };
+
+    // NOTE: if AutoConstraints is empty, we can add constraints directly without any diagnose. No diagnose was run.
+    if(handler->AutoConstraints.empty()) {
+        if(x0set)
+            constraintx0();
+
+        if(y0set)
+            constrainty0();
+
+        if (lengthSet)
+            constraintlength();
+
+        if (widthSet)
+            constraintwidth();
+    }
+    else { // There is a valid diagnose.
+        auto firstpointinfo = handler->getPointInfo(GeoElementId(firstPointId, PointPos::start));
+
+        if(x0set && firstpointinfo.isXDoF()) {
+            constraintx0();
+
+            handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+
+            firstpointinfo = handler->getPointInfo(GeoElementId(firstPointId, PointPos::start)); // get updated point position
         }
 
-        handler->diagnoseWithAutoConstraints();
-    }
+        if(y0set && firstpointinfo.isYDoF()) {
+            constrainty0();
 
-    if (widthSet) {
-        auto startpointinfo = handler->getPointInfo(GeoElementId(firstCurve , PointPos::start));
-        auto endpointinfo = handler->getPointInfo(GeoElementId(firstCurve + 2, PointPos::end));
+            handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+        }
 
-        int DoFs = startpointinfo.getDoFs();
-        DoFs += endpointinfo.getDoFs();
+        if (lengthSet) {
+            auto startpointinfo = handler->getPointInfo(GeoElementId(firstCurve + 1, PointPos::start));
+            auto endpointinfo = handler->getPointInfo(GeoElementId(firstCurve + 3, PointPos::end));
 
-        if(DoFs > 0) {
-            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%d,%d,%d,%f)) ",
-                firstCurve, 1, firstCurve + 2, 2, fabs(width));
+            int DoFs = startpointinfo.getDoFs();
+            DoFs += endpointinfo.getDoFs();
+
+            if(DoFs > 0) {
+                constraintlength();
+            }
+
+            handler->diagnoseWithAutoConstraints();
+        }
+
+        if (widthSet) {
+            auto startpointinfo = handler->getPointInfo(GeoElementId(firstCurve , PointPos::start));
+            auto endpointinfo = handler->getPointInfo(GeoElementId(firstCurve + 2, PointPos::end));
+
+            int DoFs = startpointinfo.getDoFs();
+            DoFs += endpointinfo.getDoFs();
+
+            if(DoFs > 0) {
+                constraintwidth();
+            }
         }
     }
 

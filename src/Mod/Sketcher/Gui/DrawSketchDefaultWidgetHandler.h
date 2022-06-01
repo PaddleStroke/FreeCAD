@@ -215,6 +215,18 @@ private:
          */
         void parameterValueChanged(int parameterindex, double value)
         {
+            // -> A machine does not forward to a next state when adapting the parameter (though it may forward to
+            //    a next state if all the parameters are fulfiled, see doChangeDrawSketchHandlerMode). This ensures
+            //    that the geometry has been defined (either by mouse clicking or by widget). Autoconstraints on point
+            //    should be picked when the state is reached upon machine state advancement.
+            //
+            // -> A machine goes back to a previous state if a parameter of a previous state is modified. This ensures
+            //    that appropriate autoconstraints are picked.
+            if(isParameterOfPreviousMode(parameterindex)) {
+                // change to previous state
+                handler->setState(getState(parameterindex));
+            }
+
             enforceWidgetParametersOnPreviousCursorPosition();
 
             adaptDrawingToParameterChange(parameterindex, value);
@@ -269,6 +281,13 @@ private:
                 }
 
             }
+        }
+
+        /** Returns the state to which the widget parameter corresponds in the current construction method
+        */
+        auto getState(int parameterindex) const {
+            Q_UNUSED(parameterindex);
+            return handler->getFirstState();
         }
 
         /// function to create constraints based on widget information.
@@ -832,6 +851,7 @@ private:
 
                 //handler->moveCursorToSketchPoint(lastWidgetEnforcedPosition);
 
+                auto currentstate = handler->state();
                 // ensure that object at point is preselected, so that autoconstraints are generated
                 handler->preselectAtPoint(lastWidgetEnforcedPosition);
                 // ensure drawing in the previous mode
@@ -839,7 +859,8 @@ private:
 
                 doChangeDrawSketchHandlerMode();
 
-                if(!handler->isLastState()) {
+                // if the state changed and is not the last state (End)
+                if(!handler->isLastState() && handler->state() != currentstate) {
                     // mode has changed, so reprocess the previous position to the new widget state
                     enforceWidgetParametersOnPreviousCursorPosition();
 
@@ -896,6 +917,14 @@ private:
                     if(constructionmethod != actualconstructionmethod)
                         toolWidget->setComboboxIndex(WCombobox::FirstCombo, actualconstructionmethod);
                 }
+            }
+
+            bool isParameterOfCurrentMode(int parameterindex) const {
+                return getState(parameterindex) == handler->state();
+            }
+
+            bool isParameterOfPreviousMode(int parameterindex) const {
+                return getState(parameterindex) < handler->state();
             }
         //@}
      };
@@ -973,6 +1002,7 @@ private:
 
     virtual void onModeChanged() override {
         toolWidgetManager.onHandlerModeChanged();
+        DSDefaultHandler::onModeChanged();
     }
 
     virtual void onConstructionMethodChanged() override {

@@ -106,6 +106,29 @@ protected:
         onModeChanged();
     }
 
+    void ensureState(SelectModeT mode) {
+        if(Mode != mode) {
+            Mode = mode;
+            onModeChanged();
+        }
+    }
+
+    /** Ensure the state machine is the provided mode
+     * but only if the mode is an earlier state.
+     *
+     * This allows to return to previous states (e.g.
+     * for modification), only if that state has previously
+     * been completed.
+     */
+    void ensureStateIfEarlier(SelectModeT mode) {
+        if(Mode != mode) {
+            if(mode < Mode) {
+                Mode = mode;
+                onModeChanged();
+            }
+        }
+    }
+
     SelectModeT state() const {
         return Mode;
     }
@@ -115,6 +138,10 @@ protected:
     bool isFirstState() const { return Mode == (static_cast<SelectModeT>(0));}
 
     bool isLastState() const { return Mode == SelectModeT::End;}
+
+    constexpr SelectModeT getFirstState() const {
+        return static_cast<SelectModeT>(0);
+    }
 
     SelectModeT getNextMode() const {
         auto modeint = static_cast<int>(state());
@@ -325,15 +352,21 @@ protected:
             unsetCursor();
             resetPositionText();
 
-            executeCommands();
+            try {
+                executeCommands();
 
-            generateAutoConstraints();
+                generateAutoConstraints();
 
-            beforeCreateAutoConstraints();
+                beforeCreateAutoConstraints();
 
-            createAutoConstraints();
+                createAutoConstraints();
 
-            tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()));
+                tryAutoRecomputeIfNotSolve(static_cast<Sketcher::SketchObject *>(sketchgui->getObject()));
+
+            }
+            catch (const Base::RuntimeError& e) {
+                e.ReportException();
+            }
 
             handleContinuousMode();
         }
@@ -397,8 +430,6 @@ private:
     virtual void beforeCreateAutoConstraints() {}
     virtual void createAutoConstraints() {}
 
-    virtual void onModeChanged() override { };
-
     virtual void onConstructionMethodChanged() override {};
 
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) {Q_UNUSED(onSketchPos)};
@@ -426,6 +457,10 @@ protected:
         this->updateDataAndDrawToPosition(onSketchPos);
         this->moveToNextMode();
     }
+
+    virtual void onModeChanged() override {
+        finish(); // internally checks that state is SelectMode::End, and only finishes then.
+    };
     //@}
 
     /** @name Helper functions
@@ -687,6 +722,25 @@ protected:
 
         THROWM(Base::ValueError, "Geometry does not have solver extension when trying to apply widget constraints!")
     }
+
+    Sketcher::SolverGeometryExtension::EdgeParameterStatus getEdgeInfo(int geoid) {
+
+        auto sketchobject = getSketchObject();
+        // it is important not to rely on Geometry attached extension from the solver, as geometry is not updated during
+        // temporary diagnose of additional constraints
+        const auto & solvedsketch = sketchobject->getSolvedSketch();
+
+        auto solvext = solvedsketch.getSolverExtension(geoid);
+
+        if(solvext) {
+            Sketcher::SolverGeometryExtension::EdgeParameterStatus edgeinfo = solvext->getEdgeParameters();
+
+            return edgeinfo;
+        }
+
+        THROWM(Base::ValueError, "Geometry does not have solver extension when trying to apply widget constraints!")
+    }
+
     //@}
 
 protected:

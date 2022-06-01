@@ -64,14 +64,19 @@ private:
             drawPositionAtCursor(onSketchPos);
             if (constructionMethod() == ConstructionMethod::Center) {
                 centerPoint = onSketchPos;
+
+                if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f, 0.f))) {
+                    renderSuggestConstraintsCursor(sugConstraints[0]);
+                    return;
+                }
             }
             else {
                 firstPoint = onSketchPos;
-            }
 
-            if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f, 0.f))) {
-                renderSuggestConstraintsCursor(sugConstraints[0]);
-                return;
+                if (seekAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.f, 0.f), AutoConstraint::CURVE)) {
+                    renderSuggestConstraintsCursor(sugConstraints[0]);
+                    return;
+                }
             }
         }
         break;
@@ -84,12 +89,8 @@ private:
 
             radius = (onSketchPos - centerPoint).Length();
 
-            std::vector<Part::Geometry*> geometriesToAdd;
-            Part::GeomCircle* circle = new Part::GeomCircle();
-            circle->setRadius(radius);
-            circle->setCenter(Base::Vector3d(centerPoint.x, centerPoint.y, 0.));
-            geometriesToAdd.push_back(circle);
-            drawEdit(geometriesToAdd);
+            createShape(true);
+            drawEdit(toPointerVector(ShapeGeometry));
 
             SbString text;
             setPositionText(onSketchPos, text);
@@ -118,14 +119,11 @@ private:
             try
             {
                 centerPoint = Part::Geom2dCircle::getCircleCenter(firstPoint, secondPoint, onSketchPos);
+
                 radius = (onSketchPos - centerPoint).Length();
 
-                std::vector<Part::Geometry*> geometriesToAdd;
-                Part::GeomCircle* circle = new Part::GeomCircle();
-                circle->setRadius(radius);
-                circle->setCenter(Base::Vector3d(centerPoint.x, centerPoint.y, 0.));
-                geometriesToAdd.push_back(circle);
-                drawEdit(geometriesToAdd);
+                createShape(true);
+                drawEdit(toPointerVector(ShapeGeometry));
 
                 double lineAngle = GetPointAngle(centerPoint, onSketchPos);
                 // This lineAngle will report counter-clockwise from +X, not relatively
@@ -149,8 +147,6 @@ private:
     }
 
     virtual void executeCommands() override {
-        unsetCursor();
-        resetPositionText();
 
         try {
             Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add sketch circle"));
@@ -165,42 +161,54 @@ private:
         catch (const Base::Exception& e) {
             Base::Console().Error("Failed to add circle: %s\n", e.what());
             Gui::Command::abortCommand();
+            THROWM(Base::RuntimeError, "Tool execution aborted\n") // This prevents constraints from being applied on non existing geometry
         }
     }
 
-    virtual void createAutoConstraints() override {
-        if (constructionMethod() == ConstructionMethod::Center) {
-            // add auto constraints for the center point
-            if (!sugConstraints[0].empty()) {
-                DrawSketchHandler::createAutoConstraints(sugConstraints[0], getHighestCurveIndex(), Sketcher::PointPos::mid);
-                sugConstraints[0].clear();
-            }
+    virtual void generateAutoConstraints() override {
+        int CircleGeoId = getHighestCurveIndex();
 
-            // add suggested constraints for circumference
-            if (!sugConstraints[1].empty()) {
-                DrawSketchHandler::createAutoConstraints(sugConstraints[1], getHighestCurveIndex(), Sketcher::PointPos::none);
-                sugConstraints[1].clear();
-            }
+        if (constructionMethod() == ConstructionMethod::Center) {
+            auto & ac1 = sugConstraints[0];
+            auto & ac2 = sugConstraints[1];
+
+            generateAutoConstraintsOnElement(ac1, CircleGeoId, Sketcher::PointPos::mid);    // add auto constraints for the center point
+            generateAutoConstraintsOnElement(ac2, CircleGeoId, Sketcher::PointPos::none);   // add auto constraints for the edge
         }
         else {
-            // Auto Constraint first picked point
-            if (sugConstraints[0].size() > 0) {
-                DrawSketchHandler::createAutoConstraints(sugConstraints[0], getHighestCurveIndex(), Sketcher::PointPos::none);
-                sugConstraints[0].clear();
-            }
 
-            // Auto Constraint second picked point
-            if (sugConstraints[1].size() > 0) {
-                DrawSketchHandler::createAutoConstraints(sugConstraints[1], getHighestCurveIndex(), Sketcher::PointPos::none);
-                sugConstraints[1].clear();
-            }
+            auto & ac1 = sugConstraints[0];
+            auto & ac2 = sugConstraints[1];
+            auto & ac3 = sugConstraints[2];
 
-            // Auto Constraint third picked point
-            if (sugConstraints[2].size() > 0) {
-                DrawSketchHandler::createAutoConstraints(sugConstraints[2], getHighestCurveIndex(), Sketcher::PointPos::none);
-                sugConstraints[2].clear();
-            }
+            generateAutoConstraintsOnElement(ac1, CircleGeoId, Sketcher::PointPos::none);   // add auto constraints for the first point
+            generateAutoConstraintsOnElement(ac2, CircleGeoId, Sketcher::PointPos::none);   // add auto constraints for the second point
+            generateAutoConstraintsOnElement(ac3, CircleGeoId, Sketcher::PointPos::none);   // add auto constraints for the second point
         }
+
+        // Ensure temporary autoconstraints do not generate a redundancy and that the geometry parameters are accurate
+        // This is particularly important for adding widget mandated constraints.
+        removeRedundantAutoConstraints();
+    }
+
+    virtual void createAutoConstraints() override {
+        // execute python command to create autoconstraints
+        createGeneratedAutoConstraints(true);
+
+        sugConstraints[0].clear();
+        sugConstraints[1].clear();
+        sugConstraints[2].clear();
+    }
+
+    virtual void createShape(bool onlygeometry) override {
+        Q_UNUSED(onlygeometry);
+
+        ShapeGeometry.clear();
+
+        auto circle = std::make_unique<Part::GeomCircle>();
+        circle->setRadius(radius);
+        circle->setCenter(Base::Vector3d(centerPoint.x, centerPoint.y, 0.));
+        ShapeGeometry.push_back(std::move(circle));
     }
 
     virtual std::string getToolName() const override {
@@ -229,6 +237,41 @@ private:
     Base::Vector2d centerPoint, firstPoint, secondPoint;
     double radius;
 };
+
+template <> auto DrawSketchHandlerCircleBase::ToolWidgetManager::getState(int parameterindex) const {
+
+    if (handler->constructionMethod() == DrawSketchHandlerCircle::ConstructionMethod::Center) {
+        switch (parameterindex) {
+        case WParameter::First:
+        case WParameter::Second:
+            return SelectMode::SeekFirst;
+            break;
+        case WParameter::Third:
+            return SelectMode::SeekSecond;
+            break;
+        default:
+            THROWM(Base::ValueError, "Parameter index without an associated machine state")
+        }
+    }
+    else { //if (constructionMethod == ConstructionMethod::ThreeRim)
+        switch (parameterindex) {
+        case WParameter::First:
+        case WParameter::Second:
+            return SelectMode::SeekFirst;
+            break;
+        case WParameter::Third:
+        case WParameter::Fourth:
+            return SelectMode::SeekSecond;
+            break;
+        case WParameter::Fifth:
+        case WParameter::Sixth:
+            return SelectMode::SeekThird;
+            break;
+        default:
+            THROWM(Base::ValueError, "Parameter index without an associated machine state")
+        }
+    }
+}
 
 template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::configureToolWidget() {
 
@@ -263,6 +306,9 @@ template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::adaptDrawingToP
         case WParameter::Second:
             dHandler->centerPoint.y = value;
             break;
+        case WParameter::Third:
+            dHandler->radius = value;
+            break;
         }
     }
     else { //if (constructionMethod == ConstructionMethod::ThreeRim)
@@ -279,6 +325,7 @@ template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::adaptDrawingToP
         case WParameter::Fourth:
             dHandler->secondPoint.y = value;
             break;
+        // WParameter::Fifth and WParameter::Sixth are handled by updateDataAndDrawToPosition
         }
     }
 }
@@ -300,8 +347,14 @@ template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::doEnforceWidget
         if (dHandler->constructionMethod() == DrawSketchHandlerCircle::ConstructionMethod::Center) {
             if (toolWidget->isParameterSet(WParameter::Third)) {
                 double radius = toolWidget->getParameter(WParameter::Third);
-                onSketchPos.x = dHandler->centerPoint.x + radius;
-                onSketchPos.y = dHandler->centerPoint.y;
+                auto dir = (onSketchPos - dHandler->centerPoint);
+
+                if(dir.Length() < Precision::Confusion()) {
+                    onSketchPos.x = dHandler->centerPoint.x + radius;
+                    onSketchPos.y = dHandler->centerPoint.y;
+                }
+                else
+                    onSketchPos = dHandler->centerPoint + radius * dir.Normalize();
             }
         }
         else {
@@ -375,8 +428,6 @@ template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::doChangeDrawSke
             toolWidget->isParameterSet(WParameter::Second)) {
 
             handler->setState(SelectMode::SeekSecond);
-
-            handler->updateDataAndDrawToPosition(prevCursorPosition);
         }
     }
     break;
@@ -385,13 +436,10 @@ template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::doChangeDrawSke
         if (toolWidget->isParameterSet(WParameter::Third) ||
             toolWidget->isParameterSet(WParameter::Fourth)) {
 
-            handler->updateDataAndDrawToPosition(prevCursorPosition);
-
             if (toolWidget->isParameterSet(WParameter::Third) &&
                 dHandler->constructionMethod() == DrawSketchHandlerCircle::ConstructionMethod::Center) {
 
                 handler->setState(SelectMode::End);
-                handler->finish();
             }
             else if (toolWidget->isParameterSet(WParameter::Third) &&
                 toolWidget->isParameterSet(WParameter::Fourth) &&
@@ -408,13 +456,10 @@ template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::doChangeDrawSke
         if (toolWidget->isParameterSet(WParameter::Fifth) ||
             toolWidget->isParameterSet(WParameter::Sixth)) {
 
-            handler->updateDataAndDrawToPosition(prevCursorPosition);
-
             if (toolWidget->isParameterSet(WParameter::Fifth) &&
                 toolWidget->isParameterSet(WParameter::Sixth)) {
 
                 handler->setState(SelectMode::End);
-                handler->finish();
             }
         }
     }
@@ -438,23 +483,36 @@ template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::addConstraints(
 
         using namespace Sketcher;
 
-        if (x0set && y0set && x0 == 0. && y0 == 0.) {
-            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::mid), GeoElementId::RtPnt,
-                x0, handler->sketchgui->getObject());
-        }
-        else {
-            if (x0set)
-                ConstraintToAttachment(GeoElementId(firstCurve, PointPos::mid), GeoElementId::VAxis,
-                    x0, handler->sketchgui->getObject());
+        auto startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::mid));
 
-            if (y0set)
-                ConstraintToAttachment(GeoElementId(firstCurve, PointPos::mid), GeoElementId::HAxis,
-                    y0, handler->sketchgui->getObject());
+        // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+        if(x0set && (handler->AutoConstraints.empty() || startpointinfo.isXDoF())) {
+            ConstraintToAttachment(GeoElementId(firstCurve,PointPos::mid), GeoElementId::VAxis, x0, handler->sketchgui->getObject());
+
+            if(!handler->AutoConstraints.empty()) {
+                handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+
+                startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::mid)); // get updated point position
+            }
         }
 
-        if (radiusSet)
+        // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+        if(y0set && (handler->AutoConstraints.empty() || startpointinfo.isYDoF())) {
+            ConstraintToAttachment(GeoElementId(firstCurve,PointPos::mid), GeoElementId::HAxis, y0,  handler->sketchgui->getObject());
+
+            if(!handler->AutoConstraints.empty()) {
+                handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+            }
+        }
+
+        auto edgeinfo = handler->getEdgeInfo(firstCurve);
+        auto circle = static_cast<SolverGeometryExtension::Circle &>(edgeinfo);
+
+        // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+        if(radiusSet && (handler->AutoConstraints.empty() || circle.isRadiusDoF())) {
             Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Radius',%d,%f)) ",
                 firstCurve, dHandler->radius);
+        }
     }
     //No constraint possible for 3 rim circle.
 }

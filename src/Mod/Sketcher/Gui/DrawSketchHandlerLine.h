@@ -197,6 +197,21 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::adaptDrawingToPar
     }
 }
 
+template <> auto DrawSketchHandlerLineBase::ToolWidgetManager::getState(int parameterindex) const {
+    switch (parameterindex) {
+    case WParameter::First:
+    case WParameter::Second:
+        return SelectMode::SeekFirst;
+        break;
+    case WParameter::Third:
+    case WParameter::Fourth:
+        return SelectMode::SeekSecond;
+        break;
+    default:
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
+    }
+}
+
 template <> void DrawSketchHandlerLineBase::ToolWidgetManager::configureToolWidget() {
     if (!init) { // Code to be executed only upon initialisation
         QStringList names = { QStringLiteral("Point, length, angle"), QStringLiteral("2 points") };

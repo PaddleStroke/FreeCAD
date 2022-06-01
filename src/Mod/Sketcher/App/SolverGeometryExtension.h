@@ -116,16 +116,19 @@ public:
 
     class Point : public EdgeParameterStatus
     {
+    public:
         Point() = default;
     };
 
     class Line : public EdgeParameterStatus
     {
+    public:
         Line() = default;
     };
 
     class Arc : public EdgeParameterStatus
     {
+    public:
         Arc() = default;
 
         ParameterStatus getRadiusStatus() const {return pstatus[0];}
@@ -135,13 +138,16 @@ public:
 
     class Circle : public EdgeParameterStatus
     {
+    public:
         Circle() = default;
 
         ParameterStatus getRadiusStatus() const {return pstatus[0];}
+        bool isRadiusDoF() const {return pstatus[0] == Dependent;}
     };
 
     class ArcOfEllipse : public EdgeParameterStatus
     {
+    public:
         ArcOfEllipse() = default;
 
         ParameterStatus getFocusXStatus() const {return pstatus[0];}
@@ -153,6 +159,7 @@ public:
 
     class Ellipse : public EdgeParameterStatus
     {
+    public:
         Ellipse() = default;
 
         ParameterStatus getFocusXStatus() const {return pstatus[0];}
@@ -162,6 +169,7 @@ public:
 
     class ArcOfHyperbola : public EdgeParameterStatus
     {
+    public:
         ArcOfHyperbola() = default;
 
         ParameterStatus getFocusXStatus() const {return pstatus[0];}
@@ -173,6 +181,7 @@ public:
 
     class ArcOfParabola : public EdgeParameterStatus
     {
+    public:
         ArcOfParabola() = default;
 
         ParameterStatus getFocusXStatus() const {return pstatus[0];}
@@ -181,6 +190,7 @@ public:
 
     class BSpline : public EdgeParameterStatus
     {
+    public:
         BSpline() = default;
 
         ParameterStatus getPoleXStatus(int poleindex) const

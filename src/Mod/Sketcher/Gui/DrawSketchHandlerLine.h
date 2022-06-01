@@ -330,63 +330,111 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::addConstraints() 
 
     using namespace Sketcher;
 
-    auto startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::start));
-
-    if(x0set && startpointinfo.isXDoF()) {
+    auto constraintx0 = [&]() {
         ConstraintToAttachment(GeoElementId(firstCurve,PointPos::start), GeoElementId::VAxis, x0, handler->sketchgui->getObject());
+    };
 
-        handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
-
-        startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::start)); // get updated point position
-    }
-
-    if(y0set && startpointinfo.isYDoF()) {
+    auto constrainty0 = [&]() {
         ConstraintToAttachment(GeoElementId(firstCurve,PointPos::start), GeoElementId::HAxis, y0,  handler->sketchgui->getObject());
+    };
 
-        handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+    auto constraintp3length = [&]() {
+        Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%f)) ",
+                    firstCurve, p3);
+    };
 
-        startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::start)); // get updated point position
-    }
+    auto constraintp3x = [&]() {
+        ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis, p3, handler->sketchgui->getObject());
+    };
 
-    auto endpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::end));
-
-    if (handler->constructionMethod() == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
-
-        int DoFs = startpointinfo.getDoFs();
-        DoFs += endpointinfo.getDoFs();
-
-        if (p3set && DoFs > 0) {
-            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%f)) ",
-                firstCurve, p3);
-            DoFs--;
+    auto constraintp4angle = [&]() {
+        double angle = p4 / 180 * M_PI;
+        if (fabs(angle - M_PI) < Precision::Confusion() || fabs(angle + M_PI) < Precision::Confusion() || fabs(angle) < Precision::Confusion()) {
+            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Horizontal',%d)) ", firstCurve);
         }
+        else if (fabs(angle - M_PI / 2) < Precision::Confusion() || fabs(angle + M_PI / 2) < Precision::Confusion()) {
+            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Vertical',%d)) ", firstCurve);
+        }
+        else {
+            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Angle',%d,%d,%f)) ",
+                Sketcher::GeoEnum::HAxis, firstCurve, angle);
+        }
+    };
 
-        if (p4set && DoFs > 0) {
-            double angle = p4 / 180 * M_PI;
-            if (fabs(angle - M_PI) < Precision::Confusion() || fabs(angle + M_PI) < Precision::Confusion() || fabs(angle) < Precision::Confusion()) {
-                Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Horizontal',%d)) ", firstCurve);
-            }
-            else if (fabs(angle - M_PI / 2) < Precision::Confusion() || fabs(angle + M_PI / 2) < Precision::Confusion()) {
-                Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Vertical',%d)) ", firstCurve);
-            }
-            else {
-                Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Angle',%d,%d,%f)) ",
-                    Sketcher::GeoEnum::HAxis, firstCurve, angle);
-            }
+    auto constraintp4y = [&]() {
+        ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::HAxis, p4,  handler->sketchgui->getObject());
+    };
+
+    if(handler->AutoConstraints.empty()) { // No valid diagnosis. Every constraint can be added.
+        if(x0set)
+            constraintx0();
+
+        if(y0set)
+            constrainty0();
+
+        if (handler->constructionMethod() == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
+            if (p3set)
+                constraintp3length();
+
+            if (p4set)
+                constraintp4angle();
+        }
+        else {
+            if(p3set)
+                constraintp3x();
+
+            if(p4set)
+                constraintp4y();
         }
     }
-    else {
-        if(p3set && endpointinfo.isXDoF()) {
-            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis, p3, handler->sketchgui->getObject());
+    else { // Valid diagnosis. Must check which constraints may be added.
+        auto startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::start));
+
+        if(x0set && startpointinfo.isXDoF()) {
+            constraintx0();
 
             handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
 
             startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::start)); // get updated point position
-            endpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::end));
         }
 
-        if(p4set && endpointinfo.isYDoF())
-            ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::HAxis, p4,  handler->sketchgui->getObject());
+        if(y0set && startpointinfo.isYDoF()) {
+            constrainty0();
+
+            handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+
+            startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::start)); // get updated point position
+        }
+
+        auto endpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::end));
+
+        if (handler->constructionMethod() == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
+
+            int DoFs = startpointinfo.getDoFs();
+            DoFs += endpointinfo.getDoFs();
+
+            if (p3set && DoFs > 0) {
+                constraintp3length();
+                DoFs--;
+            }
+
+            if (p4set && DoFs > 0) {
+                constraintp4angle();
+            }
+        }
+        else {
+            if(p3set && endpointinfo.isXDoF()) {
+                constraintp3x();
+
+                handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+
+                startpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::start)); // get updated point position
+                endpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::end));
+            }
+
+            if(p4set && endpointinfo.isYDoF())
+                constraintp4y();
+        }
     }
 }
 

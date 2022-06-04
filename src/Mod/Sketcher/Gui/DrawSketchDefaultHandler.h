@@ -786,6 +786,15 @@ protected:
                 Sketcher::PythonConverter::convert(Gui::Command::getObjectCmd(sketchgui->getObject()), shapeConstraints).c_str());
     }
 
+    void DrawShapeGeometry() {
+        drawEdit(toPointerVector(ShapeGeometry));
+    }
+
+    void CreateAndDrawShapeGeometry() {
+        createShape(true);
+        drawEdit(toPointerVector(ShapeGeometry));
+    }
+
     //@}
 
 protected:

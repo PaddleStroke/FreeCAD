@@ -435,7 +435,7 @@ private:
     virtual void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) {Q_UNUSED(onSketchPos)};
 
     // function intended to populate ShapeGeometry and ShapeConstraints
-    virtual void createShape(bool onlygeometry) {Q_UNUSED(onlygeometry)}
+    virtual void createShape(bool onlyeditoutline) {Q_UNUSED(onlyeditoutline)}
     //@}
 protected:
     /** @name functions are intended to be overridden/specialised to extend basic functionality
@@ -739,6 +739,41 @@ protected:
         }
 
         THROWM(Base::ValueError, "Geometry does not have solver extension when trying to apply widget constraints!")
+    }
+
+    void addToShapeConstraints(Sketcher::ConstraintType type, int first, Sketcher::PointPos firstPos = Sketcher::PointPos::none, int second = -2000, Sketcher::PointPos secondPos = Sketcher::PointPos::none, int third = -2000, Sketcher::PointPos thirdPos = Sketcher::PointPos::none) {
+        auto constr = std::make_unique<Sketcher::Constraint>();
+        constr->Type = type;
+        constr->First = first;
+        constr->FirstPos = firstPos;
+        constr->Second = second;
+        constr->SecondPos = secondPos;
+        constr->Third = third;
+        constr->ThirdPos = thirdPos;
+        ShapeConstraints.push_back(std::move(constr));
+    }
+
+    void addLineToShapeGeometry(Base::Vector3d p1, Base::Vector3d p2, bool constructionMode) {
+        auto line = std::make_unique<Part::GeomLineSegment>();
+        line->setPoints(p1, p2);
+        Sketcher::GeometryFacade::setConstruction(line.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(line));
+    }
+
+    void addArcToShapeGeometry(Base::Vector3d p1, double start, double end, double radius, bool constructionMode) {
+        auto arc = std::make_unique<Part::GeomArcOfCircle>();
+        arc->setCenter(p1);
+        arc->setRange(start, end, true);
+        arc->setRadius(radius);
+        Sketcher::GeometryFacade::setConstruction(arc.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(arc));
+    }
+
+    void addPointToShapeGeometry(Base::Vector3d p1, bool constructionMode) {
+        auto point = std::make_unique<Part::GeomPoint>();
+        point->setPoint(p1);
+        Sketcher::GeometryFacade::setConstruction(point.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(point));
     }
 
     //@}

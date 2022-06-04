@@ -233,21 +233,13 @@ private:
     }
 
     virtual void executeCommands() override {
-        firstCurve = getHighestCurveIndex() + 1;
-
         try {
 
             createShape(false);
 
             Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Add sketch box"));
 
-            auto shapeGeometry = toPointerVector(ShapeGeometry);
-            Gui::Command::doCommand(Gui::Command::Doc,
-                Sketcher::PythonConverter::convert(Gui::Command::getObjectCmd(sketchgui->getObject()), shapeGeometry).c_str());
-
-            auto shapeConstraints = toPointerVector(ShapeConstraints);
-            Gui::Command::doCommand(Gui::Command::Doc,
-                Sketcher::PythonConverter::convert(Gui::Command::getObjectCmd(sketchgui->getObject()), shapeConstraints).c_str());
+            commandAddShapeGeometryAndConstraints();
 
             Gui::Command::commitCommand();
         }

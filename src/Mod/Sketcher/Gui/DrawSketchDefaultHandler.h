@@ -776,6 +776,16 @@ protected:
         ShapeGeometry.push_back(std::move(point));
     }
 
+    void commandAddShapeGeometryAndConstraints() {
+            auto shapeGeometry = toPointerVector(ShapeGeometry);
+            Gui::Command::doCommand(Gui::Command::Doc,
+                Sketcher::PythonConverter::convert(Gui::Command::getObjectCmd(sketchgui->getObject()), shapeGeometry).c_str());
+
+            auto shapeConstraints = toPointerVector(ShapeConstraints);
+            Gui::Command::doCommand(Gui::Command::Doc,
+                Sketcher::PythonConverter::convert(Gui::Command::getObjectCmd(sketchgui->getObject()), shapeConstraints).c_str());
+    }
+
     //@}
 
 protected:

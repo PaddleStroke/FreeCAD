@@ -242,6 +242,8 @@ private:
 
             adaptDrawingToCheckboxChange(checkboxindex, value);
 
+            onHandlerModeChanged(); //re-focus/select spinbox
+
             finishWidgetChanged();
         }
 

@@ -108,6 +108,7 @@ private:
         catch (const Base::Exception& e) {
             Base::Console().Error("Failed to add line: %s\n", e.what());
             Gui::Command::abortCommand();
+            THROWM(Base::RuntimeError, "Tool execution aborted\n") // This prevents constraints from being applied on non existing geometry
         }
     }
 

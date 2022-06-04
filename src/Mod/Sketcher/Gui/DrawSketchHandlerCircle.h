@@ -200,8 +200,8 @@ private:
         sugConstraints[2].clear();
     }
 
-    virtual void createShape(bool onlygeometry) override {
-        Q_UNUSED(onlygeometry);
+    virtual void createShape(bool onlyeditoutline) override {
+        Q_UNUSED(onlyeditoutline);
 
         ShapeGeometry.clear();
 

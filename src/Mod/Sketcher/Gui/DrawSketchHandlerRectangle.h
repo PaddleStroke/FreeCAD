@@ -119,8 +119,7 @@ private:
                 }
 
                 try {
-                    createShape(true);
-                    drawEdit(toPointerVector(ShapeGeometry));
+                    CreateAndDrawShapeGeometry();
                 }
                 catch(const Base::ValueError &) {} // equal points while hovering raise an objection that can be safely ignored
 
@@ -160,7 +159,7 @@ private:
                         }
                         radius = std::min((dx + dy + sqrt(2 * dx * dy)), std::min(abs(length / 2), abs(width / 2)) * 0.99);
                     }
-                   SbString text;
+                    SbString text;
                     text.sprintf(" (%.1f radius)", radius);
                     setPositionText(onSketchPos, text);
                 }
@@ -188,8 +187,8 @@ private:
                     text.sprintf(" (%.1fT)", thickness);
                     setPositionText(onSketchPos, text);
                 }
-                createShape(true);
-                drawEdit(toPointerVector(ShapeGeometry));
+
+                CreateAndDrawShapeGeometry();
             }
             break;
             case SelectMode::SeekFourth:
@@ -223,8 +222,7 @@ private:
                 text.sprintf(" (%.1fT)", thickness);
                 setPositionText(onSketchPos, text);
 
-                createShape(true);
-                drawEdit(toPointerVector(ShapeGeometry));
+                CreateAndDrawShapeGeometry();
             }
             break;
             default:
@@ -596,8 +594,6 @@ private:
             }
         }
     }
-
-
 
 };
 

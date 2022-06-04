@@ -254,6 +254,7 @@ private:
         catch (const Base::Exception& e) {
             Base::Console().Error("Failed to add box: %s\n", e.what());
             Gui::Command::abortCommand();
+            THROWM(Base::RuntimeError, "Tool execution aborted\n") // This prevents constraints from being applied on non existing geometry
         }
 
         thickness = 0.;
@@ -357,8 +358,7 @@ private:
     double radius, length, width, thickness, radiusFrame;
     int signX, signY, firstCurve, constructionPointOneId, constructionPointTwoId, centerPointId;
 
-    virtual void createShape(bool onlygeometry) override {
-        Q_UNUSED(onlygeometry);
+    virtual void createShape(bool onlyeditoutline) override {
 
         ShapeGeometry.clear();
 
@@ -369,10 +369,10 @@ private:
         double start = 0;
         double end = M_PI / 2;
 
-        addLineToVec(Base::Vector3d(firstCorner.x + signX * radius, firstCorner.y, 0.), Base::Vector3d(secondCorner.x - signX * radius, secondCorner.y, 0.), geometryCreationMode);
-        addLineToVec(Base::Vector3d(secondCorner.x, secondCorner.y + signY * radius, 0.), Base::Vector3d(thirdCorner.x, thirdCorner.y - signY * radius, 0.), geometryCreationMode);
-        addLineToVec(Base::Vector3d(thirdCorner.x - signX * radius, thirdCorner.y, 0.), Base::Vector3d(fourthCorner.x + signX * radius, fourthCorner.y, 0.), geometryCreationMode);
-        addLineToVec(Base::Vector3d(fourthCorner.x, fourthCorner.y - signY * radius, 0.), Base::Vector3d(firstCorner.x, firstCorner.y + signY * radius, 0.), geometryCreationMode);
+        addLineToShapeGeometry(Base::Vector3d(firstCorner.x + signX * radius, firstCorner.y, 0.), Base::Vector3d(secondCorner.x - signX * radius, secondCorner.y, 0.), geometryCreationMode);
+        addLineToShapeGeometry(Base::Vector3d(secondCorner.x, secondCorner.y + signY * radius, 0.), Base::Vector3d(thirdCorner.x, thirdCorner.y - signY * radius, 0.), geometryCreationMode);
+        addLineToShapeGeometry(Base::Vector3d(thirdCorner.x - signX * radius, thirdCorner.y, 0.), Base::Vector3d(fourthCorner.x + signX * radius, fourthCorner.y, 0.), geometryCreationMode);
+        addLineToShapeGeometry(Base::Vector3d(fourthCorner.x, fourthCorner.y - signY * radius, 0.), Base::Vector3d(firstCorner.x, firstCorner.y + signY * radius, 0.), geometryCreationMode);
 
         if (roundCorners && radius > Precision::Confusion()) {
             if (signX > 0 && signY > 0) {
@@ -394,10 +394,10 @@ private:
             arc3Center = Base::Vector3d(thirdCorner.x - signX * radius, thirdCorner.y - signY * radius, 0.);
             arc4Center = Base::Vector3d(fourthCorner.x + signX * radius, fourthCorner.y - signY * radius, 0.);
 
-            addArcToVec(arc1Center, start                                            , end                                                      , radius, geometryCreationMode);
-            addArcToVec(arc2Center, (signX * signY > 0) ? end - 2 * M_PI : end - M_PI, (signX * signY > 0) ? end - 1.5 * M_PI : end - 0.5 * M_PI, radius, geometryCreationMode);
-            addArcToVec(arc3Center, end - 1.5 * M_PI                                 , end - M_PI                                               , radius, geometryCreationMode);
-            addArcToVec(arc4Center, (signX * signY > 0) ? end - M_PI : end - 2 * M_PI, (signX * signY > 0) ? end - 0.5 * M_PI : end - 1.5 * M_PI, radius, geometryCreationMode);
+            addArcToShapeGeometry(arc1Center, start                                            , end                                                      , radius, geometryCreationMode);
+            addArcToShapeGeometry(arc2Center, (signX * signY > 0) ? end - 2 * M_PI : end - M_PI, (signX * signY > 0) ? end - 1.5 * M_PI : end - 0.5 * M_PI, radius, geometryCreationMode);
+            addArcToShapeGeometry(arc3Center, end - 1.5 * M_PI                                 , end - M_PI                                               , radius, geometryCreationMode);
+            addArcToShapeGeometry(arc4Center, (signX * signY > 0) ? end - M_PI : end - 2 * M_PI, (signX * signY > 0) ? end - 0.5 * M_PI : end - 1.5 * M_PI, radius, geometryCreationMode);
        }
 
         if (makeFrame && state() != SelectMode::SeekSecond && fabs(thickness) > Precision::Confusion()) {
@@ -411,10 +411,10 @@ private:
                 }
             }
 
-            addLineToVec(Base::Vector3d(firstCornerFrame.x + signX * radiusFrame, firstCornerFrame.y, 0.), Base::Vector3d(secondCornerFrame.x - signX * radiusFrame, secondCornerFrame.y, 0.), geometryCreationMode);
-            addLineToVec(Base::Vector3d(secondCornerFrame.x, secondCornerFrame.y + signY * radiusFrame, 0.), Base::Vector3d(thirdCornerFrame.x, thirdCornerFrame.y - signY * radiusFrame, 0.), geometryCreationMode);
-            addLineToVec(Base::Vector3d(thirdCornerFrame.x - signX * radiusFrame, thirdCornerFrame.y, 0.), Base::Vector3d(fourthCornerFrame.x + signX * radiusFrame, fourthCornerFrame.y, 0.), geometryCreationMode);
-            addLineToVec(Base::Vector3d(fourthCornerFrame.x, fourthCornerFrame.y - signY * radiusFrame, 0.), Base::Vector3d(firstCornerFrame.x, firstCornerFrame.y + signY * radiusFrame, 0.), geometryCreationMode);
+            addLineToShapeGeometry(Base::Vector3d(firstCornerFrame.x + signX * radiusFrame, firstCornerFrame.y, 0.), Base::Vector3d(secondCornerFrame.x - signX * radiusFrame, secondCornerFrame.y, 0.), geometryCreationMode);
+            addLineToShapeGeometry(Base::Vector3d(secondCornerFrame.x, secondCornerFrame.y + signY * radiusFrame, 0.), Base::Vector3d(thirdCornerFrame.x, thirdCornerFrame.y - signY * radiusFrame, 0.), geometryCreationMode);
+            addLineToShapeGeometry(Base::Vector3d(thirdCornerFrame.x - signX * radiusFrame, thirdCornerFrame.y, 0.), Base::Vector3d(fourthCornerFrame.x + signX * radiusFrame, fourthCornerFrame.y, 0.), geometryCreationMode);
+            addLineToShapeGeometry(Base::Vector3d(fourthCornerFrame.x, fourthCornerFrame.y - signY * radiusFrame, 0.), Base::Vector3d(firstCornerFrame.x, firstCornerFrame.y + signY * radiusFrame, 0.), geometryCreationMode);
 
             if (roundCorners && radiusFrame > Precision::Confusion()) {
                 double start = 0;
@@ -432,14 +432,14 @@ private:
                     end = 0;
                 }
 
-                addArcToVec(Base::Vector3d(firstCornerFrame.x + signX * radiusFrame , firstCornerFrame.y + signY * radiusFrame , 0.), start                                            , end                                                      , radiusFrame, geometryCreationMode);
-                addArcToVec(Base::Vector3d(secondCornerFrame.x - signX * radiusFrame, secondCornerFrame.y + signY * radiusFrame, 0.), (signX * signY > 0) ? end - 2 * M_PI : end - M_PI, (signX * signY > 0) ? end - 1.5 * M_PI : end - 0.5 * M_PI, radiusFrame, geometryCreationMode);
-                addArcToVec(Base::Vector3d(thirdCornerFrame.x - signX * radiusFrame , thirdCornerFrame.y - signY * radiusFrame , 0.), end - 1.5 * M_PI                                 , end - M_PI                                               , radiusFrame, geometryCreationMode);
-                addArcToVec(Base::Vector3d(fourthCornerFrame.x + signX * radiusFrame, fourthCornerFrame.y - signY * radiusFrame, 0.), (signX * signY > 0) ? end - M_PI : end - 2 * M_PI, (signX * signY > 0) ? end - 0.5 * M_PI : end - 1.5 * M_PI, radiusFrame, geometryCreationMode);
+                addArcToShapeGeometry(Base::Vector3d(firstCornerFrame.x + signX * radiusFrame , firstCornerFrame.y + signY * radiusFrame , 0.), start                                            , end                                                      , radiusFrame, geometryCreationMode);
+                addArcToShapeGeometry(Base::Vector3d(secondCornerFrame.x - signX * radiusFrame, secondCornerFrame.y + signY * radiusFrame, 0.), (signX * signY > 0) ? end - 2 * M_PI : end - M_PI, (signX * signY > 0) ? end - 1.5 * M_PI : end - 0.5 * M_PI, radiusFrame, geometryCreationMode);
+                addArcToShapeGeometry(Base::Vector3d(thirdCornerFrame.x - signX * radiusFrame , thirdCornerFrame.y - signY * radiusFrame , 0.), end - 1.5 * M_PI                                 , end - M_PI                                               , radiusFrame, geometryCreationMode);
+                addArcToShapeGeometry(Base::Vector3d(fourthCornerFrame.x + signX * radiusFrame, fourthCornerFrame.y - signY * radiusFrame, 0.), (signX * signY > 0) ? end - M_PI : end - 2 * M_PI, (signX * signY > 0) ? end - 0.5 * M_PI : end - 1.5 * M_PI, radiusFrame, geometryCreationMode);
             }
         }
 
-        if (!onlygeometry) {
+        if (!onlyeditoutline) {
             ShapeConstraints.clear();
 
             if (radius > Precision::Confusion()) {
@@ -447,72 +447,72 @@ private:
                 Sketcher::PointPos a = signX * signY > 0. ? Sketcher::PointPos::end : Sketcher::PointPos::start;
                 Sketcher::PointPos b = signX * signY > 0. ? Sketcher::PointPos::start : Sketcher::PointPos::end;
 
-                addConstrToVec(Sketcher::Tangent, firstCurve    , Sketcher::PointPos::start, firstCurve + 4, a);
-                addConstrToVec(Sketcher::Tangent, firstCurve    , Sketcher::PointPos::end  , firstCurve + 5, b);
-                addConstrToVec(Sketcher::Tangent, firstCurve + 1, Sketcher::PointPos::start, firstCurve + 5, a);
-                addConstrToVec(Sketcher::Tangent, firstCurve + 1, Sketcher::PointPos::end  , firstCurve + 6, b);
-                addConstrToVec(Sketcher::Tangent, firstCurve + 2, Sketcher::PointPos::start, firstCurve + 6, a);
-                addConstrToVec(Sketcher::Tangent, firstCurve + 2, Sketcher::PointPos::end  , firstCurve + 7, b);
-                addConstrToVec(Sketcher::Tangent, firstCurve + 3, Sketcher::PointPos::start, firstCurve + 7, a);
-                addConstrToVec(Sketcher::Tangent, firstCurve + 3, Sketcher::PointPos::end  , firstCurve + 4, b);
+                addToShapeConstraints(Sketcher::Tangent, firstCurve    , Sketcher::PointPos::start, firstCurve + 4, a);
+                addToShapeConstraints(Sketcher::Tangent, firstCurve    , Sketcher::PointPos::end  , firstCurve + 5, b);
+                addToShapeConstraints(Sketcher::Tangent, firstCurve + 1, Sketcher::PointPos::start, firstCurve + 5, a);
+                addToShapeConstraints(Sketcher::Tangent, firstCurve + 1, Sketcher::PointPos::end  , firstCurve + 6, b);
+                addToShapeConstraints(Sketcher::Tangent, firstCurve + 2, Sketcher::PointPos::start, firstCurve + 6, a);
+                addToShapeConstraints(Sketcher::Tangent, firstCurve + 2, Sketcher::PointPos::end  , firstCurve + 7, b);
+                addToShapeConstraints(Sketcher::Tangent, firstCurve + 3, Sketcher::PointPos::start, firstCurve + 7, a);
+                addToShapeConstraints(Sketcher::Tangent, firstCurve + 3, Sketcher::PointPos::end  , firstCurve + 4, b);
 
-                addConstrToVec(Sketcher::Horizontal, firstCurve);
-                addConstrToVec(Sketcher::Horizontal, firstCurve + 2);
-                addConstrToVec(Sketcher::Vertical  , firstCurve + 1);
-                addConstrToVec(Sketcher::Vertical  , firstCurve + 3);
-                addConstrToVec(Sketcher::Equal, firstCurve + 4, Sketcher::PointPos::none, firstCurve + 5);
-                addConstrToVec(Sketcher::Equal, firstCurve + 5, Sketcher::PointPos::none, firstCurve + 6);
-                addConstrToVec(Sketcher::Equal, firstCurve + 6, Sketcher::PointPos::none, firstCurve + 7);
+                addToShapeConstraints(Sketcher::Horizontal, firstCurve);
+                addToShapeConstraints(Sketcher::Horizontal, firstCurve + 2);
+                addToShapeConstraints(Sketcher::Vertical  , firstCurve + 1);
+                addToShapeConstraints(Sketcher::Vertical  , firstCurve + 3);
+                addToShapeConstraints(Sketcher::Equal, firstCurve + 4, Sketcher::PointPos::none, firstCurve + 5);
+                addToShapeConstraints(Sketcher::Equal, firstCurve + 5, Sketcher::PointPos::none, firstCurve + 6);
+                addToShapeConstraints(Sketcher::Equal, firstCurve + 6, Sketcher::PointPos::none, firstCurve + 7);
 
                 if (fabs(thickness) > Precision::Confusion()) {
                     if (radiusFrame < Precision::Confusion()) { //case inner rectangle is normal rectangle
 
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 8, Sketcher::PointPos::end, firstCurve + 9, Sketcher::PointPos::start);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 9, Sketcher::PointPos::end, firstCurve + 10, Sketcher::PointPos::start);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 10, Sketcher::PointPos::end, firstCurve + 11, Sketcher::PointPos::start);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 11, Sketcher::PointPos::end, firstCurve + 8, Sketcher::PointPos::start);
-                        addConstrToVec(Sketcher::Horizontal, firstCurve + 8);
-                        addConstrToVec(Sketcher::Horizontal, firstCurve + 10);
-                        addConstrToVec(Sketcher::Vertical, firstCurve + 9);
-                        addConstrToVec(Sketcher::Vertical, firstCurve + 11);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 8, Sketcher::PointPos::end, firstCurve + 9, Sketcher::PointPos::start);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 9, Sketcher::PointPos::end, firstCurve + 10, Sketcher::PointPos::start);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 10, Sketcher::PointPos::end, firstCurve + 11, Sketcher::PointPos::start);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 11, Sketcher::PointPos::end, firstCurve + 8, Sketcher::PointPos::start);
+                        addToShapeConstraints(Sketcher::Horizontal, firstCurve + 8);
+                        addToShapeConstraints(Sketcher::Horizontal, firstCurve + 10);
+                        addToShapeConstraints(Sketcher::Vertical, firstCurve + 9);
+                        addToShapeConstraints(Sketcher::Vertical, firstCurve + 11);
 
                         //add construction lines +12, +13, +14, +15
-                        addLineToVec(Base::Vector3d(firstCorner.x + signX * radius, firstCorner.y + signY * radius, 0.), Base::Vector3d(firstCornerFrame.x, firstCornerFrame.y, 0.), true);
-                        addLineToVec(Base::Vector3d(secondCorner.x - signX * radius, secondCorner.y + signY * radius, 0.), Base::Vector3d(secondCornerFrame.x, secondCornerFrame.y, 0.), true);
-                        addLineToVec(Base::Vector3d(thirdCorner.x - signX * radius, thirdCorner.y - signY * radius, 0.), Base::Vector3d(thirdCornerFrame.x, thirdCornerFrame.y, 0.), true);
-                        addLineToVec(Base::Vector3d(fourthCorner.x + signX * radius, fourthCorner.y - signY * radius, 0.), Base::Vector3d(fourthCornerFrame.x, fourthCornerFrame.y, 0.), true);
+                        addLineToShapeGeometry(Base::Vector3d(firstCorner.x + signX * radius, firstCorner.y + signY * radius, 0.), Base::Vector3d(firstCornerFrame.x, firstCornerFrame.y, 0.), true);
+                        addLineToShapeGeometry(Base::Vector3d(secondCorner.x - signX * radius, secondCorner.y + signY * radius, 0.), Base::Vector3d(secondCornerFrame.x, secondCornerFrame.y, 0.), true);
+                        addLineToShapeGeometry(Base::Vector3d(thirdCorner.x - signX * radius, thirdCorner.y - signY * radius, 0.), Base::Vector3d(thirdCornerFrame.x, thirdCornerFrame.y, 0.), true);
+                        addLineToShapeGeometry(Base::Vector3d(fourthCorner.x + signX * radius, fourthCorner.y - signY * radius, 0.), Base::Vector3d(fourthCornerFrame.x, fourthCornerFrame.y, 0.), true);
 
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 12, Sketcher::PointPos::start, firstCurve + 4 , Sketcher::PointPos::mid);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 12, Sketcher::PointPos::end  , firstCurve + 8 , Sketcher::PointPos::start);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 13, Sketcher::PointPos::start, firstCurve + 5 , Sketcher::PointPos::mid);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 13, Sketcher::PointPos::end  , firstCurve + 9 , Sketcher::PointPos::start);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 14, Sketcher::PointPos::start, firstCurve + 6 , Sketcher::PointPos::mid);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 14, Sketcher::PointPos::end  , firstCurve + 10, Sketcher::PointPos::start);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 15, Sketcher::PointPos::start, firstCurve + 7 , Sketcher::PointPos::mid);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 15, Sketcher::PointPos::end  , firstCurve + 11, Sketcher::PointPos::start);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 12, Sketcher::PointPos::start, firstCurve + 4 , Sketcher::PointPos::mid);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 12, Sketcher::PointPos::end  , firstCurve + 8 , Sketcher::PointPos::start);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 13, Sketcher::PointPos::start, firstCurve + 5 , Sketcher::PointPos::mid);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 13, Sketcher::PointPos::end  , firstCurve + 9 , Sketcher::PointPos::start);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 14, Sketcher::PointPos::start, firstCurve + 6 , Sketcher::PointPos::mid);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 14, Sketcher::PointPos::end  , firstCurve + 10, Sketcher::PointPos::start);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 15, Sketcher::PointPos::start, firstCurve + 7 , Sketcher::PointPos::mid);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 15, Sketcher::PointPos::end  , firstCurve + 11, Sketcher::PointPos::start);
 
-                        addConstrToVec(Sketcher::Perpendicular, firstCurve + 12, Sketcher::PointPos::none, firstCurve + 13);
-                        addConstrToVec(Sketcher::Perpendicular, firstCurve + 13, Sketcher::PointPos::none, firstCurve + 14);
-                        addConstrToVec(Sketcher::Perpendicular, firstCurve + 14, Sketcher::PointPos::none, firstCurve + 15);
+                        addToShapeConstraints(Sketcher::Perpendicular, firstCurve + 12, Sketcher::PointPos::none, firstCurve + 13);
+                        addToShapeConstraints(Sketcher::Perpendicular, firstCurve + 13, Sketcher::PointPos::none, firstCurve + 14);
+                        addToShapeConstraints(Sketcher::Perpendicular, firstCurve + 14, Sketcher::PointPos::none, firstCurve + 15);
 
                     }
                     else { //case inner rectangle is rounded rectangle
-                        addConstrToVec(Sketcher::Tangent, firstCurve + 8, Sketcher::PointPos::start, firstCurve + 12, a);
-                        addConstrToVec(Sketcher::Tangent, firstCurve + 8, Sketcher::PointPos::end  , firstCurve + 13, b);
-                        addConstrToVec(Sketcher::Tangent, firstCurve + 9, Sketcher::PointPos::start, firstCurve + 13, a);
-                        addConstrToVec(Sketcher::Tangent, firstCurve + 9, Sketcher::PointPos::end  , firstCurve + 14, b);
-                        addConstrToVec(Sketcher::Tangent, firstCurve + 10, Sketcher::PointPos::start, firstCurve + 14, a);
-                        addConstrToVec(Sketcher::Tangent, firstCurve + 10, Sketcher::PointPos::end  , firstCurve + 15, b);
-                        addConstrToVec(Sketcher::Tangent, firstCurve + 11, Sketcher::PointPos::start, firstCurve + 15, a);
-                        addConstrToVec(Sketcher::Tangent, firstCurve + 11, Sketcher::PointPos::end  , firstCurve + 12, b);
+                        addToShapeConstraints(Sketcher::Tangent, firstCurve + 8, Sketcher::PointPos::start, firstCurve + 12, a);
+                        addToShapeConstraints(Sketcher::Tangent, firstCurve + 8, Sketcher::PointPos::end  , firstCurve + 13, b);
+                        addToShapeConstraints(Sketcher::Tangent, firstCurve + 9, Sketcher::PointPos::start, firstCurve + 13, a);
+                        addToShapeConstraints(Sketcher::Tangent, firstCurve + 9, Sketcher::PointPos::end  , firstCurve + 14, b);
+                        addToShapeConstraints(Sketcher::Tangent, firstCurve + 10, Sketcher::PointPos::start, firstCurve + 14, a);
+                        addToShapeConstraints(Sketcher::Tangent, firstCurve + 10, Sketcher::PointPos::end  , firstCurve + 15, b);
+                        addToShapeConstraints(Sketcher::Tangent, firstCurve + 11, Sketcher::PointPos::start, firstCurve + 15, a);
+                        addToShapeConstraints(Sketcher::Tangent, firstCurve + 11, Sketcher::PointPos::end  , firstCurve + 12, b);
 
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 4, Sketcher::PointPos::mid, firstCurve + 12, Sketcher::PointPos::mid);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 5, Sketcher::PointPos::mid, firstCurve + 13, Sketcher::PointPos::mid);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 6, Sketcher::PointPos::mid, firstCurve + 14, Sketcher::PointPos::mid);
-                        addConstrToVec(Sketcher::Coincident, firstCurve + 7, Sketcher::PointPos::mid, firstCurve + 15, Sketcher::PointPos::mid);
-                        addConstrToVec(Sketcher::Horizontal, firstCurve + 8);
-                        addConstrToVec(Sketcher::Horizontal, firstCurve + 10);
-                        addConstrToVec(Sketcher::Vertical, firstCurve + 9);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 4, Sketcher::PointPos::mid, firstCurve + 12, Sketcher::PointPos::mid);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 5, Sketcher::PointPos::mid, firstCurve + 13, Sketcher::PointPos::mid);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 6, Sketcher::PointPos::mid, firstCurve + 14, Sketcher::PointPos::mid);
+                        addToShapeConstraints(Sketcher::Coincident, firstCurve + 7, Sketcher::PointPos::mid, firstCurve + 15, Sketcher::PointPos::mid);
+                        addToShapeConstraints(Sketcher::Horizontal, firstCurve + 8);
+                        addToShapeConstraints(Sketcher::Horizontal, firstCurve + 10);
+                        addToShapeConstraints(Sketcher::Vertical, firstCurve + 9);
                     }
                 }
 
@@ -527,11 +527,11 @@ private:
                         centerPointId = firstCurve + 9;
                     }
 
-                    addPointToVec(Base::Vector3d(thirdCorner.x, thirdCorner.y, 0.), true);
-                    addPointToVec(Base::Vector3d(center.x, center.y, 0.), true);
-                    addConstrToVec(Sketcher::Symmetric, firstCurve + 2, Sketcher::PointPos::start, firstCurve, Sketcher::PointPos::start, centerPointId, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::PointOnObject, constructionPointOneId, Sketcher::PointPos::start, firstCurve + 1);
-                    addConstrToVec(Sketcher::PointOnObject, constructionPointOneId, Sketcher::PointPos::start, firstCurve + 2);
+                    addPointToShapeGeometry(Base::Vector3d(thirdCorner.x, thirdCorner.y, 0.), true);
+                    addPointToShapeGeometry(Base::Vector3d(center.x, center.y, 0.), true);
+                    addToShapeConstraints(Sketcher::Symmetric, firstCurve + 2, Sketcher::PointPos::start, firstCurve, Sketcher::PointPos::start, centerPointId, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::PointOnObject, constructionPointOneId, Sketcher::PointPos::start, firstCurve + 1);
+                    addToShapeConstraints(Sketcher::PointOnObject, constructionPointOneId, Sketcher::PointPos::start, firstCurve + 2);
                 }
                 else {
                     if (fabs(thickness) > Precision::Confusion()) {
@@ -543,53 +543,53 @@ private:
                         constructionPointTwoId = firstCurve + 9;
                     }
 
-                    addPointToVec(Base::Vector3d(firstCorner.x, firstCorner.y, 0.), true);
-                    addPointToVec(Base::Vector3d(thirdCorner.x, thirdCorner.y, 0.), true);
-                    addConstrToVec(Sketcher::PointOnObject, constructionPointOneId, Sketcher::PointPos::start, firstCurve);
-                    addConstrToVec(Sketcher::PointOnObject, constructionPointOneId, Sketcher::PointPos::start, firstCurve + 3);
-                    addConstrToVec(Sketcher::PointOnObject, constructionPointTwoId, Sketcher::PointPos::start, firstCurve + 1);
-                    addConstrToVec(Sketcher::PointOnObject, constructionPointTwoId, Sketcher::PointPos::start, firstCurve + 2);
+                    addPointToShapeGeometry(Base::Vector3d(firstCorner.x, firstCorner.y, 0.), true);
+                    addPointToShapeGeometry(Base::Vector3d(thirdCorner.x, thirdCorner.y, 0.), true);
+                    addToShapeConstraints(Sketcher::PointOnObject, constructionPointOneId, Sketcher::PointPos::start, firstCurve);
+                    addToShapeConstraints(Sketcher::PointOnObject, constructionPointOneId, Sketcher::PointPos::start, firstCurve + 3);
+                    addToShapeConstraints(Sketcher::PointOnObject, constructionPointTwoId, Sketcher::PointPos::start, firstCurve + 1);
+                    addToShapeConstraints(Sketcher::PointOnObject, constructionPointTwoId, Sketcher::PointPos::start, firstCurve + 2);
                 }
 
             }
             else { //cases of normal rectangles and normal frames
-                addConstrToVec(Sketcher::Coincident, firstCurve, Sketcher::PointPos::end, firstCurve + 1, Sketcher::PointPos::start);
-                addConstrToVec(Sketcher::Coincident, firstCurve + 1, Sketcher::PointPos::end, firstCurve + 2, Sketcher::PointPos::start);
-                addConstrToVec(Sketcher::Coincident, firstCurve + 2, Sketcher::PointPos::end, firstCurve + 3, Sketcher::PointPos::start);
-                addConstrToVec(Sketcher::Coincident, firstCurve + 3, Sketcher::PointPos::end, firstCurve, Sketcher::PointPos::start);
-                addConstrToVec(Sketcher::Horizontal, firstCurve);
-                addConstrToVec(Sketcher::Horizontal, firstCurve + 2);
-                addConstrToVec(Sketcher::Vertical  , firstCurve + 1);
-                addConstrToVec(Sketcher::Vertical  , firstCurve + 3);
+                addToShapeConstraints(Sketcher::Coincident, firstCurve, Sketcher::PointPos::end, firstCurve + 1, Sketcher::PointPos::start);
+                addToShapeConstraints(Sketcher::Coincident, firstCurve + 1, Sketcher::PointPos::end, firstCurve + 2, Sketcher::PointPos::start);
+                addToShapeConstraints(Sketcher::Coincident, firstCurve + 2, Sketcher::PointPos::end, firstCurve + 3, Sketcher::PointPos::start);
+                addToShapeConstraints(Sketcher::Coincident, firstCurve + 3, Sketcher::PointPos::end, firstCurve, Sketcher::PointPos::start);
+                addToShapeConstraints(Sketcher::Horizontal, firstCurve);
+                addToShapeConstraints(Sketcher::Horizontal, firstCurve + 2);
+                addToShapeConstraints(Sketcher::Vertical  , firstCurve + 1);
+                addToShapeConstraints(Sketcher::Vertical  , firstCurve + 3);
 
                 if (fabs(thickness) > Precision::Confusion()) {
-                    addConstrToVec(Sketcher::Coincident, firstCurve + 4, Sketcher::PointPos::end, firstCurve + 5, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Coincident, firstCurve + 5, Sketcher::PointPos::end, firstCurve + 6, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Coincident, firstCurve + 6, Sketcher::PointPos::end, firstCurve + 7, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Coincident, firstCurve + 7, Sketcher::PointPos::end, firstCurve + 4, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Horizontal, firstCurve + 4);
-                    addConstrToVec(Sketcher::Horizontal, firstCurve + 6);
-                    addConstrToVec(Sketcher::Vertical, firstCurve + 5);
-                    addConstrToVec(Sketcher::Vertical, firstCurve + 7);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve + 4, Sketcher::PointPos::end, firstCurve + 5, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve + 5, Sketcher::PointPos::end, firstCurve + 6, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve + 6, Sketcher::PointPos::end, firstCurve + 7, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve + 7, Sketcher::PointPos::end, firstCurve + 4, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Horizontal, firstCurve + 4);
+                    addToShapeConstraints(Sketcher::Horizontal, firstCurve + 6);
+                    addToShapeConstraints(Sketcher::Vertical, firstCurve + 5);
+                    addToShapeConstraints(Sketcher::Vertical, firstCurve + 7);
 
                     //add construction lines
-                    addLineToVec(Base::Vector3d(firstCorner.x , firstCorner.y , 0.), Base::Vector3d(firstCornerFrame.x , firstCornerFrame.y , 0.), true);
-                    addLineToVec(Base::Vector3d(secondCorner.x, secondCorner.y, 0.), Base::Vector3d(secondCornerFrame.x, secondCornerFrame.y, 0.), true);
-                    addLineToVec(Base::Vector3d(thirdCorner.x , thirdCorner.y , 0.), Base::Vector3d(thirdCornerFrame.x , thirdCornerFrame.y , 0.), true);
-                    addLineToVec(Base::Vector3d(fourthCorner.x, fourthCorner.y, 0.), Base::Vector3d(fourthCornerFrame.x, fourthCornerFrame.y, 0.), true);
+                    addLineToShapeGeometry(Base::Vector3d(firstCorner.x , firstCorner.y , 0.), Base::Vector3d(firstCornerFrame.x , firstCornerFrame.y , 0.), true);
+                    addLineToShapeGeometry(Base::Vector3d(secondCorner.x, secondCorner.y, 0.), Base::Vector3d(secondCornerFrame.x, secondCornerFrame.y, 0.), true);
+                    addLineToShapeGeometry(Base::Vector3d(thirdCorner.x , thirdCorner.y , 0.), Base::Vector3d(thirdCornerFrame.x , thirdCornerFrame.y , 0.), true);
+                    addLineToShapeGeometry(Base::Vector3d(fourthCorner.x, fourthCorner.y, 0.), Base::Vector3d(fourthCornerFrame.x, fourthCornerFrame.y, 0.), true);
 
-                    addConstrToVec(Sketcher::Coincident, firstCurve + 8, Sketcher::PointPos::start, firstCurve    , Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Coincident, firstCurve + 8, Sketcher::PointPos::end, firstCurve + 4, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Coincident, firstCurve + 9, Sketcher::PointPos::start, firstCurve + 1, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Coincident, firstCurve + 9, Sketcher::PointPos::end, firstCurve + 5, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Coincident, firstCurve +10, Sketcher::PointPos::start, firstCurve + 2, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Coincident, firstCurve +10, Sketcher::PointPos::end, firstCurve + 6, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Coincident, firstCurve +11, Sketcher::PointPos::start, firstCurve + 3, Sketcher::PointPos::start);
-                    addConstrToVec(Sketcher::Coincident, firstCurve +11, Sketcher::PointPos::end, firstCurve + 7, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve + 8, Sketcher::PointPos::start, firstCurve    , Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve + 8, Sketcher::PointPos::end, firstCurve + 4, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve + 9, Sketcher::PointPos::start, firstCurve + 1, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve + 9, Sketcher::PointPos::end, firstCurve + 5, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve +10, Sketcher::PointPos::start, firstCurve + 2, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve +10, Sketcher::PointPos::end, firstCurve + 6, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve +11, Sketcher::PointPos::start, firstCurve + 3, Sketcher::PointPos::start);
+                    addToShapeConstraints(Sketcher::Coincident, firstCurve +11, Sketcher::PointPos::end, firstCurve + 7, Sketcher::PointPos::start);
 
-                    addConstrToVec(Sketcher::Perpendicular, firstCurve + 8, Sketcher::PointPos::none, firstCurve + 9);
-                    addConstrToVec(Sketcher::Perpendicular, firstCurve + 9, Sketcher::PointPos::none, firstCurve +10);
-                    addConstrToVec(Sketcher::Perpendicular, firstCurve +10, Sketcher::PointPos::none, firstCurve +11);
+                    addToShapeConstraints(Sketcher::Perpendicular, firstCurve + 8, Sketcher::PointPos::none, firstCurve + 9);
+                    addToShapeConstraints(Sketcher::Perpendicular, firstCurve + 9, Sketcher::PointPos::none, firstCurve +10);
+                    addToShapeConstraints(Sketcher::Perpendicular, firstCurve +10, Sketcher::PointPos::none, firstCurve +11);
                 }
 
                 if (constructionMethod() == ConstructionMethod::CenterAndCorner) {
@@ -598,47 +598,14 @@ private:
                     else
                         centerPointId = firstCurve + 4;
 
-                    addPointToVec(Base::Vector3d(center.x, center.y, 0.), true);
-                    addConstrToVec(Sketcher::Symmetric, firstCurve + 2, Sketcher::PointPos::start, firstCurve, Sketcher::PointPos::start, centerPointId, Sketcher::PointPos::start);
+                    addPointToShapeGeometry(Base::Vector3d(center.x, center.y, 0.), true);
+                    addToShapeConstraints(Sketcher::Symmetric, firstCurve + 2, Sketcher::PointPos::start, firstCurve, Sketcher::PointPos::start, centerPointId, Sketcher::PointPos::start);
                 }
             }
         }
     }
 
-    void addConstrToVec(Sketcher::ConstraintType type, int first, Sketcher::PointPos firstPos = Sketcher::PointPos::none, int second = -2000, Sketcher::PointPos secondPos = Sketcher::PointPos::none, int third = -2000, Sketcher::PointPos thirdPos = Sketcher::PointPos::none) {
-        auto constr = std::make_unique<Sketcher::Constraint>();
-        constr->Type = type;
-        constr->First = first;
-        constr->FirstPos = firstPos;
-        constr->Second = second;
-        constr->SecondPos = secondPos;
-        constr->Third = third;
-        constr->ThirdPos = thirdPos;
-        ShapeConstraints.push_back(std::move(constr));
-    }
 
-    void addLineToVec(Base::Vector3d p1, Base::Vector3d p2, bool constructionMode) {
-        auto line = std::make_unique<Part::GeomLineSegment>();
-        line->setPoints(p1, p2);
-        Sketcher::GeometryFacade::setConstruction(line.get(), constructionMode);
-        ShapeGeometry.push_back(std::move(line));
-    }
-
-    void addArcToVec(Base::Vector3d p1, double start, double end, double radius, bool constructionMode) {
-        auto arc = std::make_unique<Part::GeomArcOfCircle>();
-        arc->setCenter(p1);
-        arc->setRange(start, end, true);
-        arc->setRadius(radius);
-        Sketcher::GeometryFacade::setConstruction(arc.get(), constructionMode);
-        ShapeGeometry.push_back(std::move(arc));
-    }
-
-    void addPointToVec(Base::Vector3d p1, bool constructionMode) {
-        auto point = std::make_unique<Part::GeomPoint>();
-        point->setPoint(p1);
-        Sketcher::GeometryFacade::setConstruction(point.get(), constructionMode);
-        ShapeGeometry.push_back(std::move(point));
-    }
 
 };
 
@@ -785,6 +752,8 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::adaptDrawing
         toolWidget->setParameterEnabled(WParameter::Sixth, value);
         break;
     }
+
+    handler->updateCursor();
 
     handler->updateDataAndDrawToPosition(prevCursorPosition);
     onHandlerModeChanged(); //re-focus/select spinbox

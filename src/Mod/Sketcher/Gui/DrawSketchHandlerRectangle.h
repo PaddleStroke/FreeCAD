@@ -232,6 +232,7 @@ private:
 
     virtual void executeCommands() override {
         try {
+            firstCurve = getHighestCurveIndex() + 1;
 
             createShape(false);
 
@@ -742,9 +743,6 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::adaptDrawing
     }
 
     handler->updateCursor();
-
-    handler->updateDataAndDrawToPosition(prevCursorPosition);
-    onHandlerModeChanged(); //re-focus/select spinbox
 }
 
 template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::doEnforceWidgetParameters(Base::Vector2d& onSketchPos) {
@@ -893,8 +891,6 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::doChangeDraw
             toolWidget->isParameterSet(WParameter::Second)) {
 
             handler->setState(SelectMode::SeekSecond);
-
-            handler->updateDataAndDrawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
         }
     }
     break;
@@ -903,20 +899,13 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::doChangeDraw
         if (toolWidget->isParameterSet(WParameter::Third) ||
             toolWidget->isParameterSet(WParameter::Fourth)) {
 
-            doEnforceWidgetParameters(prevCursorPosition);
-            handler->updateDataAndDrawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
-
             if (toolWidget->isParameterSet(WParameter::Third) &&
                 toolWidget->isParameterSet(WParameter::Fourth)) {
 
-                if (dHandler->roundCorners || dHandler->makeFrame) {
+                if (dHandler->roundCorners || dHandler->makeFrame)
                     handler->setState(SelectMode::SeekThird);
-                }
-                else {
+                else
                     handler->setState(SelectMode::End);
-                    handler->finish();
-                }
-
             }
         }
     }
@@ -925,37 +914,21 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::doChangeDraw
     {
         if (dHandler->roundCorners && toolWidget->isParameterSet(WParameter::Fifth)) {
 
-            doEnforceWidgetParameters(prevCursorPosition);
-            handler->updateDataAndDrawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
-
-
-            if (dHandler->makeFrame) {
+            if (dHandler->makeFrame)
                 handler->setState(SelectMode::SeekFourth);
-            }
-            else {
+            else
                 handler->setState(SelectMode::End);
-                handler->finish();
-            }
         }
         else if (dHandler->makeFrame && toolWidget->isParameterSet(WParameter::Sixth)) {
 
-            doEnforceWidgetParameters(prevCursorPosition);
-            handler->updateDataAndDrawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
-
             handler->setState(SelectMode::End);
-            handler->finish();
         }
     }
     break;
     case SelectMode::SeekFourth:
     {
         if (toolWidget->isParameterSet(WParameter::Sixth)) {
-
-            doEnforceWidgetParameters(prevCursorPosition);
-            handler->updateDataAndDrawToPosition(prevCursorPosition); // draw curve to cursor with suggested constraints
-
             handler->setState(SelectMode::End);
-            handler->finish();
         }
     }
     break;

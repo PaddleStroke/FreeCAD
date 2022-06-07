@@ -723,6 +723,17 @@ protected:
         THROWM(Base::ValueError, "Geometry does not have solver extension when trying to apply widget constraints!")
     }
 
+    int getLineDoFs(int geoid)
+    {
+        auto startpointinfo = getPointInfo(Sketcher::GeoElementId(geoid, Sketcher::PointPos::start));
+        auto endpointinfo = getPointInfo(Sketcher::GeoElementId(geoid, Sketcher::PointPos::end));
+
+        int DoFs = startpointinfo.getDoFs();
+        DoFs += endpointinfo.getDoFs();
+
+        return DoFs;
+    }
+
     Sketcher::SolverGeometryExtension::EdgeParameterStatus getEdgeInfo(int geoid) {
 
         auto sketchobject = getSketchObject();
@@ -774,6 +785,24 @@ protected:
         point->setPoint(p1);
         Sketcher::GeometryFacade::setConstruction(point.get(), constructionMode);
         ShapeGeometry.push_back(std::move(point));
+    }
+
+    void addEllipseToShapeGeometry(Base::Vector3d centerPoint, Base::Vector3d majorAxisDirection, double majorRadius, double minorRadius, bool constructionMode) {
+        auto ellipse = std::make_unique<Part::GeomEllipse>();
+        ellipse->setMajorRadius(majorRadius);
+        ellipse->setMinorRadius(minorRadius);
+        ellipse->setMajorAxisDir(majorAxisDirection);
+        ellipse->setCenter(centerPoint);
+        Sketcher::GeometryFacade::setConstruction(ellipse.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(ellipse));
+    }
+
+    void addCircleToShapeGeometry(Base::Vector3d centerPoint, double radius, bool constructionMode) {
+        auto circle = std::make_unique<Part::GeomCircle>();
+        circle->setRadius(radius);
+        circle->setCenter(centerPoint);
+        Sketcher::GeometryFacade::setConstruction(circle.get(), constructionMode);
+        ShapeGeometry.push_back(std::move(circle));
     }
 
     void commandAddShapeGeometryAndConstraints() {

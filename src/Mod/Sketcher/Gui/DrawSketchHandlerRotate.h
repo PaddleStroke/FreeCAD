@@ -431,6 +431,23 @@ private:
     }
 };
 
+template <> auto DrawSketchHandlerRotateBase::ToolWidgetManager::getState(int parameterindex) const {
+    switch (parameterindex) {
+    case WParameter::First:
+    case WParameter::Second:
+        return SelectMode::SeekFirst;
+        break;
+    case WParameter::Third:
+        return SelectMode::SeekThird;
+        break;
+    case WParameter::Fourth:
+        return handler->state();
+        break;
+    default:
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
+    }
+}
+
 template <> void DrawSketchHandlerRotateBase::ToolWidgetManager::configureToolWidget() {
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_rotate", "x of center"));
     toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_rotate", "y of center"));

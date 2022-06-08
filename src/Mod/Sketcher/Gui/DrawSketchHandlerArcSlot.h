@@ -458,6 +458,25 @@ private:
     double startAngle, endAngle, arcAngle, r, radius;
 };
 
+template <> auto DrawSketchHandlerArcSlotBase::ToolWidgetManager::getState(int parameterindex) const {
+    switch (parameterindex) {
+    case WParameter::First:
+    case WParameter::Second:
+        return SelectMode::SeekFirst;
+        break;
+    case WParameter::Third:
+    case WParameter::Fourth:
+        return SelectMode::SeekSecond;
+        break;
+    case WParameter::Fifth:
+    case WParameter::Sixth:
+        return SelectMode::SeekThird;
+        break;
+    default:
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
+    }
+}
+
 template <> void DrawSketchHandlerArcSlotBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
         QStringList names = {QStringLiteral("Arc ends"), QStringLiteral("Flat ends")};

@@ -371,6 +371,20 @@ private:
     }
 };
 
+template <> auto DrawSketchHandlerScaleBase::ToolWidgetManager::getState(int parameterindex) const {
+    switch (parameterindex) {
+    case WParameter::First:
+    case WParameter::Second:
+        return SelectMode::SeekFirst;
+        break;
+    case WParameter::Third:
+        return SelectMode::SeekThird;
+        break;
+    default:
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
+    }
+}
+
 template <> void DrawSketchHandlerScaleBase::ToolWidgetManager::configureToolWidget() {
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_scale", "x of reference"));
     toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_scale", "y of reference"));

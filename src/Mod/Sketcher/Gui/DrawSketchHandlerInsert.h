@@ -399,6 +399,20 @@ private:
     }
 };
 
+template <> auto DrawSketchHandlerInsertBase::ToolWidgetManager::getState(int parameterindex) const {
+    switch (parameterindex) {
+    case WParameter::First:
+    case WParameter::Second:
+        return SelectMode::SeekSecond;
+        break;
+    case WParameter::Third:
+        return SelectMode::SeekThird;
+        break;
+    default:
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
+    }
+}
+
 template <> void DrawSketchHandlerInsertBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
         QStringList names = {QStringLiteral("Box"), QStringLiteral("Arc")};

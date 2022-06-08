@@ -426,6 +426,29 @@ private:
     }
 };
 
+template <> auto DrawSketchHandlerTranslateBase::ToolWidgetManager::getState(int parameterindex) const {
+    switch (parameterindex) {
+    case WParameter::First:
+    case WParameter::Second:
+        return SelectMode::SeekFirst;
+        break;
+    case WParameter::Third:
+        return handler->state();
+        break;
+    case WParameter::Fourth:
+        return SelectMode::SeekSecond;
+        break;
+    case WParameter::Fifth:
+        return handler->state();
+        break;
+    case WParameter::Sixth:
+        return SelectMode::SeekThird;
+        break;
+    default:
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
+    }
+}
+
 template <> void DrawSketchHandlerTranslateBase::ToolWidgetManager::configureToolWidget() {
     if (!init) { // Code to be executed only upon initialisation
         QStringList names = { QStringLiteral("Linear array"), QStringLiteral("Rectangular array") };

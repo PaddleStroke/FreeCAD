@@ -106,6 +106,17 @@ private:
     Base::Vector2d editPoint;
 };
 
+template <> auto DrawSketchHandlerPointBase::ToolWidgetManager::getState(int parameterindex) const {
+    switch (parameterindex) {
+    case WParameter::First:
+    case WParameter::Second:
+        return SelectMode::SeekFirst;
+        break;
+    default:
+        THROWM(Base::ValueError, "Parameter index without an associated machine state")
+    }
+}
+
 template <> void DrawSketchHandlerPointBase::ToolWidgetManager::configureToolWidget() {
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_point", "x of point"));
     toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_point", "y of point"));

@@ -104,6 +104,10 @@ public:
       Fourth,
       Fifth,
       Sixth,
+      Seventh,
+      Eighth,
+      Ninth,
+      Tenth,
       nParameters // Must Always be the last one
     };
 
@@ -194,6 +198,10 @@ protected Q_SLOTS:
     void parameterFour_valueChanged(double val);
     void parameterFive_valueChanged(double val);
     void parameterSix_valueChanged(double val);
+    void parameterSeven_valueChanged(double val);
+    void parameterEight_valueChanged(double val);
+    void parameterNine_valueChanged(double val);
+    void parameterTen_valueChanged(double val);
     void checkBoxTS1_toggled(bool val);
     void checkBoxTS2_toggled(bool val);
     void checkBoxTS3_toggled(bool val);

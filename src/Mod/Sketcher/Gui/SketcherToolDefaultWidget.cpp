@@ -133,6 +133,14 @@ SketcherToolDefaultWidget::SketcherToolDefaultWidget (QWidget *parent, ViewProvi
         this, SLOT(parameterFive_valueChanged(double)));
     connect(ui->parameterSix, SIGNAL(valueChanged(double)),
         this, SLOT(parameterSix_valueChanged(double)));
+    connect(ui->parameterSeven, SIGNAL(valueChanged(double)),
+        this, SLOT(parameterSeven_valueChanged(double)));
+    connect(ui->parameterEight, SIGNAL(valueChanged(double)),
+        this, SLOT(parameterEight_valueChanged(double)));
+    connect(ui->parameterNine, SIGNAL(valueChanged(double)),
+        this, SLOT(parameterNine_valueChanged(double)));
+    connect(ui->parameterTen, SIGNAL(valueChanged(double)),
+        this, SLOT(parameterTen_valueChanged(double)));
     connect(ui->checkBoxTS1, SIGNAL(toggled(bool)),
         this, SLOT(checkBoxTS1_toggled(bool)));
     connect(ui->checkBoxTS2, SIGNAL(toggled(bool)),
@@ -276,6 +284,38 @@ void SketcherToolDefaultWidget::parameterSix_valueChanged(double val)
         signalParameterValueChanged(Parameter::Sixth, val);
     }
 }
+void SketcherToolDefaultWidget::parameterSeven_valueChanged(double val)
+{
+    if (!blockParameterSlots) {
+        isSet[Parameter::Seventh] = true;
+        setParameterFontStyle(Parameter::Seventh, FontStyle::Bold);
+        signalParameterValueChanged(Parameter::Seventh, val);
+    }
+}
+void SketcherToolDefaultWidget::parameterEight_valueChanged(double val)
+{
+    if (!blockParameterSlots) {
+        isSet[Parameter::Eighth] = true;
+        setParameterFontStyle(Parameter::Eighth, FontStyle::Bold);
+        signalParameterValueChanged(Parameter::Eighth, val);
+    }
+}
+void SketcherToolDefaultWidget::parameterNine_valueChanged(double val)
+{
+    if (!blockParameterSlots) {
+        isSet[Parameter::Ninth] = true;
+        setParameterFontStyle(Parameter::Ninth, FontStyle::Bold);
+        signalParameterValueChanged(Parameter::Ninth, val);
+    }
+}
+void SketcherToolDefaultWidget::parameterTen_valueChanged(double val)
+{
+    if (!blockParameterSlots) {
+        isSet[Parameter::Tenth] = true;
+        setParameterFontStyle(Parameter::Tenth, FontStyle::Bold);
+        signalParameterValueChanged(Parameter::Tenth, val);
+    }
+}
 
 void SketcherToolDefaultWidget::initNParameters(int nparameters)
 {
@@ -408,6 +448,18 @@ QLabel * SketcherToolDefaultWidget::getParameterLabel(int parameterindex)
         case Parameter::Sixth:
             return ui->label6;
             break;
+        case Parameter::Seventh:
+            return ui->label7;
+            break;
+        case Parameter::Eighth:
+            return ui->label8;
+            break;
+        case Parameter::Ninth:
+            return ui->label9;
+            break;
+        case Parameter::Tenth:
+            return ui->label10;
+            break;
         default:
             THROWM(Base::IndexError, "ToolWidget spinbox index out of range");
     }
@@ -433,6 +485,18 @@ Gui::PrefQuantitySpinBox * SketcherToolDefaultWidget::getParameterSpinBox(int pa
             break;
         case Parameter::Sixth:
             return ui->parameterSix;
+            break;
+        case Parameter::Seventh:
+            return ui->parameterSeven;
+            break;
+        case Parameter::Eighth:
+            return ui->parameterEight;
+            break;
+        case Parameter::Ninth:
+            return ui->parameterNine;
+            break;
+        case Parameter::Tenth:
+            return ui->parameterTen;
             break;
         default:
             THROWM(Base::IndexError, "ToolWidget spinbox index out of range");

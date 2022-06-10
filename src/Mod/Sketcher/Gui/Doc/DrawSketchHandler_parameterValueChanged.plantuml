@@ -174,7 +174,9 @@ else #Pink Current state is not End AND state did change
     DrawSketchDefaultWidgetHandlerWidget -[#red]> DrawSketchHandlerCircleWidget : adaptWidgetParameters
     note left
        Update value of (unset) Widget parameters to adapt **to the new mode**
-       with the **lastWidgetEnforcedPosition**.
+       with the **lastWidgetEnforcedPosition**. Caution! The handler is **not** to be modified.
+       While previously calculated handler parameters can be used in the calculation, the calculation
+       **must** be based on the OnSketchPos. The widget ** must ** reflect the enforced cursor position.
     end note
 
     activate DrawSketchHandlerCircleWidget #DarkSalmon

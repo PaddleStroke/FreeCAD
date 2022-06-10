@@ -155,6 +155,9 @@ public:
         ParameterStatus getFocusMinorRadiusStatus() const {return pstatus[2];}
         ParameterStatus getStartParameter() const {return pstatus[3];}
         ParameterStatus getEndParameter() const {return pstatus[4];}
+
+        bool isFocusDoF() const {return pstatus[0] == Dependent || pstatus[1] == Dependent;}
+        bool isMinorRadiusDoF() const {return (pstatus[2] == Dependent);}
     };
 
     class Ellipse : public EdgeParameterStatus
@@ -165,6 +168,9 @@ public:
         ParameterStatus getFocusXStatus() const {return pstatus[0];}
         ParameterStatus getFocusYStatus() const {return pstatus[1];}
         ParameterStatus getFocusMinorRadiusStatus() const {return pstatus[2];}
+
+        bool isFocusDoF() const {return pstatus[0] == Dependent || pstatus[1] == Dependent;}
+        bool isMinorRadiusDoF() const {return (pstatus[2] == Dependent);}
     };
 
     class ArcOfHyperbola : public EdgeParameterStatus

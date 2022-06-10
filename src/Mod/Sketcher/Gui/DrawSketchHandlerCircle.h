@@ -433,34 +433,26 @@ template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::doChangeDrawSke
     break;
     case SelectMode::SeekSecond:
     {
-        if (toolWidget->isParameterSet(WParameter::Third) ||
-            toolWidget->isParameterSet(WParameter::Fourth)) {
+        if (toolWidget->isParameterSet(WParameter::Third) &&
+            dHandler->constructionMethod() == DrawSketchHandlerCircle::ConstructionMethod::Center) {
 
-            if (toolWidget->isParameterSet(WParameter::Third) &&
-                dHandler->constructionMethod() == DrawSketchHandlerCircle::ConstructionMethod::Center) {
+            handler->setState(SelectMode::End);
+        }
+        else if (toolWidget->isParameterSet(WParameter::Third) &&
+            toolWidget->isParameterSet(WParameter::Fourth) &&
+            dHandler->constructionMethod() == DrawSketchHandlerCircle::ConstructionMethod::ThreeRim) {
 
-                handler->setState(SelectMode::End);
-            }
-            else if (toolWidget->isParameterSet(WParameter::Third) &&
-                toolWidget->isParameterSet(WParameter::Fourth) &&
-                dHandler->constructionMethod() == DrawSketchHandlerCircle::ConstructionMethod::ThreeRim) {
+            handler->setState(SelectMode::SeekThird);
 
-                handler->setState(SelectMode::SeekThird);
-
-            }
         }
     }
     break;
     case SelectMode::SeekThird:
     {
-        if (toolWidget->isParameterSet(WParameter::Fifth) ||
+        if (toolWidget->isParameterSet(WParameter::Fifth) &&
             toolWidget->isParameterSet(WParameter::Sixth)) {
 
-            if (toolWidget->isParameterSet(WParameter::Fifth) &&
-                toolWidget->isParameterSet(WParameter::Sixth)) {
-
-                handler->setState(SelectMode::End);
-            }
+            handler->setState(SelectMode::End);
         }
     }
     break;

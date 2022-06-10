@@ -808,6 +808,21 @@ private:
                 }
             }
         }
+
+        /** on first shortcut, it toggles the first checkbox if there is go. Must be specialised if this is not intended */
+        void firstKeyShortcut() {
+            if(nCheckbox >= 1) {
+                auto firstchecked = toolWidget->getCheckboxChecked(WCheckbox::FirstBox);
+                toolWidget->setCheckboxChecked(WCheckbox::FirstBox, !firstchecked);
+            }
+        }
+
+        void secondKeyShortcut() {
+            if(nCheckbox >= 2) {
+                auto secondchecked = toolWidget->getCheckboxChecked(WCheckbox::SecondBox);
+                toolWidget->setCheckboxChecked(WCheckbox::SecondBox, !secondchecked);
+            }
+        }
         //@}
 
     private:
@@ -1009,6 +1024,16 @@ private:
 
     virtual void onConstructionMethodChanged() override {
         toolWidgetManager.onConstructionMethodChanged();
+    }
+
+    virtual void registerPressedKey(bool pressed, int key) override {
+        DSDefaultHandler::registerPressedKey(pressed, key);
+
+        if (key == SoKeyboardEvent::Q && !pressed && !this->isLastState())
+            toolWidgetManager.firstKeyShortcut();
+
+        if (key == SoKeyboardEvent::A && !pressed && !this->isLastState())
+            toolWidgetManager.secondKeyShortcut();
     }
     //@}
 

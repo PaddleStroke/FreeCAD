@@ -134,18 +134,29 @@ private:
         }
     }
 
-    virtual void createAutoConstraints() override {
+    virtual void generateAutoConstraints() override {
         // add auto constraints at the center of the polygon
+        int circlegeoid = getHighestCurveIndex();
+        int lastsidegeoid = getHighestCurveIndex() - 1;
         if (sugConstraints[0].size() > 0) {
-            DrawSketchHandler::createAutoConstraints(sugConstraints[0], getHighestCurveIndex(), Sketcher::PointPos::mid);
-            sugConstraints[0].clear();
+            generateAutoConstraintsOnElement(sugConstraints[0], circlegeoid, Sketcher::PointPos::mid);
         }
 
         // add auto constraints to the last side of the polygon
         if (sugConstraints[1].size() > 0) {
-            DrawSketchHandler::createAutoConstraints(sugConstraints[1], getHighestCurveIndex() - 1, Sketcher::PointPos::end);
-            sugConstraints[1].clear();
+            generateAutoConstraintsOnElement(sugConstraints[1], lastsidegeoid, Sketcher::PointPos::end);
         }
+
+        // Ensure temporary autoconstraints do not generate a redundancy and that the geometry parameters are accurate
+        // This is particularly important for adding widget mandated constraints.
+        removeRedundantAutoConstraints();
+    }
+
+    virtual void createAutoConstraints() override {
+        createGeneratedAutoConstraints(true);
+
+        sugConstraints[0].clear();
+        sugConstraints[1].clear();
     }
 
     virtual std::string getToolName() const override {
@@ -155,6 +166,8 @@ private:
     virtual QString getCrosshairCursorSVGName() const override {
         return QString::fromLatin1("Sketcher_Pointer_Regular_Polygon");
     }
+
+
 
 private:
     unsigned int Corners;
@@ -178,6 +191,20 @@ template <> auto DrawSketchHandlerPolygonBase::ToolWidgetManager::getState(int p
     default:
         THROWM(Base::ValueError, "Parameter index without an associated machine state")
     }
+}
+
+
+        /** on first shortcut, it toggles the first checkbox if there is go. Must be specialised if this is not intended */
+template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::firstKeyShortcut() {
+    auto value = toolWidget->getParameter(WParameter::Fifth);
+    toolWidget->setParameter(WParameter::Fifth, value+1);
+
+}
+
+template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::secondKeyShortcut() {
+    auto value = toolWidget->getParameter(WParameter::Fifth);
+    toolWidget->setParameter(WParameter::Fifth, value-1);
+
 }
 
 template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::configureToolWidget() {

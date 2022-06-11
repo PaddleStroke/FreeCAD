@@ -74,7 +74,6 @@ private:
         break;
         case SelectMode::SeekSecond:
         {
-            Base::Console().Error("EditCurve size: %f\n", EditCurve[0].x, EditCurve[0].y);
             EditCurve[0] = Base::Vector2d(onSketchPos.x, onSketchPos.y);
             EditCurve[Corners] = Base::Vector2d(onSketchPos.x, onSketchPos.y);
 
@@ -167,6 +166,15 @@ private:
         return QString::fromLatin1("Sketcher_Pointer_Regular_Polygon");
     }
 
+    void changeCorners(int corners) {
+        Corners = std::max(3, static_cast<int>(corners));
+        AngleOfSeparation = 2.0 * M_PI / static_cast<double>(Corners);
+        cos_v = cos(AngleOfSeparation);
+        sin_v = sin(AngleOfSeparation);
+        EditCurve.clear();
+        initialEditCurveSize = Corners + 1;
+        EditCurve.resize(initialEditCurveSize);
+    }
 
 
 private:
@@ -186,32 +194,28 @@ template <> auto DrawSketchHandlerPolygonBase::ToolWidgetManager::getState(int p
         return SelectMode::SeekSecond;
         break;
     case WParameter::Fifth:
-        return handler->state();
+        return SelectMode::SeekSecond; // It is safe to attribute the last state (before End) to parameters that can be changed at any time.
         break;
     default:
         THROWM(Base::ValueError, "Parameter index without an associated machine state")
     }
 }
 
-
-        /** on first shortcut, it toggles the first checkbox if there is go. Must be specialised if this is not intended */
 template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::firstKeyShortcut() {
     auto value = toolWidget->getParameter(WParameter::Fifth);
     toolWidget->setParameter(WParameter::Fifth, value+1);
-
 }
 
 template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::secondKeyShortcut() {
     auto value = toolWidget->getParameter(WParameter::Fifth);
     toolWidget->setParameter(WParameter::Fifth, value-1);
-
 }
 
 template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::configureToolWidget() {
 
-    if(!init) { // Code to be executed only upon initialisation
-        toolWidget->configureParameterInitialValue(WParameter::Fifth, dHandler->Corners);
-    }
+
+    toolWidget->setParameter(WParameter::Fifth, dHandler->Corners);
+
 
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_polygon", "x of center"));
     toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_polygon", "y of center"));
@@ -230,15 +234,8 @@ template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::adaptDrawingTo
         case WParameter::Second:
             dHandler->centerPoint.y = value;
             break;
-        case WParameter::Fifth: {
-            dHandler->Corners = std::max(3, static_cast<int>(value));
-            dHandler->AngleOfSeparation = 2.0 * M_PI / static_cast<double>(dHandler->Corners);
-            dHandler->cos_v = cos(dHandler->AngleOfSeparation);
-            dHandler->sin_v = sin(dHandler->AngleOfSeparation);
-            dHandler->EditCurve.clear();
-            dHandler->initialEditCurveSize = dHandler->Corners + 1;
-            dHandler->EditCurve.resize(dHandler->initialEditCurveSize);
-        }
+        case WParameter::Fifth:
+            dHandler->changeCorners(std::max(3, static_cast<int>(value)));
             break;
     }
 }
@@ -259,16 +256,21 @@ template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::doEnforceWidge
     {
         double length = (onSketchPos - dHandler->centerPoint).Length();
         if (toolWidget->isParameterSet(WParameter::Third)) {
-            double radius = toolWidget->getParameter(WParameter::Third);
-            if (length != 0.) {
-                onSketchPos.x = dHandler->centerPoint.x + (onSketchPos.x - dHandler->centerPoint.x) * radius / length;
-                onSketchPos.y = dHandler->centerPoint.y + (onSketchPos.y - dHandler->centerPoint.y) * radius / length;
-            }
+            length = toolWidget->getParameter(WParameter::Third);
+            if (length < Precision::Confusion())
+                return;
+
+            Base::Vector2d v = onSketchPos - dHandler->centerPoint;
+            if( v.x < Precision::Confusion() && v.y < Precision::Confusion())
+                v.x = 1; // if direction cannot be determined, default to (1,0)
+
+            onSketchPos = dHandler->centerPoint + v * length / v.Length();
         }
+
         if (toolWidget->isParameterSet(WParameter::Fourth)) {
-            double angle = toolWidget->getParameter(WParameter::Fourth);
-            onSketchPos.x = dHandler->centerPoint.x + cos(angle * M_PI / 180) * length;
-            onSketchPos.y = dHandler->centerPoint.y + sin(angle * M_PI / 180) * length;
+            double angle = toolWidget->getParameter(WParameter::Fourth) * M_PI / 180;
+            onSketchPos.x = dHandler->centerPoint.x + cos(angle) * length;
+            onSketchPos.y = dHandler->centerPoint.y + sin(angle) * length;
         }
     }
     break;
@@ -311,25 +313,16 @@ template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::doChangeDrawSk
             toolWidget->isParameterSet(WParameter::Second)) {
 
             handler->setState(SelectMode::SeekSecond);
-
-            handler->updateDataAndDrawToPosition(prevCursorPosition);
         }
     }
     break;
     case SelectMode::SeekSecond:
     {
-        if (toolWidget->isParameterSet(WParameter::Third) ||
-            toolWidget->isParameterSet(WParameter::Fourth)) {
+        if (toolWidget->isParameterSet(WParameter::Third) &&
+            toolWidget->isParameterSet(WParameter::Fourth) &&
+            toolWidget->isParameterSet(WParameter::Fifth)) {
 
-            handler->updateDataAndDrawToPosition(prevCursorPosition);
-
-            if (toolWidget->isParameterSet(WParameter::Third) &&
-                toolWidget->isParameterSet(WParameter::Fourth) &&
-                toolWidget->isParameterSet(WParameter::Fifth)) {
-
-                handler->setState(SelectMode::End);
-                handler->finish();
-            }
+            handler->setState(SelectMode::End);
         }
     }
     break;
@@ -352,23 +345,57 @@ template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::addConstraints
 
     using namespace Sketcher;
 
-    if (x0set && y0set && x0 == 0. && y0 == 0.) {
-        ConstraintToAttachment(GeoElementId(lastCurve, PointPos::mid), GeoElementId::RtPnt,
-            x0, handler->sketchgui->getObject());
-    }
-    else {
-        if (x0set)
-            ConstraintToAttachment(GeoElementId(lastCurve, PointPos::mid), GeoElementId::VAxis,
-                x0, handler->sketchgui->getObject());
+    auto constraintx0 = [&]() {
+        ConstraintToAttachment(GeoElementId(lastCurve,PointPos::mid), GeoElementId::VAxis, x0, handler->sketchgui->getObject());
+    };
 
-        if (y0set)
-            ConstraintToAttachment(GeoElementId(lastCurve, PointPos::mid), GeoElementId::HAxis,
-                y0, handler->sketchgui->getObject());
-    }
+    auto constrainty0 = [&]() {
+        ConstraintToAttachment(GeoElementId(lastCurve,PointPos::mid), GeoElementId::HAxis, y0,  handler->sketchgui->getObject());
+    };
 
-    if (radiusSet)
+    auto constraintradius = [&]() {
         Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Radius',%d,%f)) ",
             lastCurve, radius);
+    };
+
+    // NOTE: if AutoConstraints is empty, we can add constraints directly without any diagnose. No diagnose was run.
+    if(handler->AutoConstraints.empty()) {
+        if(x0set)
+            constraintx0();
+
+        if(y0set)
+            constrainty0();
+
+        if(radiusSet)
+            constraintradius();
+    }
+    else { // There is a valid diagnose.
+        auto startpointinfo = handler->getPointInfo(GeoElementId(lastCurve, PointPos::mid));
+
+        // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+        if(x0set && startpointinfo.isXDoF()) {
+            constraintx0();
+
+            handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+
+            startpointinfo = handler->getPointInfo(GeoElementId(lastCurve, PointPos::mid)); // get updated point position
+        }
+
+        // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+        if(y0set && startpointinfo.isYDoF()) {
+            constrainty0();
+
+            handler->diagnoseWithAutoConstraints(); // ensure we have recalculated parameters after each constraint addition
+        }
+
+        auto edgeinfo = handler->getEdgeInfo(lastCurve);
+        auto circle = static_cast<SolverGeometryExtension::Circle &>(edgeinfo);
+
+        // if Autoconstraints is empty we do not have a diagnosed system and the parameter will always be set
+        if(radiusSet && circle.isRadiusDoF()) {
+            constraintradius();
+        }
+    }
 }
 
 

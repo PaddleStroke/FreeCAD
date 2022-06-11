@@ -213,10 +213,6 @@ template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::secondKeyShort
 
 template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::configureToolWidget() {
 
-
-    toolWidget->setParameter(WParameter::Fifth, dHandler->Corners);
-
-
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_polygon", "x of center"));
     toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_polygon", "y of center"));
     toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_p3_polygon", "Radius"));
@@ -224,6 +220,10 @@ template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::configureToolW
     toolWidget->configureParameterUnit(WParameter::Fourth, Base::Unit::Angle);
     toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("ToolWidgetManager_p4", "Side number"));
     toolWidget->configureParameterUnit(WParameter::Fifth, Base::Unit());
+    toolWidget->setParameter(WParameter::Fifth, dHandler->Corners); // unconditionally set
+
+    toolWidget->setNoticeVisible(true);
+    toolWidget->setNoticeText(QApplication::translate("TaskSketcherTool_p4_notice", "Use 'Q' and 'A' to modify the side number."));
 }
 
 template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::adaptDrawingToParameterChange(int parameterindex, double value) {

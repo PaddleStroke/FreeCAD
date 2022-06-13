@@ -1029,10 +1029,10 @@ private:
     virtual void registerPressedKey(bool pressed, int key) override {
         DSDefaultHandler::registerPressedKey(pressed, key);
 
-        if (key == SoKeyboardEvent::Q && !pressed && !this->isLastState())
+        if (key == SoKeyboardEvent::U && !pressed && !this->isLastState())
             toolWidgetManager.firstKeyShortcut();
 
-        if (key == SoKeyboardEvent::A && !pressed && !this->isLastState())
+        if (key == SoKeyboardEvent::J && !pressed && !this->isLastState())
             toolWidgetManager.secondKeyShortcut();
     }
     //@}

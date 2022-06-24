@@ -24,7 +24,6 @@
 #include "PreCompiled.h"
 
 #ifndef _PreComp_
-# include <boost_bind_bind.hpp>
 # include <Inventor/events/SoKeyboardEvent.h>
 #endif
 
@@ -49,7 +48,6 @@
 
 using namespace SketcherGui;
 using namespace Gui::TaskView;
-namespace bp = boost::placeholders;
 
 
 SketcherToolDefaultWidget::KeyboardManager::KeyboardManager(): keyMode(SketcherToolDefaultWidget::KeyboardManager::KeyboardEventHandlingMode::Widget) {

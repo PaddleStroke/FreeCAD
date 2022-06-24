@@ -24,7 +24,6 @@
 #include "PreCompiled.h"
 
 #ifndef _PreComp_
-#include <boost_bind_bind.hpp>
 #endif
 
 #include "TaskSketcherTool.h"
@@ -44,7 +43,6 @@
 
 using namespace SketcherGui;
 using namespace Gui::TaskView;
-namespace bp = boost::placeholders;
 
 TaskSketcherTool::TaskSketcherTool(ViewProviderSketch *sketchView)
     : TaskBox(Gui::BitmapFactory().pixmap("document-new"),tr("Tool settings"),true, nullptr)

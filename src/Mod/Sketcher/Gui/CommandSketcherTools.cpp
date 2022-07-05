@@ -71,6 +71,7 @@
 #include <BRepBuilderAPI.hxx>
 #include <BRepExtrema_DistShapeShape.hxx>
 #include <TopoDS.hxx>
+#include <GCPnts_AbscissaPoint.hxx>
 
 #include "DrawSketchDefaultWidgetHandler.h"
 

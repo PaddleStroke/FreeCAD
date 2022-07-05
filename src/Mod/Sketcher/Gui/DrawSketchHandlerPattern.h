@@ -53,7 +53,7 @@ namespace SketcherGui {
         DrawSketchHandlerPattern(std::vector<int> listOfGeoIds)
             : snapMode(SnapMode::Free)
             , listOfGeoIds(listOfGeoIds)
-            , closeOutside(true)
+            , closeOutside(false)
             , allConstr(false)
             , radius(1.)
             , angle(0.)
@@ -91,7 +91,7 @@ namespace SketcherGui {
 
                 angle = GetPointAngle(startPoint, endpoint);
                 radius = (endpoint - startPoint).Length();
-                thickness = radius / 5;
+                thickness = radius / 4;
 
                 if (snapMode == SnapMode::Snap) {
                     angle = round(angle / (M_PI / 36)) * M_PI / 36;
@@ -139,6 +139,12 @@ namespace SketcherGui {
                 commandAddShapeGeometryAndConstraints();
 
                 Gui::Command::commitCommand();
+
+                Gui::Command::openCommand(QT_TRANSLATE_NOOP("Command", "Trim Honeycomb Pattern"));
+
+                trimTheShape();
+
+                Gui::Command::commitCommand();
             }
             catch (const Base::Exception& e) {
                 Base::Console().Error("Failed to add Honeycomb Pattern: %s\n", e.what());
@@ -182,18 +188,34 @@ namespace SketcherGui {
             Sketcher::PointPos SecondCoincidenceSecondGeoPos;
         };
 
+        class TrimElement
+        {
+        public:
+            int geoId;
+            Base::Vector3d pos;
+        };
+
+        class TrimmingLine {
+        public:
+            int signInsideHex;
+            Base::Vector2d intersectionPoint; 
+            Standard_Real intersectionPar;
+            Base::Vector2d startPoint;
+        };
+
         SnapMode snapMode;
-        int maxNumberOfHex;
         std::vector<int> listOfGeoIds;
-        std::vector<int> listOfPatternGeoIds;
         std::vector<std::vector<int>> vCC;
         Base::Vector2d startPoint, endpoint;
         TopoDS_Wire sourceWire;
         std::vector<Base::Vector2d> firstHexPoints;
+        std::vector<TrimElement> listToTrim;
+        std::vector<TrimmingLine> listTrimmingLines;
+        std::vector<std::vector<int>> linesIntersectingGeoIds;
 
         bool closeOutside, allConstr;
         double radius, angle, thickness, interCenterDistance;
-        int firstCurve;
+        int firstCurve, vCCUsed, maxNumberOfHex;
 
         virtual void createShape(bool onlyeditoutline) override {
             ShapeGeometry.clear();
@@ -312,20 +334,60 @@ namespace SketcherGui {
                             }
                         }
                         else if (lInWire || lplus1InWire) {
+                            //Find the intersection with the wire
+                            Base::Vector3d intersectionPoint;
+                            Standard_Real intersectionPar;
                             TopoDS_Edge aEdge = BRepBuilderAPI_MakeEdge({ hexPoints[l].x, hexPoints[l].y, 0.0 }, { hexPoints[lplus1].x, hexPoints[lplus1].y, 0.0 });
-
                             BRepExtrema_DistShapeShape distTool(sourceWire, aEdge);
                             distTool.Perform();
                             if (distTool.IsDone() && distTool.NbSolution() > 0) {
                                 const gp_Pnt& intersectionP = distTool.PointOnShape1(1);
-                                if(lInWire)
-                                    addLineToShapeGeometry(Base::Vector3d(hexPoints[l].x, hexPoints[l].y, 0.), Base::Vector3d(intersectionP.X(), intersectionP.Y(), 0.), geometryCreationMode);
-                                else
-                                    addLineToShapeGeometry(Base::Vector3d(intersectionP.X(), intersectionP.Y(), 0.), Base::Vector3d(hexPoints[lplus1].x, hexPoints[lplus1].y, 0.), geometryCreationMode);
+                                intersectionPoint = Base::Vector3d(intersectionP.X(), intersectionP.Y(), 0.);
+                                distTool.ParOnEdgeS1(1, intersectionPar);
                             }
-                            hexCreated = true;
+                            else {
+                                if (lInWire)
+                                    intersectionPoint = Base::Vector3d(hexPoints[lplus1].x, hexPoints[lplus1].y, 0.);
+                                else
+                                    intersectionPoint = Base::Vector3d(hexPoints[l].x, hexPoints[l].y, 0.);
+                            }
 
-                            if (!onlyeditoutline) {
+                            if (onlyeditoutline) {
+                                //Draw the cut line for preview
+                                if (lInWire)
+                                    addLineToShapeGeometry(Base::Vector3d(hexPoints[l].x, hexPoints[l].y, 0.), intersectionPoint, geometryCreationMode);
+                                else
+                                    addLineToShapeGeometry(intersectionPoint, Base::Vector3d(hexPoints[lplus1].x, hexPoints[lplus1].y, 0.), geometryCreationMode);
+                            }
+                            else {
+                                //We create the full line and it will be trimmed later.
+                                addLineToShapeGeometry(Base::Vector3d(hexPoints[l].x, hexPoints[l].y, 0.), Base::Vector3d(hexPoints[lplus1].x, hexPoints[lplus1].y, 0.), geometryCreationMode);
+                                hexCreated = true;
+
+                                //Add trim element to the list
+                                TrimElement trimElement;
+                                trimElement.geoId = curveCounter;
+                                if (lInWire)
+                                    trimElement.pos = (Base::Vector3d(hexPoints[lplus1].x, hexPoints[lplus1].y, 0.) + intersectionPoint) / 2;
+                                else
+                                    trimElement.pos = (Base::Vector3d(hexPoints[l].x, hexPoints[l].y, 0.) + intersectionPoint) / 2;
+                                listToTrim.push_back(trimElement);
+
+                                //Store infos on trimming lines that will be needed to trim the origin wire.
+                                TrimmingLine trimmingLine;
+                                if (lInWire) {
+                                    trimmingLine.startPoint = hexPoints[l];
+                                    trimmingLine.signInsideHex = getPointSideOfVector(hexCenter, hexPoints[lplus1] - hexPoints[l], hexPoints[l]);
+                                }
+                                else {
+                                    trimmingLine.startPoint = hexPoints[lplus1];
+                                    trimmingLine.signInsideHex = getPointSideOfVector(hexCenter, hexPoints[l] - hexPoints[lplus1], hexPoints[lplus1]);
+                                }
+                                trimmingLine.intersectionPoint = Base::Vector2d(intersectionPoint.x, intersectionPoint.y);
+                                trimmingLine.intersectionPar = intersectionPar;
+                                listTrimmingLines.push_back(trimmingLine);
+
+                                //create constraints such that lines going out of the shape are ignored.
                                 if (l == 0) {
                                     firstLineId = curveCounter;
                                     if (lInWire)
@@ -388,11 +450,126 @@ namespace SketcherGui {
                         outAfterWholeTurn = true;
                 }
             }
+        }
 
-            //Now we need to trim the initial wire such that the end result is a closed shape that can be extruded/pocketed directly.
-            if (!onlyeditoutline) {
+        void trimTheShape() {
+            Sketcher::SketchObject* Obj = sketchgui->getSketchObject();
 
+            //Step 1: We need to know which edge each trimming line intersect.
+            for (size_t j = 0; j < vCC[vCCUsed].size(); j++) {
+                linesIntersectingGeoIds.push_back({});
             }
+            for (size_t i = 0; i < listTrimmingLines.size(); i++) {
+                for (size_t j = 0; j < vCC[vCCUsed].size(); j++) {
+                    //check if intersection point is on the edge.
+                    TopoDS_Edge aEdge = TopoDS::Edge(Obj->getGeometry(vCC[vCCUsed][j])->toShape());
+
+                    BRepBuilderAPI_MakeVertex mkVertex({ listTrimmingLines[i].intersectionPoint.x, listTrimmingLines[i].intersectionPoint.y, 0.0});
+                    TopoDS_Vertex vertex = mkVertex.Vertex();
+                    BRepExtrema_DistShapeShape distTool(aEdge, vertex);
+                    if (distTool.IsDone() && distTool.Value() < Precision::Confusion()) {
+                        linesIntersectingGeoIds[j].push_back(i);
+                        break;
+                    }
+                }
+            }
+
+            //Step 2: We need to sort the trimming lines in the order in which they cross the edge. Starting by the edge end.
+            for (size_t i = 0; i < vCC[vCCUsed].size(); i++) {
+                std::sort(begin(linesIntersectingGeoIds[i]), end(linesIntersectingGeoIds[i]),
+                    [&](int lhs, int rhs) { return dist(vCC[vCCUsed][i], lhs) < dist(vCC[vCCUsed][i], rhs); });
+            }
+
+            ShapeGeometry.clear();
+
+            //Step 3: calculate position to trim and trim element to the list
+            for (size_t i = 0; i < vCC[vCCUsed].size(); i++) {
+                BRepAdaptor_Curve curve(TopoDS::Edge(Obj->getGeometry(vCC[vCCUsed][i])->toShape()));
+
+                //check if the edge end is in or outside hexagone to decide if we start by trimming or not
+                bool startInHexagon = true;
+                bool trimNow = false;
+                gp_Pnt PL = curve.Value(curve.LastParameter());
+                Base::Vector3d edgeEndPoint = Base::Vector3d(PL.X(), PL.Y(), 0.);
+
+                if (getPointSideOfVector(Base::Vector2d(edgeEndPoint.x, edgeEndPoint.y), listTrimmingLines[linesIntersectingGeoIds[i][0]].intersectionPoint - listTrimmingLines[linesIntersectingGeoIds[i][0]].startPoint, listTrimmingLines[linesIntersectingGeoIds[i][0]].startPoint)
+                    != listTrimmingLines[linesIntersectingGeoIds[i][0]].signInsideHex)
+                    startInHexagon = false;
+
+                if ((startInHexagon && closeOutside) || (!startInHexagon && !closeOutside))
+                    trimNow = true;
+
+                for (int j = -1; j < static_cast<int>(linesIntersectingGeoIds[i].size()); j++) {
+                    if (!trimNow) {
+                        trimNow = true;
+                    }
+                    else {
+                        double par1, par2;
+                        if (j == -1) {
+                            par1 = curve.LastParameter();
+                        }
+                        else {
+                            par1 = listTrimmingLines[linesIntersectingGeoIds[i][j]].intersectionPar;
+                        }
+
+                        if (j == linesIntersectingGeoIds[i].size() - 1) {
+                            par2 = curve.FirstParameter();
+                        }
+                        else {
+                            par2 = listTrimmingLines[linesIntersectingGeoIds[i][j + 1]].intersectionPar;
+                        }
+
+                        Base::Vector2d p1 = findMiddlePoint(vCC[vCCUsed][i], par1, par2);
+
+                        TrimElement trimElement;
+                        trimElement.geoId = vCC[vCCUsed][i];
+                        trimElement.pos = Base::Vector3d(p1.x, p1.y, 0.);
+
+                        const Part::Geometry* geo = Obj->getGeometry(vCC[vCCUsed][i]);
+                        if (!((geo->getTypeId() == Part::GeomCircle::getClassTypeId() || geo->getTypeId() == Part::GeomEllipse::getClassTypeId())&& j == linesIntersectingGeoIds[i].size() - 1)) {
+                            //for circles and ellipse, we skip the last because it's already trimmed by first (if it had to be trimmed).
+                            listToTrim.push_back(trimElement);
+                        }
+
+                        /*//debug:
+                        gp_Pnt P1 = curve.Value(par1);
+                        gp_Pnt P2 = curve.Value(par2);
+                        addLineToShapeGeometry(trimElement.pos, Base::Vector3d(P1.X(), P1.Y(), 0.), true);
+                        addLineToShapeGeometry(trimElement.pos, Base::Vector3d(P2.X(), P2.Y(), 0.), true);*/
+
+                        trimNow = false;
+                    }
+                }
+            }
+
+
+            //Step 4 : trim the lines : 
+            for (size_t i = 0; i < listToTrim.size(); i++) {
+                Gui::cmdAppObjectArgs(sketchgui->getObject(), "trim(%d,App.Vector(%f,%f,0))",
+                    listToTrim[i].geoId, listToTrim[i].pos.x, listToTrim[i].pos.y);
+            }
+
+            //test
+            auto shapeGeometry = toPointerVector(ShapeGeometry);
+            Gui::Command::doCommand(Gui::Command::Doc,
+                Sketcher::PythonConverter::convert(Gui::Command::getObjectCmd(sketchgui->getObject()), shapeGeometry).c_str());
+        }
+
+        Base::Vector2d findMiddlePoint(int geoId, Standard_Real par1, Standard_Real par2) {
+            BRepAdaptor_Curve curve(TopoDS::Edge(sketchgui->getSketchObject()->getGeometry(geoId)->toShape()));
+            Standard_Real length = GCPnts_AbscissaPoint().Length(curve, par1, par2);
+            GCPnts_AbscissaPoint absP(curve, length / 2, par2); //par2 because it's closer to edge start.
+            if (absP.IsDone()) {
+                gp_Pnt P1 = curve.Value(absP.Parameter());
+                return Base::Vector2d(P1.X(), P1.Y());
+            }
+            else
+                return Base::Vector2d(0., 0.);
+        }
+
+        double dist(int geoId, int indexInLineVec) {
+            BRepAdaptor_Curve curve(TopoDS::Edge(sketchgui->getSketchObject()->getGeometry(geoId)->toShape()));
+            return fabs(GCPnts_AbscissaPoint().Length(curve, listTrimmingLines[indexInLineVec].intersectionPar, curve.LastParameter()));
         }
 
         double getDistanceToFirstHex(Base::Vector2d onSketchPos) {
@@ -509,6 +686,7 @@ namespace SketcherGui {
                 }
                 if (BRep_Tool::IsClosed(mkWire.Wire())) {
                     sourceWire = mkWire.Wire();
+                    vCCUsed = i;
                     return true;
                 }
                 else {
@@ -526,6 +704,21 @@ namespace SketcherGui {
                     return true;
             }
             return false;
+        }
+
+        int getPointSideOfVector(Base::Vector2d pointToCheck, Base::Vector2d separatingVector, Base::Vector2d pointOnVector) {
+            Base::Vector2d secondPointOnVec = pointOnVector + separatingVector;
+            double d = (pointToCheck.x - pointOnVector.x) * (secondPointOnVec.y - pointOnVector.y)
+                - (pointToCheck.y - pointOnVector.y) * (secondPointOnVec.x - pointOnVector.x);
+            if (abs(d) < Precision::Confusion()) {
+                return 0;
+            }
+            else if (d < 0) {
+                return -1;
+            }
+            else {
+                return 1;
+            }
         }
 
         bool getSnapPoint(Base::Vector2d& snapPoint) {

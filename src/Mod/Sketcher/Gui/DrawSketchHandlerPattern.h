@@ -620,8 +620,6 @@ namespace SketcherGui {
 
     template <> void DrawSketchHandlerPatternBase::ToolWidgetManager::configureToolWidget() {
         if (!init) { // Code to be executed only upon initialisation
-            QStringList names = { QStringLiteral("Arc"), QStringLiteral("Intersection") };
-            toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
         }
 
         toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_pattern", "x of first point"));
@@ -634,10 +632,10 @@ namespace SketcherGui {
         toolWidget->configureParameterUnit(WParameter::Sixth, Base::Unit());
         toolWidget->setParameter(WParameter::Sixth, dHandler->maxNumberOfHex); // unconditionally set
 
-        toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_pattern", "Close the outside"));
-        toolWidget->setCheckboxToolTip(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_pattern", "Trim such that the close wire is the outside of hexagones."));
-        toolWidget->setCheckboxLabel(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_pattern", "Add all constraints"));
-        toolWidget->setCheckboxToolTip(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_pattern", "Fully constrain the pattern. Can be very laggy if you have lot of hexagones."));
+        toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_pattern", "Close the outside (U)"));
+        toolWidget->setCheckboxToolTip(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_pattern", "Trim such that the close wire is the outside of hexagones. (Press U to toggle)"));
+        toolWidget->setCheckboxLabel(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_pattern", "Add all constraints (J)"));
+        toolWidget->setCheckboxToolTip(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_pattern", "Fully constrain the pattern. Can be very laggy if you have lot of hexagones. (Press J to toggle)"));
 
         toolWidget->setNoticeVisible(true);
         toolWidget->setNoticeText(QApplication::translate("Pattern_1", "If your shape does not fill completely, increase the 'Max number of hex'. By default it's 500 for preview and 2000 when creating the geometries (So even if it doesn't fill in preview it might fill when creating).\n Be careful using 'Add all constraints' if you have a lot of hexagones as large numbers of constraints risk lag or crash."));

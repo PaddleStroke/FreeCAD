@@ -153,6 +153,22 @@ SketcherToolDefaultWidget::SketcherToolDefaultWidget (QWidget *parent, ViewProvi
         this, SLOT(comboBox2_currentIndexChanged(int)));
     connect(ui->comboBox3, SIGNAL(currentIndexChanged(int)),
         this, SLOT(comboBox3_currentIndexChanged(int)));
+    connect(ui->mode1, SIGNAL(toggled(bool)),
+        this, SLOT(mode1_toggled(bool)));
+    connect(ui->mode2, SIGNAL(toggled(bool)),
+        this, SLOT(mode2_toggled(bool)));
+    connect(ui->mode3, SIGNAL(toggled(bool)),
+        this, SLOT(mode3_toggled(bool)));
+    connect(ui->mode4, SIGNAL(toggled(bool)),
+        this, SLOT(mode4_toggled(bool)));
+    connect(ui->mode5, SIGNAL(toggled(bool)),
+        this, SLOT(mode5_toggled(bool)));
+    connect(ui->mode6, SIGNAL(toggled(bool)),
+        this, SLOT(mode6_toggled(bool)));
+    connect(ui->mode7, SIGNAL(toggled(bool)),
+        this, SLOT(mode7_toggled(bool)));
+    connect(ui->mode8, SIGNAL(toggled(bool)),
+        this, SLOT(mode8_toggled(bool)));
 
     ui->parameterOne->installEventFilter(this);
     ui->parameterTwo->installEventFilter(this);
@@ -215,6 +231,14 @@ void SketcherToolDefaultWidget::reset()
         setComboboxIndex(i, 0);
         getComboBox(i)->clear();
     }
+
+    for (int i = 0; i < nMode; i++) {
+        setModeVisible(i, false);
+        setModeChecked(i, false);
+        getMode(i)->setToolTip(QString::fromLatin1(""));
+    }
+    ui->ConstructionModeLabel->setVisible(false);
+    ui->ConstructionModeLabel->setText(QString::fromLatin1("Mode (M) : "));
 
     setNoticeVisible(false);
 }
@@ -651,6 +675,11 @@ void SketcherToolDefaultWidget::restoreCheckBoxPref(int checkboxindex)
     }
 }
 
+void SketcherToolDefaultWidget::setCheckboxIcon(int checkboxindex, QIcon icon) {
+    if (checkboxindex < nCheckbox)
+        getCheckBox(checkboxindex)->setIcon(icon);
+}
+
 void SketcherToolDefaultWidget::setComboboxPrefEntry(int comboboxindex, const std::string & prefEntry)
 {
     if (comboboxindex < nCombobox) {
@@ -770,6 +799,177 @@ int SketcherToolDefaultWidget::getComboboxIndex(int comboboxindex)
 
     THROWM(Base::IndexError, "ToolWidget combobox index out of range");
 }
+
+//construction mode functions
+void SketcherToolDefaultWidget::mode1_toggled(bool val) {
+    if (!blockParameterSlots && val) {
+        //uncheckOtherModes(Mode::Mode1);
+        setMode(Mode::Mode1);
+        signalModeSelectionChanged(Mode::Mode1, val);
+    }
+}
+void SketcherToolDefaultWidget::mode2_toggled(bool val) {
+    if (!blockParameterSlots && val) {
+        //uncheckOtherModes(Mode::Mode2);
+        setMode(Mode::Mode2);
+        signalModeSelectionChanged(Mode::Mode2, val);
+    }
+}
+void SketcherToolDefaultWidget::mode3_toggled(bool val) {
+    if (!blockParameterSlots && val) {
+        //uncheckOtherModes(Mode::Mode3);
+        setMode(Mode::Mode3);
+        signalModeSelectionChanged(Mode::Mode3, val);
+    }
+}
+void SketcherToolDefaultWidget::mode4_toggled(bool val) {
+    if (!blockParameterSlots && val) {
+        //uncheckOtherModes(Mode::Mode4);
+        setMode(Mode::Mode4);
+        signalModeSelectionChanged(Mode::Mode4, val);
+    }
+}
+void SketcherToolDefaultWidget::mode5_toggled(bool val) {
+    if (!blockParameterSlots && val) {
+        //uncheckOtherModes(Mode::Mode5);
+        setMode(Mode::Mode5);
+        signalModeSelectionChanged(Mode::Mode5, val);
+    }
+}
+void SketcherToolDefaultWidget::mode6_toggled(bool val) {
+    if (!blockParameterSlots && val) {
+        //uncheckOtherModes(Mode::Mode6);
+        setMode(Mode::Mode6);
+        signalModeSelectionChanged(Mode::Mode6, val);
+    }
+}
+void SketcherToolDefaultWidget::mode7_toggled(bool val) {
+    if (!blockParameterSlots && val) {
+        //uncheckOtherModes(Mode::Mode7);
+        setMode(Mode::Mode7);
+        signalModeSelectionChanged(Mode::Mode7, val);
+    }
+}
+void SketcherToolDefaultWidget::mode8_toggled(bool val) {
+    if (!blockParameterSlots && val) {
+        //uncheckOtherModes(Mode::Mode8);
+        setMode(Mode::Mode8);
+        signalModeSelectionChanged(Mode::Mode8, val);
+    }
+} 
+
+void SketcherToolDefaultWidget::initNModes(int nmodes)
+{
+    Base::StateLocker lock(blockParameterSlots, true);
+
+    ui->ConstructionModeLabel->setVisible(true);
+    for (int i = 0; i < nMode; i++) {
+        setModeVisible(i, (i < nmodes) ? true : false);
+        setModeCheckable(i);
+    }
+    setMode(Mode::Mode1);
+}
+
+void SketcherToolDefaultWidget::setModeVisible(int modeindex, bool visible)
+{
+    if (modeindex < nMode) {
+        getMode(modeindex)->setVisible(visible);
+    }
+}
+void SketcherToolDefaultWidget::setModeChecked(int modeindex, bool checked){
+    Base::StateLocker lock(blockParameterSlots, true);
+
+    if (modeindex < nMode) {
+        getMode(modeindex)->setChecked(checked);
+    }
+}
+void SketcherToolDefaultWidget::setModeCheckable(int modeindex) {
+    if (modeindex < nMode) {
+        getMode(modeindex)->setCheckable(true);
+    }
+}
+
+void SketcherToolDefaultWidget::setModeIcon(int modeIndex, QIcon icon){
+    if (modeIndex < nCombobox)
+        getMode(modeIndex)->setIcon(icon);
+}
+
+void SketcherToolDefaultWidget::setModeLabel(int modeIndex){
+    ui->ConstructionModeLabel->setText(QString::fromLatin1("Mode (M) : ") + getMode(modeIndex)->text());
+}
+
+void SketcherToolDefaultWidget::setModeToolTips(QStringList& names){
+    for (int i = 0; i < names.size(); ++i) {
+        if (i < nMode) {
+            getMode(i)->setToolTip(names.at(i));
+        }
+    }
+}
+
+int SketcherToolDefaultWidget::getCurrentMode(){
+    for (int i = 0; i < nMode; i++) {
+        if (getMode(i)->isChecked())
+            return i;
+    }
+    return 0;
+}
+
+void SketcherToolDefaultWidget::setMode(int modeIndex){
+    Base::StateLocker lock(blockParameterSlots, true);
+
+    for (int i = 0; i < nMode; i++) {
+        if (i == modeIndex)
+            getMode(i)->setChecked(true);
+        else
+            getMode(i)->setChecked(false);
+    }
+    //If we want to write the mode name into the label. Though it feels like cluttering the UI so off for now.
+    //setModeLabel(modeIndex);
+}
+
+QPushButton* SketcherToolDefaultWidget::getMode(int modeindex)
+{
+    switch (modeindex) {
+    case Mode::Mode1:
+        return ui->mode1;
+        break;
+    case Mode::Mode2:
+        return ui->mode2;
+        break;
+    case Mode::Mode3:
+        return ui->mode3;
+        break;
+    case Mode::Mode4:
+        return ui->mode4;
+        break;
+    case Mode::Mode5:
+        return ui->mode5;
+        break;
+    case Mode::Mode6:
+        return ui->mode6;
+        break;
+    case Mode::Mode7:
+        return ui->mode7;
+        break;
+    case Mode::Mode8:
+        return ui->mode8;
+        break;
+    default:
+        THROWM(Base::IndexError, "ToolWidget mode index out of range");
+    }
+}
+
+/*void SketcherToolDefaultWidget::uncheckOtherModes(int modeToKeep) {
+    for (int i = 0; i < nMode; i++) {
+        if (i != modeToKeep)
+            getMode(i)->setChecked(false);
+    }
+}*/
+
+
+
+
+
 
 
 void SketcherToolDefaultWidget::changeEvent(QEvent* e)

@@ -155,6 +155,7 @@ private:
         Connection connectionParameterValueChanged;
         Connection connectionCheckboxCheckedChanged;
         Connection connectionComboboxSelectionChanged;
+        Connection connectionModeSelectionChanged;
 
         Base::Vector2d prevCursorPosition;
         Base::Vector2d lastWidgetEnforcedPosition;
@@ -171,6 +172,7 @@ private:
             connectionParameterValueChanged.disconnect();
             connectionCheckboxCheckedChanged.disconnect();
             connectionComboboxSelectionChanged.disconnect();
+            connectionModeSelectionChanged.disconnect();
         }
 
         /** @name functions NOT intended for specialisation */
@@ -183,6 +185,8 @@ private:
             connectionCheckboxCheckedChanged = toolWidget->registerCheckboxCheckedChanged(boost::bind(&ToolWidgetManager::checkboxCheckedChanged, this, bp::_1, bp::_2));
 
             connectionComboboxSelectionChanged = toolWidget->registerComboboxSelectionChanged(boost::bind(&ToolWidgetManager::comboboxSelectionChanged, this, bp::_1, bp::_2));
+            
+            connectionModeSelectionChanged = toolWidget->registerModeSelectionChanged(boost::bind(&ToolWidgetManager::modeSelectionChanged, this, bp::_1, bp::_2));
 
             reset();
             init = true;
@@ -193,6 +197,7 @@ private:
             boost::signals2::shared_connection_block parameter_block(connectionParameterValueChanged);
             boost::signals2::shared_connection_block checkbox_block(connectionCheckboxCheckedChanged);
             boost::signals2::shared_connection_block combobox_block(connectionComboboxSelectionChanged);
+            //boost::signals2::shared_connection_block mode_block(connectionModeSelectionChanged);
 
             toolWidget->initNParameters(nParameter);
             toolWidget->initNCheckboxes(nCheckbox);
@@ -257,6 +262,19 @@ private:
 
             finishWidgetChanged();
         }
+        
+        /** boost slot triggering when a combobox has changed in the widget
+         * It is intended to remote control the DrawSketchDefaultWidgetHandler
+         */
+        void modeSelectionChanged(int modeindex, bool value) {
+            enforceWidgetParametersOnPreviousCursorPosition();
+
+            adaptDrawingToModeChange(modeindex, value);
+
+            onHandlerModeChanged();//re-focus/select spinbox
+
+            finishWidgetChanged();
+        }
 
         void adaptWidgetParameters() {
             adaptWidgetParameters(lastWidgetEnforcedPosition);
@@ -273,15 +291,13 @@ private:
         void adaptDrawingToCheckboxChange(int checkboxindex, bool value) {Q_UNUSED(checkboxindex);Q_UNUSED(value);}
 
         /// Change DSH to reflect a comboBox changed in the widget
-        void adaptDrawingToComboboxChange(int comboboxindex, int value) {
-            Q_UNUSED(comboboxindex); Q_UNUSED(value);
+        void adaptDrawingToComboboxChange(int comboboxindex, int value) {Q_UNUSED(comboboxindex); Q_UNUSED(value);}
 
-            if constexpr (PFirstComboboxIsConstructionMethod == true) {
-
-                if (comboboxindex == WCombobox::FirstCombo && handler->ConstructionMethodsCount() > 1) {
-                    handler->iterateToNextConstructionMethod();
-                }
-
+        /// Change DSH to reflect a mode button changed in the widget
+        void adaptDrawingToModeChange(int modeindex, bool value) {
+            Q_UNUSED(modeindex); Q_UNUSED(value);
+            if (value) {
+                handler->setConstructionMethod(static_cast<ConstructionMethodT>(modeindex));
             }
         }
 
@@ -547,16 +563,13 @@ private:
             nCheckbox = WidgetCheckboxesT::size(handler->constructionMethod());
             nCombobox = WidgetComboboxesT::size(handler->constructionMethod());
 
-            // update the combobox only if necessary (if the change was not triggered by the combobox)
-            if constexpr (PFirstComboboxIsConstructionMethod == true) {
-                auto currentindex = toolWidget->getComboboxIndex(WCombobox::FirstCombo);
-                auto methodint = static_cast<int>(handler->constructionMethod());
-
-                if (currentindex != methodint) {
-                    // avoid triggering of method change
-                    boost::signals2::shared_connection_block combobox_block(connectionComboboxSelectionChanged);
-                    toolWidget->setComboboxIndex(WCombobox::FirstCombo, methodint);
-                }
+            // update the mode buttons only if necessary (if the change was not triggered by the mode buttons)
+            auto currentindex = toolWidget->getCurrentMode();
+            auto methodint = static_cast<int>(handler->constructionMethod());
+            if (currentindex != methodint) {
+                // avoid triggering of method change
+                boost::signals2::shared_connection_block mode_block(connectionModeSelectionChanged);
+                toolWidget->setMode(methodint);
             }
 
             dHandler->updateCursor();
@@ -916,24 +929,20 @@ private:
                 return false;
             }
 
-            void syncHandlerToConstructionMethodCombobox() {
+            void syncHandlerToConstructionMethodButton() {
 
-                if constexpr (PFirstComboboxIsConstructionMethod == true) {
-                    auto constructionmethod = toolWidget->getComboboxIndex(WCombobox::FirstCombo);
+                    auto constructionmethod = toolWidget->getCurrentMode();
 
                     handler->initConstructionMethod(static_cast<ConstructionMethodT>(constructionmethod));
-                }
             }
-            void syncConstructionMethodComboboxToHandler() {
+            void syncConstructionMethodButtonToHandler() {
 
-                if constexpr (PFirstComboboxIsConstructionMethod == true) {
-                    auto constructionmethod = toolWidget->getComboboxIndex(WCombobox::FirstCombo);
+                    auto constructionmethod = toolWidget->getCurrentMode();
 
                     auto actualconstructionmethod = static_cast<int>(handler->constructionMethod());
 
                     if(constructionmethod != actualconstructionmethod)
-                        toolWidget->setComboboxIndex(WCombobox::FirstCombo, actualconstructionmethod);
-                }
+                        toolWidget->setMode(actualconstructionmethod);
             }
 
             bool isParameterOfCurrentMode(int parameterindex) const {

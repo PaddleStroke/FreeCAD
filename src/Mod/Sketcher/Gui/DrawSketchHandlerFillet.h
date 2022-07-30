@@ -92,7 +92,7 @@ using DrawSketchHandlerFilletBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
     /*PAutoConstraintSize =*/ 0,
     /*WidgetParametersT =*/WidgetParameters<1, 2>,
     /*WidgetCheckboxesT =*/WidgetCheckboxes<2, 2>,
-    /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
+    /*WidgetComboboxesT =*/WidgetComboboxes<0, 0>,
     ConstructionMethods::FilletChamferConstructionMethod,
     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
@@ -334,8 +334,14 @@ private:
 template <> void DrawSketchHandlerFilletBase::ToolWidgetManager::configureToolWidget() {
 
     if(!init) { // Code to be executed only upon initialisation
-        QStringList names = {QStringLiteral("Fillet"), QStringLiteral("Chamfer")};
-        toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
+        toolWidget->initNModes(2);
+        QStringList names = { QStringLiteral("Fillet"), QStringLiteral("Chamfer") };
+        toolWidget->setModeToolTips(names);
+
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFillet"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateChamfer"));
+
+        toolWidget->setCheckboxIcon(WCheckbox::FirstBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePointFillet"));
     }
 
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_fillet", "Radius"));
@@ -343,9 +349,11 @@ template <> void DrawSketchHandlerFilletBase::ToolWidgetManager::configureToolWi
         toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_fillet", "Number of corners"));
         toolWidget->setParameter(WParameter::Second, 2);
     }
-    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_fillet", "Preserve corner and most constraints"));
+    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_fillet", "Preserve corner (U)"));
+    toolWidget->setCheckboxToolTip(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_fillet", "Preserve corner and most constraints (Press U to toggle)"));
     toolWidget->setCheckboxPrefEntry(WCheckbox::FirstBox, "PreserveFilletChamferCorner");
-    toolWidget->setCheckboxLabel(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_fillet", "Inward"));
+    toolWidget->setCheckboxLabel(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_fillet", "Inward (J)"));
+    toolWidget->setCheckboxToolTip(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c1_fillet", "Create fillet or chamfer inward. (Press J to toggle)"));
 }
 
 template <> void DrawSketchHandlerFilletBase::ToolWidgetManager::adaptDrawingToParameterChange(int parameterindex, double value) {

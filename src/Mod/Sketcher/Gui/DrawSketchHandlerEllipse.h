@@ -46,7 +46,7 @@ using DrawSketchHandlerEllipseBase = DrawSketchDefaultWidgetHandler<  DrawSketch
     /*PAutoConstraintSize =*/ 3,
     /*WidgetParametersT =*/WidgetParameters<5, 6>,
     /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
-    /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
+    /*WidgetComboboxesT =*/WidgetComboboxes<0, 0>,
     ConstructionMethods::CircleEllipseConstructionMethod,
     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
@@ -293,10 +293,20 @@ template <> auto DrawSketchHandlerEllipseBase::ToolWidgetManager::getState(int p
 template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::configureToolWidget() {
 
     if(!init) { // Code to be executed only upon initialisation
-        QStringList names = {QStringLiteral("Center"), QStringLiteral("Axis endpoints and radius")};
-        toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
+        toolWidget->initNModes(2);
+        QStringList names = { QStringLiteral("Center"), QStringLiteral("Axis endpoints and radius") };
+        toolWidget->setModeToolTips(names);
 
-        syncConstructionMethodComboboxToHandler(); // in case the DSH was called with a specific construction method
+        if (geometryCreationMode) {
+            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse_Constr"));
+            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse_3points_Constr"));
+        }
+        else {
+            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse"));
+            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse_3points"));
+        }
+
+        syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }
 
     if (dHandler->constructionMethod() == DrawSketchHandlerEllipse::ConstructionMethod::Center) {

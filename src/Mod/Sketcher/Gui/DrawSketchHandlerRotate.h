@@ -454,7 +454,7 @@ template <> void DrawSketchHandlerRotateBase::ToolWidgetManager::configureToolWi
     toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_p3_rotate", "Total angle"));
     toolWidget->configureParameterUnit(WParameter::Third, Base::Unit::Angle);
     toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("TaskSketcherTool_p4_rotate", "Number of copies"));
-    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_rotate", "Clone constraints"));
+    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_rotate", "Clone constraints (U)"));
 
     toolWidget->setNoticeVisible(true);
     toolWidget->setNoticeText(QApplication::translate("Rotate_1", "Select the center of the rotation."));

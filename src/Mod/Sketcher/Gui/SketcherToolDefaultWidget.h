@@ -95,6 +95,18 @@ class SketcherToolDefaultWidget : public QWidget
     };
 
 public:
+    /// Checkbox number/label
+    enum Mode {
+        Mode1,
+        Mode2,
+        Mode3,
+        Mode4,
+        Mode5,
+        Mode6,
+        Mode7,
+        Mode8,
+        nMode // Must Always be the last one
+    };
 
     /// Parameter spinbox number/label
     enum Parameter {
@@ -163,6 +175,7 @@ public:
     bool getCheckboxChecked(int checkboxindex);
     void setCheckboxPrefEntry(int checkboxindex, const std::string & prefEntry);
     void restoreCheckBoxPref(int checkboxindex);
+    void setCheckboxIcon(int checkboxindex, QIcon icon);
 
     void initNComboboxes(int ncombobox);
     void setComboboxVisible(int comboboxindex, bool visible);
@@ -172,6 +185,17 @@ public:
     void setComboboxElements(int comboboxindex, const QStringList& names);
     void setComboboxPrefEntry(int comboboxindex, const std::string & prefEntry);
     void restoreComboboxPref(int comboboxindex);
+    
+    void initNModes(int ncombobox);
+    void setModeVisible(int modeindex, bool visible);
+    void setModeChecked(int modeindex, bool checked);
+    void setModeCheckable(int modeindex);
+    void uncheckOtherModes(int modeToKeep);
+    void setModeIcon(int modeIndex, QIcon icon);
+    void setModeLabel(int modeIndex);
+    void SketcherToolDefaultWidget::setModeToolTips(QStringList& names);
+    int getCurrentMode();
+    void setMode(int modeIndex); 
 
     template<typename F>
     boost::signals2::connection registerParameterValueChanged(F&& f) {
@@ -188,6 +212,11 @@ public:
         return signalComboboxSelectionChanged.connect(std::forward<F>(f));
     }
 
+    template<typename F>
+    boost::signals2::connection registerModeSelectionChanged(F&& f)
+    {
+        return signalModeSelectionChanged.connect(std::forward<F>(f));
+    }
 
 
 //Q_SIGNALS:
@@ -209,6 +238,14 @@ protected Q_SLOTS:
     void comboBox1_currentIndexChanged(int val);
     void comboBox2_currentIndexChanged(int val);
     void comboBox3_currentIndexChanged(int val);
+    void mode1_toggled(bool val);
+    void mode2_toggled(bool val);
+    void mode3_toggled(bool val);
+    void mode4_toggled(bool val);
+    void mode5_toggled(bool val);
+    void mode6_toggled(bool val);
+    void mode7_toggled(bool val);
+    void mode8_toggled(bool val);
 
 protected:
     void changeEvent(QEvent *e);
@@ -219,6 +256,7 @@ private:
     Gui::PrefCheckBox* getCheckBox(int checkboxindex);
     Gui::PrefComboBox* getComboBox(int comboboxindex);
     QLabel* getComboBoxLabel(int comboboxindex);
+    QPushButton* SketcherToolDefaultWidget::getMode(int modeindex);
 
     void setParameterFontStyle(int parameterindex, FontStyle fontStyle);
 
@@ -231,6 +269,7 @@ private:
     boost::signals2::signal<void (int parameterindex, double value)> signalParameterValueChanged;
     boost::signals2::signal<void(int checkboxindex, bool value)> signalCheckboxCheckedChanged;
     boost::signals2::signal<void(int comboindex, int value)> signalComboboxSelectionChanged;
+    boost::signals2::signal<void(int modeindex, bool value)> signalModeSelectionChanged;
 
     /// lock to block QT slots
     bool blockParameterSlots;

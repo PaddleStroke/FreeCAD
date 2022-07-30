@@ -52,7 +52,7 @@ using DrawSketchHandlerInsertBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
     /*PAutoConstraintSize =*/ 2,
     /*WidgetParametersT =*/WidgetParameters<3, 3>,
     /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
-    /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
+    /*WidgetComboboxesT =*/WidgetComboboxes<0, 0>,
     ConstructionMethods::InsertConstructionMethod,
     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
@@ -415,8 +415,12 @@ template <> auto DrawSketchHandlerInsertBase::ToolWidgetManager::getState(int pa
 
 template <> void DrawSketchHandlerInsertBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
-        QStringList names = {QStringLiteral("Box"), QStringLiteral("Arc")};
-        toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
+        toolWidget->initNModes(2);
+        QStringList names = { QStringLiteral("Box"), QStringLiteral("Arc") };
+        toolWidget->setModeToolTips(names);
+
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_Insert"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_InsertArc"));
     }
 
     toolWidget->setParameterEnabled(WParameter::First, false);

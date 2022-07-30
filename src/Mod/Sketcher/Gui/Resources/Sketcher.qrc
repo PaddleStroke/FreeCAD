@@ -140,6 +140,8 @@
         <file>icons/geometry/Sketcher_CreateHyperbolic_Arc_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateLine.svg</file>
         <file>icons/geometry/Sketcher_CreateLine_Constr.svg</file>
+        <file>icons/geometry/Sketcher_CreateLineAngleLength.svg</file>
+        <file>icons/geometry/Sketcher_CreateLineAngleLength_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateOblong.svg</file>
         <file>icons/geometry/Sketcher_CreateOblong_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateOctagon.svg</file>
@@ -157,6 +159,8 @@
         <file>icons/geometry/Sketcher_CreateRectangle_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateFins.svg</file>
         <file>icons/geometry/Sketcher_CreateFins_Constr.svg</file>
+        <file>icons/geometry/Sketcher_CreateFinsOneSide.svg</file>
+        <file>icons/geometry/Sketcher_CreateFinsOneSide_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateRectangle_Center.svg</file>
         <file>icons/geometry/Sketcher_CreateRectangle_Center_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateFrame.svg</file>
@@ -178,6 +182,7 @@
         <file>icons/geometry/Sketcher_External.svg</file>
         <file>icons/geometry/Sketcher_Split.svg</file>
         <file>icons/geometry/Sketcher_Insert.svg</file>
+        <file>icons/geometry/Sketcher_InsertArc.svg</file>
         <file>icons/geometry/Sketcher_ToggleConstruction.svg</file>
         <file>icons/geometry/Sketcher_Trimming.svg</file>
     </qresource>
@@ -245,9 +250,12 @@
         <file>icons/tools/Sketcher_DeleteGeometry.svg</file>
         <file>icons/tools/Sketcher_Move.svg</file>
         <file>icons/tools/Sketcher_Translate.svg</file>
+        <file>icons/tools/Sketcher_TranslateTwo.svg</file>
         <file>icons/tools/Sketcher_Rotate.svg</file>
         <file>icons/tools/Sketcher_Scale.svg</file>
         <file>icons/tools/Sketcher_Offset.svg</file>
+        <file>icons/tools/Sketcher_OffsetArc.svg</file>
+        <file>icons/tools/Sketcher_OffsetIntersection.svg</file>
         <file>icons/tools/Sketcher_Pattern.svg</file>
         <file>icons/tools/Sketcher_RectangularArray.svg</file>
         <file>icons/tools/Sketcher_RemoveAxesAlignment.svg</file>

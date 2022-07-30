@@ -50,7 +50,7 @@ using DrawSketchHandlerRectangleBase = DrawSketchDefaultWidgetHandler<  DrawSket
                                                                         /*PAutoConstraintSize =*/ 2,
                                                                         /*WidgetParametersT =*/WidgetParameters<6, 6>,
                                                                         /*WidgetCheckboxesT =*/WidgetCheckboxes<2, 2>,
-                                                                        /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
+                                                                        /*WidgetComboboxesT =*/WidgetComboboxes<0, 0>,
                                                                         ConstructionMethods::RectangleConstructionMethod,
                                                                         /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
@@ -620,10 +620,29 @@ template <> auto DrawSketchHandlerRectangleBase::ToolWidgetManager::getState(int
 
 template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
+        toolWidget->initNModes(2);
         QStringList names = {QStringLiteral("Diagonal corners"), QStringLiteral("Center and corner")};
-        toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
+        toolWidget->setModeToolTips(names);
 
-        syncConstructionMethodComboboxToHandler(); // in case the DSH was called with a specific construction method
+        if (geometryCreationMode) {
+            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle_Constr"));
+            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle_Center_Constr"));
+        }
+        else {
+            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle"));
+            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle_Center"));
+        }
+
+        syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
+
+        if (geometryCreationMode) {
+            toolWidget->setCheckboxIcon(WCheckbox::FirstBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateOblong_Constr"));
+            toolWidget->setCheckboxIcon(WCheckbox::SecondBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFrame_Constr"));
+        }
+        else {
+            toolWidget->setCheckboxIcon(WCheckbox::FirstBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateOblong"));
+            toolWidget->setCheckboxIcon(WCheckbox::SecondBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFrame"));
+        }
     }
 
     if(dHandler->constructionMethod() == DrawSketchHandlerRectangle::ConstructionMethod::Diagonal){
@@ -642,7 +661,7 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::configureToo
     toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("TaskSketcherTool_p5_rectangle", "Corner radius"));
     toolWidget->setParameterEnabled(WParameter::Fifth, dHandler->roundCorners);
 
-    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_rectangle", "Rounded corners"));
+    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_rectangle", "Rounded corners (U)"));
     toolWidget->setCheckboxToolTip(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_rectangle", "Create a rectangle with rounded corners."));
 
     syncCheckboxToHandler(WCheckbox::FirstBox, dHandler->roundCorners);
@@ -650,7 +669,7 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::configureToo
     toolWidget->setParameterLabel(WParameter::Sixth, QApplication::translate("TaskSketcherTool_p6_rectangle", "Thickness"));
     toolWidget->setParameterEnabled(WParameter::Sixth, dHandler->makeFrame);
 
-    toolWidget->setCheckboxLabel(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_rectangle", "Frame"));
+    toolWidget->setCheckboxLabel(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_rectangle", "Frame (J)"));
     toolWidget->setCheckboxToolTip(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_rectangle", "Create two rectangles, one in the other with a constant thickness."));
 
     syncCheckboxToHandler(WCheckbox::SecondBox, dHandler->makeFrame);

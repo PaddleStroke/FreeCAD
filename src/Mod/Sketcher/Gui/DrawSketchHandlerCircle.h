@@ -42,7 +42,7 @@ using DrawSketchHandlerCircleBase = DrawSketchDefaultWidgetHandler<  DrawSketchH
     /*PAutoConstraintSize =*/ 3,
     /*WidgetParametersT =*/WidgetParameters<3, 6>,
     /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
-    /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
+    /*WidgetComboboxesT =*/WidgetComboboxes<0, 0>,
     ConstructionMethods::CircleEllipseConstructionMethod,
     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
@@ -275,10 +275,20 @@ template <> auto DrawSketchHandlerCircleBase::ToolWidgetManager::getState(int pa
 template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::configureToolWidget() {
 
     if(!init) { // Code to be executed only upon initialisation
-        QStringList names = {QStringLiteral("Center"), QStringLiteral("3 rim points")};
-        toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
+        toolWidget->initNModes(2);
+        QStringList names = { QStringLiteral("Center"), QStringLiteral("3 rim points") };
+        toolWidget->setModeToolTips(names);
 
-        syncConstructionMethodComboboxToHandler(); // in case the DSH was called with a specific construction method
+        if (geometryCreationMode) {
+            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateCircle_Constr"));
+            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_Create3PointCircle_Constr"));
+        }
+        else {
+            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateCircle"));
+            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_Create3PointCircle"));
+        }
+
+        syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }
 
     if (dHandler->constructionMethod() == DrawSketchHandlerCircle::ConstructionMethod::Center) {

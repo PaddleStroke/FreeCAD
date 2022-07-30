@@ -53,7 +53,7 @@ using DrawSketchHandlerTranslateBase = DrawSketchDefaultWidgetHandler< DrawSketc
     /*PAutoConstraintSize =*/ 0,
     /*WidgetParametersT =*/WidgetParameters<4, 6>,
     /*WidgetCheckboxesT =*/WidgetCheckboxes<1, 1>,
-    /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
+    /*WidgetComboboxesT =*/WidgetComboboxes<0, 0>,
     ConstructionMethods::TranslateConstructionMethod,
     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
@@ -451,8 +451,12 @@ template <> auto DrawSketchHandlerTranslateBase::ToolWidgetManager::getState(int
 
 template <> void DrawSketchHandlerTranslateBase::ToolWidgetManager::configureToolWidget() {
     if (!init) { // Code to be executed only upon initialisation
+        toolWidget->initNModes(2);
         QStringList names = { QStringLiteral("Linear array"), QStringLiteral("Rectangular array") };
-        toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
+        toolWidget->setModeToolTips(names);
+
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_Translate"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_TranslateTwo"));
     }
 
     auto dHandler = static_cast<DrawSketchHandlerTranslate*>(handler);
@@ -470,7 +474,7 @@ template <> void DrawSketchHandlerTranslateBase::ToolWidgetManager::configureToo
         toolWidget->setParameterLabel(WParameter::Sixth, QApplication::translate("TaskSketcherTool_p6_translate", "Second translation length"));
     }
 
-    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_translate", "Clone constraints"));
+    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_translate", "Clone constraints (U)"));
 
     toolWidget->setNoticeVisible(true);
     toolWidget->setNoticeText(QApplication::translate("Translate_1", "Select the reference point of the translation."));

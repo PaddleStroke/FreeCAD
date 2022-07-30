@@ -51,7 +51,7 @@ namespace SketcherGui {
         /*PAutoConstraintSize =*/ 2,
         /*WidgetParametersT =*/WidgetParameters<7, 7>,
         /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
-        /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
+        /*WidgetComboboxesT =*/WidgetComboboxes<0, 0>,
         ConstructionMethods::FinsConstructionMethod,
         /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
@@ -431,8 +431,18 @@ namespace SketcherGui {
 
     template <> void DrawSketchHandlerFinsBase::ToolWidgetManager::configureToolWidget() {
         if (!init) { // Code to be executed only upon initialisation
+            toolWidget->initNModes(2);
             QStringList names = { QStringLiteral("Fins on one side"), QStringLiteral("Fins on two sides") };
-            toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
+            toolWidget->setModeToolTips(names);
+
+            if (geometryCreationMode) {
+                toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFinsOneSide_Constr"));
+                toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFins_Constr"));
+            }
+            else {
+                toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFinsOneSide"));
+                toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFins"));
+            }
 
             toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_fins", "x of 1st point"));
             toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_fins", "y of 1st point"));
@@ -442,7 +452,7 @@ namespace SketcherGui {
             toolWidget->setParameterLabel(WParameter::Sixth, QApplication::translate("TaskSketcherTool_p6_fins", "Fin width"));
             toolWidget->setParameterLabel(WParameter::Seventh, QApplication::translate("TaskSketcherTool_p7_fins", "Number of fins"));
 
-            syncConstructionMethodComboboxToHandler(); // in case the DSH was called with a specific construction method
+            syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
         }
 
 

@@ -15,11 +15,150 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
+    <layout class="QHBoxLayout" name="ConstructionModeLayout">
+     <item>
+      <widget class="QLabel" name="ConstructionModeLabel">
+       <property name="text">
+        <string>Mode (M) :</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="mode1">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Construction mode 1</string>
+       </property>
+       <property name="text">
+        <string></string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="mode2">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Construction mode 2</string>
+       </property>
+       <property name="text">
+        <string></string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="mode3">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Construction mode 3</string>
+       </property>
+       <property name="text">
+        <string></string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="mode4">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Construction mode 4</string>
+       </property>
+       <property name="text">
+        <string></string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="mode5">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Construction mode 5</string>
+       </property>
+       <property name="text">
+        <string></string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="mode6">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Construction mode 6</string>
+       </property>
+       <property name="text">
+        <string></string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="mode7">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Construction mode 7</string>
+       </property>
+       <property name="text">
+        <string></string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="mode8">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Construction mode 8</string>
+       </property>
+       <property name="text">
+        <string></string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="comboLayout1">
      <item>
       <widget class="QLabel" name="comboLabel1">
        <property name="text">
-        <string>Mode</string>
+        <string>Mode (M) :</string>
        </property>
       </widget>
      </item>

@@ -43,7 +43,7 @@ using DrawSketchHandlerOffsetBase = DrawSketchDefaultWidgetHandler< DrawSketchHa
     /*PAutoConstraintSize =*/ 0,
     /*WidgetParametersT =*/WidgetParameters<1>,
     /*WidgetCheckboxesT =*/WidgetCheckboxes<2>,
-    /*WidgetComboboxesT =*/WidgetComboboxes<1>>;
+    /*WidgetComboboxesT =*/WidgetComboboxes<0>>;
 
 class DrawSketchHandlerOffset : public DrawSketchHandlerOffsetBase
 {
@@ -904,14 +904,18 @@ private:
 
 template <> void DrawSketchHandlerOffsetBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
-        QStringList names = {QStringLiteral("Arc"), QStringLiteral("Intersection")};
-        toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
+        toolWidget->initNModes(2);
+        QStringList names = { QStringLiteral("Arc"), QStringLiteral("Intersection") };
+        toolWidget->setModeToolTips(names);
+
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_OffsetArc"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_OffsetIntersection"));
     }
 
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_offset", "Offset length"));
 
-    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_offset", "Delete original geometries"));
-    toolWidget->setCheckboxLabel(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_offset", "Add offset constraint"));
+    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_offset", "Delete original geometries (U)"));
+    toolWidget->setCheckboxLabel(WCheckbox::SecondBox, QApplication::translate("TaskSketcherTool_c2_offset", "Add offset constraint (J)"));
 
     toolWidget->setNoticeVisible(true);
     toolWidget->setNoticeText(QApplication::translate("Offset_1", "Positive offset length is outward, negative inward."));

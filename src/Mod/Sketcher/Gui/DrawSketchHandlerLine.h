@@ -51,7 +51,7 @@ using DrawSketchHandlerLineBase = DrawSketchDefaultWidgetHandler<   DrawSketchHa
                                                                     /*PAutoConstraintSize =*/ 2,
                                                                     /*WidgetParametersT =*/WidgetParameters<4, 4>,
                                                                     /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
-                                                                    /*WidgetComboboxesT =*/WidgetComboboxes<1, 1>,
+                                                                    /*WidgetComboboxesT =*/WidgetComboboxes<0, 0>,
                                                                     ConstructionMethods::LineConstructionMethod,
                                                                     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
@@ -215,8 +215,18 @@ template <> auto DrawSketchHandlerLineBase::ToolWidgetManager::getState(int para
 
 template <> void DrawSketchHandlerLineBase::ToolWidgetManager::configureToolWidget() {
     if (!init) { // Code to be executed only upon initialisation
+        toolWidget->initNModes(2);
         QStringList names = { QStringLiteral("Point, length, angle"), QStringLiteral("2 points") };
-        toolWidget->setComboboxElements(WCombobox::FirstCombo, names);
+        toolWidget->setModeToolTips(names);
+
+        if (geometryCreationMode) {
+            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineAngleLength_Constr"));
+            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine_Constr"));
+        }
+        else {
+            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineAngleLength"));
+            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine"));
+        }
     }
 
     if (handler->constructionMethod() == ConstructionMethod::OnePointLengthAngle) {

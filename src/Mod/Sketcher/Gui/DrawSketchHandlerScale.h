@@ -390,7 +390,7 @@ template <> void DrawSketchHandlerScaleBase::ToolWidgetManager::configureToolWid
     toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_scale", "y of reference"));
     toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_p3_scale", "Scale factor"));
 
-    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_scale", "Keep original geometries"));
+    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_scale", "Keep original geometries (U)"));
 
     toolWidget->setNoticeVisible(true);
     toolWidget->setNoticeText(QApplication::translate("Scale_1", "Select the reference point of the scale."));

@@ -890,7 +890,7 @@ void SketcherToolDefaultWidget::setModeCheckable(int modeindex) {
 }
 
 void SketcherToolDefaultWidget::setModeIcon(int modeIndex, QIcon icon){
-    if (modeIndex < nCombobox)
+    if (modeIndex < nMode)
         getMode(modeIndex)->setIcon(icon);
 }
 

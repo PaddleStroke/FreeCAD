@@ -70,6 +70,15 @@ enum class FourSeekEnd {
     End // MUST be the last one
 };
 
+enum class FiveSeekEnd {
+    SeekFirst,
+    SeekSecond,
+    SeekThird,
+    SeekFourth,
+    SeekFifth,
+    End // MUST be the last one
+};
+
 enum class TwoSeekDoEnd {
     SeekFirst,
     SeekSecond,

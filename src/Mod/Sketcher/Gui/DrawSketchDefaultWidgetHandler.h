@@ -342,6 +342,14 @@ private:
                 toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("ToolWidgetManager_p5", "x of 3rd point"));
                 toolWidget->setParameterLabel(WParameter::Sixth, QApplication::translate("ToolWidgetManager_p6", "y of 3rd point"));
             }
+            else if constexpr (std::is_same_v<StateMachines::FiveSeekEnd, SelectMode>) {
+                toolWidget->setParameterLabel(WParameter::First, QApplication::translate("ToolWidgetManager_p1", "x of 1st point"));
+                toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("ToolWidgetManager_p2", "y of 1st point"));
+                toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("ToolWidgetManager_p3", "x of 2nd point"));
+                toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("ToolWidgetManager_p4", "y of 2nd point"));
+                toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("ToolWidgetManager_p5", "x of 3rd point"));
+                toolWidget->setParameterLabel(WParameter::Sixth, QApplication::translate("ToolWidgetManager_p6", "y of 3rd point"));
+            }
         }
 
         /** Change DSH to reflect the SelectMode it should be in based on values entered in the widget
@@ -484,6 +492,51 @@ private:
                     break;
                 }
             }
+            else if constexpr (std::is_same_v<StateMachines::FiveSeekEnd, SelectMode>) {
+                switch (handler->state()) {
+                case SelectMode::SeekFirst:
+                {
+                    if (toolWidget->isParameterSet(WParameter::First) &&
+                        toolWidget->isParameterSet(WParameter::Second)) {
+
+                        handler->setState(SelectMode::SeekSecond);
+                    }
+                }
+                break;
+                case SelectMode::SeekSecond:
+                {
+                    if (toolWidget->isParameterSet(WParameter::Third) ||
+                        toolWidget->isParameterSet(WParameter::Fourth)) {
+
+                        if (toolWidget->isParameterSet(WParameter::Third) &&
+                            toolWidget->isParameterSet(WParameter::Fourth)) {
+
+                            handler->setState(SelectMode::SeekThird);
+                        }
+                    }
+                }
+                break;
+                case SelectMode::SeekThird:
+                {
+                    if (toolWidget->isParameterSet(WParameter::Fifth)) {
+
+                        handler->setState(SelectMode::SeekFourth);
+                    }
+                }
+                break;
+                case SelectMode::SeekFourth:
+                {
+                    if (toolWidget->isParameterSet(WParameter::Sixth)) {
+
+                        handler->setState(SelectMode::End);
+                        handler->finish();
+                    }
+                }
+                break;
+                default:
+                    break;
+                }
+            }
         }
 
         /** function that is called by the handler when the selection mode changed
@@ -543,6 +596,27 @@ private:
                     break;
                 case SelectMode::SeekFourth:
                     toolWidget->setParameterFocus(WParameter::Sixth);
+                    break;
+                default:
+                    break;
+                }
+            }
+            else if constexpr (std::is_same_v<StateMachines::FiveSeekEnd, SelectMode>) {
+                switch (handler->state()) {
+                case SelectMode::SeekFirst:
+                    toolWidget->setParameterFocus(WParameter::First);
+                    break;
+                case SelectMode::SeekSecond:
+                    toolWidget->setParameterFocus(WParameter::Third);
+                    break;
+                case SelectMode::SeekThird:
+                    toolWidget->setParameterFocus(WParameter::Fifth);
+                    break;
+                case SelectMode::SeekFourth:
+                    toolWidget->setParameterFocus(WParameter::Sixth);
+                    break;
+                case SelectMode::SeekFifth:
+                    toolWidget->setParameterFocus(WParameter::Seventh);
                     break;
                 default:
                     break;
@@ -699,6 +773,56 @@ private:
                     break;
                 }
             }
+            else if constexpr (std::is_same_v<StateMachines::FiveSeekEnd, SelectMode>) {
+                switch (handler->state()) {
+                case SelectMode::SeekFirst:
+                {
+                    if (!toolWidget->isParameterSet(WParameter::First))
+                        toolWidget->updateVisualValue(WParameter::First, onSketchPos.x);
+
+                    if (!toolWidget->isParameterSet(WParameter::Second))
+                        toolWidget->updateVisualValue(WParameter::Second, onSketchPos.y);
+                }
+                break;
+                case SelectMode::SeekSecond:
+                {
+                    if (!toolWidget->isParameterSet(WParameter::Third))
+                        toolWidget->updateVisualValue(WParameter::Third, onSketchPos.x);
+
+                    if (!toolWidget->isParameterSet(WParameter::Fourth))
+                        toolWidget->updateVisualValue(WParameter::Fourth, onSketchPos.y);
+                }
+                break;
+                case SelectMode::SeekThird:
+                {
+                    if (!toolWidget->isParameterSet(WParameter::Fifth))
+                        toolWidget->updateVisualValue(WParameter::Fifth, onSketchPos.x);
+
+                    if (!toolWidget->isParameterSet(WParameter::Sixth))
+                        toolWidget->updateVisualValue(WParameter::Sixth, onSketchPos.y);
+                }
+                break;
+                case SelectMode::SeekFourth:
+                {
+                    if (!toolWidget->isParameterSet(WParameter::Fifth))
+                        toolWidget->updateVisualValue(WParameter::Fifth, onSketchPos.x);
+
+                    if (!toolWidget->isParameterSet(WParameter::Sixth))
+                        toolWidget->updateVisualValue(WParameter::Sixth, onSketchPos.y);
+                }
+                case SelectMode::SeekFifth:
+                {
+                    if (!toolWidget->isParameterSet(WParameter::Fifth))
+                        toolWidget->updateVisualValue(WParameter::Fifth, onSketchPos.x);
+
+                    if (!toolWidget->isParameterSet(WParameter::Sixth))
+                        toolWidget->updateVisualValue(WParameter::Sixth, onSketchPos.y);
+                }
+                break;
+                default:
+                    break;
+                }
+            }
         }
 
         /** function that is called by the handler with a mouse position, enabling the
@@ -812,6 +936,48 @@ private:
                 }
                 break;
                 case SelectMode::SeekFourth:
+                {
+                    //nothing. It has to be reimplemented.
+                }
+                break;
+                default:
+                    break;
+                }
+            }
+            else if constexpr (std::is_same_v<StateMachines::FourSeekEnd, SelectMode>) {
+                switch (handler->state()) {
+                case SelectMode::SeekFirst:
+                {
+                    if (toolWidget->isParameterSet(WParameter::First))
+                        onSketchPos.x = toolWidget->getParameter(WParameter::First);
+
+                    if (toolWidget->isParameterSet(WParameter::Second))
+                        onSketchPos.y = toolWidget->getParameter(WParameter::Second);
+                }
+                break;
+                case SelectMode::SeekSecond:
+                {
+                    if (toolWidget->isParameterSet(WParameter::Third))
+                        onSketchPos.x = toolWidget->getParameter(WParameter::Third);
+
+                    if (toolWidget->isParameterSet(WParameter::Fourth))
+                        onSketchPos.y = toolWidget->getParameter(WParameter::Fourth);
+                }
+                break;
+                case SelectMode::SeekThird:
+                {
+                    if (toolWidget->isParameterSet(WParameter::Fifth))
+                        onSketchPos.x = toolWidget->getParameter(WParameter::Fifth);
+
+                    if (toolWidget->isParameterSet(WParameter::Sixth))
+                        onSketchPos.y = toolWidget->getParameter(WParameter::Sixth);
+                }
+                break;
+                case SelectMode::SeekFourth:
+                {
+                    //nothing. It has to be reimplemented.
+                }
+                case SelectMode::SeekFifth:
                 {
                     //nothing. It has to be reimplemented.
                 }

@@ -163,6 +163,10 @@
         <file>icons/geometry/Sketcher_CreateFinsOneSide_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateRectangle_Center.svg</file>
         <file>icons/geometry/Sketcher_CreateRectangle_Center_Constr.svg</file>
+        <file>icons/geometry/Sketcher_CreateRectangle3Points.svg</file>
+        <file>icons/geometry/Sketcher_CreateRectangle3Points_Constr.svg</file>
+        <file>icons/geometry/Sketcher_CreateRectangle3Points_Center.svg</file>
+        <file>icons/geometry/Sketcher_CreateRectangle3Points_Center_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateFrame.svg</file>
         <file>icons/geometry/Sketcher_CreateFrame_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreatePolygon.svg</file>

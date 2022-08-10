@@ -193,7 +193,7 @@ public:
     void uncheckOtherModes(int modeToKeep);
     void setModeIcon(int modeIndex, QIcon icon);
     void setModeLabel(int modeIndex);
-    void SketcherToolDefaultWidget::setModeToolTips(QStringList& names);
+    void setModeToolTips(QStringList& names);
     int getCurrentMode();
     void setMode(int modeIndex); 
 
@@ -256,7 +256,7 @@ private:
     Gui::PrefCheckBox* getCheckBox(int checkboxindex);
     Gui::PrefComboBox* getComboBox(int comboboxindex);
     QLabel* getComboBoxLabel(int comboboxindex);
-    QPushButton* SketcherToolDefaultWidget::getMode(int modeindex);
+    QPushButton* getMode(int modeindex);
 
     void setParameterFontStyle(int parameterindex, FontStyle fontStyle);
 

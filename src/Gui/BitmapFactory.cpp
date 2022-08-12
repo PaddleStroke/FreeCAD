@@ -201,12 +201,12 @@ bool BitmapFactoryInst::findPixmapInCache(const char* name, QPixmap& px) const
     return false;
 }
 
-QIcon BitmapFactoryInst::iconFromTheme(const char* name, const QIcon& fallback)
+QIcon BitmapFactoryInst::iconFromTheme(const char* name, const QIcon& fallback, double iconSizeRatio)
 {
     QString iconName = QString::fromLatin1(name);
     QIcon icon = QIcon::fromTheme(iconName, fallback);
     if (icon.isNull()) {
-        QPixmap px = pixmap(name);
+        QPixmap px = pixmap(name, iconSizeRatio);
         if (!px.isNull())
             icon.addPixmap(px);
     }
@@ -214,7 +214,7 @@ QIcon BitmapFactoryInst::iconFromTheme(const char* name, const QIcon& fallback)
     return icon;
 }
 
-bool BitmapFactoryInst::loadPixmap(const QString& filename, QPixmap& icon) const
+bool BitmapFactoryInst::loadPixmap(const QString& filename, QPixmap& icon, double iconSizeRatio) const
 {
     QFileInfo fi(filename);
     if (fi.exists()) {
@@ -223,7 +223,7 @@ bool BitmapFactoryInst::loadPixmap(const QString& filename, QPixmap& icon) const
             QFile svgFile(fi.filePath());
             if (svgFile.open(QFile::ReadOnly | QFile::Text)) {
                 QByteArray content = svgFile.readAll();
-                icon = pixmapFromSvg(content, QSize(64,64));
+                icon = pixmapFromSvg(content, QSize(static_cast<int>(64 * iconSizeRatio),64));
             }
         }
         else {
@@ -235,7 +235,7 @@ bool BitmapFactoryInst::loadPixmap(const QString& filename, QPixmap& icon) const
     return !icon.isNull();
 }
 
-QPixmap BitmapFactoryInst::pixmap(const char* name) const
+QPixmap BitmapFactoryInst::pixmap(const char* name, double iconSizeRatio) const
 {
     if (!name || *name == '\0')
         return QPixmap();
@@ -254,7 +254,7 @@ QPixmap BitmapFactoryInst::pixmap(const char* name) const
     // Try whether an absolute path is given
     QString fn = QString::fromUtf8(name);
     if (icon.isNull())
-        loadPixmap(fn, icon);
+        loadPixmap(fn, icon, iconSizeRatio);
 
     // try to find it in the 'icons' search paths
     if (icon.isNull()) {
@@ -262,12 +262,12 @@ QPixmap BitmapFactoryInst::pixmap(const char* name) const
         formats.prepend("SVG"); // check first for SVG to use special import mechanism
 
         QString fileName = QString::fromLatin1("icons:") + fn;
-        if (!loadPixmap(fileName, icon)) {
+        if (!loadPixmap(fileName, icon, iconSizeRatio)) {
             // Go through supported file formats
             for (QList<QByteArray>::iterator fm = formats.begin(); fm != formats.end(); ++fm) {
                 QString path = QString::fromLatin1("%1.%2").arg(fileName,
                     QString::fromLatin1((*fm).toLower().constData()));
-                if (loadPixmap(path, icon)) {
+                if (loadPixmap(path, icon, iconSizeRatio)) {
                     break;
                 }
             }

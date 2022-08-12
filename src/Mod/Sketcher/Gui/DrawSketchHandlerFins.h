@@ -429,32 +429,36 @@ namespace SketcherGui {
         }
     }
 
+    template <> void DrawSketchHandlerFinsBase::ToolWidgetManager::setModeIcons() {
+        if (geometryCreationMode) {
+            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFinsOneSide_Constr"));
+            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFins_Constr"));
+        }
+        else {
+            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFinsOneSide"));
+            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFins"));
+        }
+    }
+
     template <> void DrawSketchHandlerFinsBase::ToolWidgetManager::configureToolWidget() {
         if (!init) { // Code to be executed only upon initialisation
             toolWidget->initNModes(2);
             QStringList names = { QStringLiteral("Fins on one side"), QStringLiteral("Fins on two sides") };
             toolWidget->setModeToolTips(names);
 
-            if (geometryCreationMode) {
-                toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFinsOneSide_Constr"));
-                toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFins_Constr"));
-            }
-            else {
-                toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFinsOneSide"));
-                toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFins"));
-            }
-
-            toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_fins", "x of 1st point"));
-            toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_fins", "y of 1st point"));
-            toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_p3_fins", "Length (X axis)"));
-            toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("TaskSketcherTool_p4_fins", "Width (Y axis)"));
-            toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("TaskSketcherTool_p5_fins", "Fin length"));
-            toolWidget->setParameterLabel(WParameter::Sixth, QApplication::translate("TaskSketcherTool_p6_fins", "Fin width"));
-            toolWidget->setParameterLabel(WParameter::Seventh, QApplication::translate("TaskSketcherTool_p7_fins", "Number of fins"));
+            setModeIcons();
+            toolWidget->useConstructionGeometryButtons(true);
 
             syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
         }
 
+        toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_fins", "x of 1st point"));
+        toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_fins", "y of 1st point"));
+        toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_p3_fins", "Length (X axis)"));
+        toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("TaskSketcherTool_p4_fins", "Width (Y axis)"));
+        toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("TaskSketcherTool_p5_fins", "Fin length"));
+        toolWidget->setParameterLabel(WParameter::Sixth, QApplication::translate("TaskSketcherTool_p6_fins", "Fin width"));
+        toolWidget->setParameterLabel(WParameter::Seventh, QApplication::translate("TaskSketcherTool_p7_fins", "Number of fins"));
 
         toolWidget->configureParameterInitialValue(WParameter::Seventh, dHandler->numberOfFins);
 

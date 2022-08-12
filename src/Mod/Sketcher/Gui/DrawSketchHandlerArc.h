@@ -349,20 +349,25 @@ template <> auto DrawSketchHandlerArcBase::ToolWidgetManager::getState(int param
     }
 }
 
+template <> void DrawSketchHandlerArcBase::ToolWidgetManager::setModeIcons() {
+    if (geometryCreationMode) {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArc_Constr"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_Create3PointArc_Constr"));
+    }
+    else {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArc"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_Create3PointArc"));
+    }
+}
+
 template <> void DrawSketchHandlerArcBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
         toolWidget->initNModes(2);
         QStringList names = { QStringLiteral("Center"), QStringLiteral("3 rim points") };
         toolWidget->setModeToolTips(names);
 
-        if (geometryCreationMode) {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArc_Constr"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_Create3PointArc_Constr"));
-        }
-        else {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArc"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_Create3PointArc"));
-        }
+        setModeIcons();
+        toolWidget->useConstructionGeometryButtons(true);
 
         syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }

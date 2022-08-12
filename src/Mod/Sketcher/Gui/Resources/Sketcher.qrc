@@ -189,6 +189,8 @@
         <file>icons/geometry/Sketcher_InsertArc.svg</file>
         <file>icons/geometry/Sketcher_ToggleConstruction.svg</file>
         <file>icons/geometry/Sketcher_Trimming.svg</file>
+        <file>icons/geometry/Sketcher_ConstructionButton.svg</file>
+        <file>icons/geometry/Sketcher_ConstructionButton_Constr.svg</file>
     </qresource>
     <qresource>
         <file>icons/obsolete/Sketcher_ConstrainCoincident_old.svg</file>

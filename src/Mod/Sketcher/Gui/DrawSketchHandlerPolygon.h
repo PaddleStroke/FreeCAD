@@ -224,6 +224,8 @@ template <> void DrawSketchHandlerPolygonBase::ToolWidgetManager::configureToolW
     toolWidget->configureParameterUnit(WParameter::Fifth, Base::Unit());
     toolWidget->setParameter(WParameter::Fifth, dHandler->Corners); // unconditionally set
 
+    toolWidget->useConstructionGeometryButtons(true);
+
     toolWidget->setNoticeVisible(true);
     toolWidget->setNoticeText(QApplication::translate("TaskSketcherTool_p4_notice", "Use 'Q' and 'A' to modify the side number."));
 }

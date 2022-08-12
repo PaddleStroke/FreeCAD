@@ -36,6 +36,7 @@
 #include <Gui/View3DInventor.h>
 #include <Gui/View3DInventorViewer.h>
 #include <Gui/PrefWidgets.h>
+#include <Gui/CommandT.h>
 #include <Base/Tools.h>
 #include <Base/UnitsApi.h>
 #include <Base/Exception.h>
@@ -44,9 +45,13 @@
 
 #include "ViewProviderSketch.h"
 
+#include "GeometryCreationMode.h"
 #include "SketcherToolDefaultWidget.h"
 
-using namespace SketcherGui;
+using namespace SketcherGui; 
+namespace SketcherGui {
+    extern GeometryCreationMode geometryCreationMode;
+}
 using namespace Gui::TaskView;
 
 
@@ -169,6 +174,10 @@ SketcherToolDefaultWidget::SketcherToolDefaultWidget (QWidget *parent, ViewProvi
         this, SLOT(mode7_toggled(bool)));
     connect(ui->mode8, SIGNAL(toggled(bool)),
         this, SLOT(mode8_toggled(bool)));
+    connect(ui->notConstructionMode, SIGNAL(toggled(bool)),
+        this, SLOT(constrNot_toggled(bool)));
+    connect(ui->constructionMode, SIGNAL(toggled(bool)),
+        this, SLOT(constr_toggled(bool)));
 
     ui->parameterOne->installEventFilter(this);
     ui->parameterTwo->installEventFilter(this);
@@ -239,8 +248,9 @@ void SketcherToolDefaultWidget::reset()
     }
     ui->ConstructionModeLabel->setVisible(false);
     ui->ConstructionModeLabel->setText(QString::fromLatin1("Mode (M) : "));
-
     setNoticeVisible(false);
+
+    useConstructionGeometryButtons(false);
 }
 
 void SketcherToolDefaultWidget::setNoticeText(const QString& string)
@@ -966,8 +976,77 @@ QPushButton* SketcherToolDefaultWidget::getMode(int modeindex)
     }
 }*/
 
+//Construction geometry toggle buttons
+void SketcherToolDefaultWidget::constrNot_toggled(bool val) {
+    if (!blockParameterSlots && val) {
+        ui->notConstructionMode->setChecked(true);
+        ui->constructionMode->setChecked(false);
+        setConstructionGeometryMode(false);
+    }
+}
+void SketcherToolDefaultWidget::constr_toggled(bool val) {
+    if (!blockParameterSlots && val) {
+        ui->notConstructionMode->setChecked(false);
+        ui->constructionMode->setChecked(true);
+        setConstructionGeometryMode(true);
+    }
+}
+
+void SketcherToolDefaultWidget::setConstructionGeometryMode(bool val) {
+    Gui::CommandManager& rcCmdMgr = Gui::Application::Instance->commandManager();
+
+    if (val)
+        geometryCreationMode = Construction;
+    else
+        geometryCreationMode = Normal;
+
+    rcCmdMgr.updateCommands("ToggleConstruction", static_cast<int>(geometryCreationMode));
+
+    signalConstructionGeoChanged(val);
+}
+
+void SketcherToolDefaultWidget::useConstructionGeometryButtons(bool val) {
+    Base::StateLocker lock(blockParameterSlots, true);
+
+    ui->constructionMode->setVisible(val);
+    ui->notConstructionMode->setVisible(val);
+    if (val) {
+        ui->constructionMode->setCheckable(true);
+        ui->notConstructionMode->setCheckable(true);
+
+        //QIcon icon1 = QIcon::fromTheme(QString::fromLatin1("Sketcher_ConstructionButton_Constr"));
+        QIcon icon1 = Gui::BitmapFactory().iconFromTheme("Sketcher_ConstructionButton_Constr", QIcon(), 5.);
+        QIcon icon2 = Gui::BitmapFactory().iconFromTheme("Sketcher_ConstructionButton", QIcon(), 5.);
+
+        /*QPixmap px;
+        QString fileName = QString::fromLatin1("icons:") + QString::fromUtf8("Sketcher_ConstructionButton_Constr");
+        QFileInfo fi(fileName);
+        if (fi.exists()) {
+            QFile svgFile(fi.filePath());
+            if (svgFile.open(QFile::ReadOnly | QFile::Text)) {
+                QByteArray content = svgFile.readAll();
+                px = Gui::BitmapFactory().pixmapFromSvg(content, QSize(64, 256));
+                icon1.addPixmap(px);
+            }
+        }*/
 
 
+        ui->constructionMode->setIcon(icon1);
+        ui->notConstructionMode->setIcon(icon2);
+
+        ui->constructionMode->setIconSize(QSize(100, 20));
+        ui->notConstructionMode->setIconSize(QSize(100, 20));
+
+        if (SketcherGui::geometryCreationMode) {
+            ui->notConstructionMode->setChecked(false);
+            ui->constructionMode->setChecked(true);
+        }
+        else {
+            ui->notConstructionMode->setChecked(true);
+            ui->constructionMode->setChecked(false);
+        }
+    }
+}
 
 
 

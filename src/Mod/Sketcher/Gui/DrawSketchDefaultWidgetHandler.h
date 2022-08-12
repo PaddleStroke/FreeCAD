@@ -156,7 +156,8 @@ private:
         Connection connectionCheckboxCheckedChanged;
         Connection connectionComboboxSelectionChanged;
         Connection connectionModeSelectionChanged;
-
+        Connection connectionConstructionGeoChanged;
+        
         Base::Vector2d prevCursorPosition;
         Base::Vector2d lastWidgetEnforcedPosition;
 
@@ -173,6 +174,7 @@ private:
             connectionCheckboxCheckedChanged.disconnect();
             connectionComboboxSelectionChanged.disconnect();
             connectionModeSelectionChanged.disconnect();
+            connectionConstructionGeoChanged.disconnect();
         }
 
         /** @name functions NOT intended for specialisation */
@@ -187,6 +189,8 @@ private:
             connectionComboboxSelectionChanged = toolWidget->registerComboboxSelectionChanged(boost::bind(&ToolWidgetManager::comboboxSelectionChanged, this, bp::_1, bp::_2));
             
             connectionModeSelectionChanged = toolWidget->registerModeSelectionChanged(boost::bind(&ToolWidgetManager::modeSelectionChanged, this, bp::_1, bp::_2));
+
+            connectionConstructionGeoChanged = toolWidget->registerConstructionGeoChanged(boost::bind(&ToolWidgetManager::constructionGeoChanged, this, bp::_1));
 
             reset();
             init = true;
@@ -270,6 +274,17 @@ private:
             enforceWidgetParametersOnPreviousCursorPosition();
 
             adaptDrawingToModeChange(modeindex, value);
+
+            onHandlerModeChanged();//re-focus/select spinbox
+
+            finishWidgetChanged();
+        }
+
+        /** boost slot triggering when a construction geometry has changed in the widget
+         * It is intended to remote control the DrawSketchDefaultWidgetHandler
+         */
+        void constructionGeoChanged(bool value) {
+            setModeIcons();
 
             onHandlerModeChanged();//re-focus/select spinbox
 
@@ -623,6 +638,12 @@ private:
                 }
             }
         }
+
+        /** function that is called by the handler when the construction geometry mode changed
+        *
+        * This MUST be specialised otherwise
+        */
+        void setModeIcons() {}
 
         /** function that is called by the handler when the construction mode changed
         *

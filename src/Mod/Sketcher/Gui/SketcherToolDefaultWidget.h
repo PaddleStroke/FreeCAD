@@ -197,6 +197,9 @@ public:
     int getCurrentMode();
     void setMode(int modeIndex); 
 
+    void useConstructionGeometryButtons(bool val);
+    void setConstructionGeometryMode(bool val);
+
     template<typename F>
     boost::signals2::connection registerParameterValueChanged(F&& f) {
         return signalParameterValueChanged.connect(std::forward<F>(f));
@@ -218,7 +221,12 @@ public:
         return signalModeSelectionChanged.connect(std::forward<F>(f));
     }
 
-
+    template<typename F>
+    boost::signals2::connection registerConstructionGeoChanged(F&& f)
+    {
+        return signalConstructionGeoChanged.connect(std::forward<F>(f));
+    }
+    
 //Q_SIGNALS:
 protected Q_SLOTS:
     void parameterOne_valueChanged(double val);
@@ -246,6 +254,8 @@ protected Q_SLOTS:
     void mode6_toggled(bool val);
     void mode7_toggled(bool val);
     void mode8_toggled(bool val);
+    void constrNot_toggled(bool val);
+    void constr_toggled(bool val);
 
 protected:
     void changeEvent(QEvent *e);
@@ -270,6 +280,7 @@ private:
     boost::signals2::signal<void(int checkboxindex, bool value)> signalCheckboxCheckedChanged;
     boost::signals2::signal<void(int comboindex, int value)> signalComboboxSelectionChanged;
     boost::signals2::signal<void(int modeindex, bool value)> signalModeSelectionChanged;
+    boost::signals2::signal<void(bool value)> signalConstructionGeoChanged;
 
     /// lock to block QT slots
     bool blockParameterSlots;

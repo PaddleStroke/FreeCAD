@@ -272,6 +272,8 @@ template <> void DrawSketchHandlerSlotBase::ToolWidgetManager::configureToolWidg
     toolWidget->configureParameterUnit(WParameter::Fourth, Base::Unit::Angle);
     toolWidget->setParameterLabel(WParameter::Fifth, QApplication::translate("ToolWidgetManager_p5", "Radius"));
 
+    toolWidget->useConstructionGeometryButtons(true);
+
     toolWidget->setNoticeVisible(true);
     toolWidget->setNoticeText(QApplication::translate("TaskSketcherTool_p3_notice", "Press Ctrl to snap angle at 5° steps."));
 }

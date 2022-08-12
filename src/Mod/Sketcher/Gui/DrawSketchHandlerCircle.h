@@ -272,6 +272,17 @@ template <> auto DrawSketchHandlerCircleBase::ToolWidgetManager::getState(int pa
     }
 }
 
+template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::setModeIcons() {
+    if (geometryCreationMode) {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateCircle_Constr"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_Create3PointCircle_Constr"));
+    }
+    else {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateCircle"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_Create3PointCircle"));
+    }
+}
+
 template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::configureToolWidget() {
 
     if(!init) { // Code to be executed only upon initialisation
@@ -279,14 +290,8 @@ template <> void DrawSketchHandlerCircleBase::ToolWidgetManager::configureToolWi
         QStringList names = { QStringLiteral("Center"), QStringLiteral("3 rim points") };
         toolWidget->setModeToolTips(names);
 
-        if (geometryCreationMode) {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateCircle_Constr"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_Create3PointCircle_Constr"));
-        }
-        else {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateCircle"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_Create3PointCircle"));
-        }
+        setModeIcons();
+        toolWidget->useConstructionGeometryButtons(true);
 
         syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }

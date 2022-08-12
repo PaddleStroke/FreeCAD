@@ -477,20 +477,27 @@ template <> auto DrawSketchHandlerArcSlotBase::ToolWidgetManager::getState(int p
     }
 }
 
+template <> void DrawSketchHandlerArcSlotBase::ToolWidgetManager::setModeIcons() {
+    if (geometryCreationMode) {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot_Constr"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot_Constr"));
+    }
+    else {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot"));
+    }
+}
+
 template <> void DrawSketchHandlerArcSlotBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
         toolWidget->initNModes(2);
         QStringList names = { QStringLiteral("Arc ends"), QStringLiteral("Flat ends") };
         toolWidget->setModeToolTips(names);
 
-        if (geometryCreationMode) {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot_Constr"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot_Constr"));
-        }
-        else {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateArcSlot"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangleSlot"));
-        }
+        setModeIcons();
+        toolWidget->useConstructionGeometryButtons(true);
+
+        syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }
 
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_arcSlot", "x of center"));

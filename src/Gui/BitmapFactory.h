@@ -72,9 +72,9 @@ public:
     /** Returns the QIcon corresponding to name in the current icon theme.
      * If no such icon is found in the current theme fallback is returned instead.
      */
-    QIcon iconFromTheme(const char* name, const QIcon& fallback = QIcon());
+    QIcon iconFromTheme(const char* name, const QIcon& fallback = QIcon(), double iconSizeRatio = 1.0);
     /// Retrieves a pixmap by name
-    QPixmap pixmap(const char* name) const;
+    QPixmap pixmap(const char* name, double iconSizeRatio = 1.0) const;
     /** Retrieves a pixmap by name and size created by an
      * scalable vector graphics (SVG).
      *
@@ -138,7 +138,7 @@ public:
     static QIcon mergePixmap (const QIcon &base, const QPixmap &px, Gui::BitmapFactoryInst::Position position);
 
 private:
-    bool loadPixmap(const QString& path, QPixmap&) const;
+    bool loadPixmap(const QString& path, QPixmap&, double iconSizeRatio = 1.0) const;
     void restoreCustomPaths();
 
     static BitmapFactoryInst* _pcSingleton;

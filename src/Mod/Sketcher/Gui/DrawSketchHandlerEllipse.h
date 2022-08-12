@@ -290,6 +290,17 @@ template <> auto DrawSketchHandlerEllipseBase::ToolWidgetManager::getState(int p
     }
 }
 
+template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::setModeIcons() {
+    if (geometryCreationMode) {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse_Constr"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse_3points_Constr"));
+    }
+    else {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse_3points"));
+    }
+}
+
 template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::configureToolWidget() {
 
     if(!init) { // Code to be executed only upon initialisation
@@ -297,14 +308,8 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::configureToolW
         QStringList names = { QStringLiteral("Center"), QStringLiteral("Axis endpoints and radius") };
         toolWidget->setModeToolTips(names);
 
-        if (geometryCreationMode) {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse_Constr"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse_3points_Constr"));
-        }
-        else {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse_3points"));
-        }
+        setModeIcons();
+        toolWidget->useConstructionGeometryButtons(true);
 
         syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }

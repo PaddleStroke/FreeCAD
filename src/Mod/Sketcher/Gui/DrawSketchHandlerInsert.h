@@ -413,14 +413,21 @@ template <> auto DrawSketchHandlerInsertBase::ToolWidgetManager::getState(int pa
     }
 }
 
+template <> void DrawSketchHandlerInsertBase::ToolWidgetManager::setModeIcons() {
+    toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_Insert"));
+    toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_InsertArc"));
+}
+
 template <> void DrawSketchHandlerInsertBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
         toolWidget->initNModes(2);
         QStringList names = { QStringLiteral("Box"), QStringLiteral("Arc") };
         toolWidget->setModeToolTips(names);
 
-        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_Insert"));
-        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_InsertArc"));
+        setModeIcons();
+        toolWidget->useConstructionGeometryButtons(true);
+
+        syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }
 
     toolWidget->setParameterEnabled(WParameter::First, false);

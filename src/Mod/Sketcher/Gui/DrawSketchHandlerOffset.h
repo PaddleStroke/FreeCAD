@@ -902,14 +902,21 @@ private:
     }
 };
 
+template <> void DrawSketchHandlerOffsetBase::ToolWidgetManager::setModeIcons() {
+    toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_OffsetArc"));
+    toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_OffsetIntersection"));
+}
+
 template <> void DrawSketchHandlerOffsetBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
         toolWidget->initNModes(2);
         QStringList names = { QStringLiteral("Arc"), QStringLiteral("Intersection") };
         toolWidget->setModeToolTips(names);
 
-        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_OffsetArc"));
-        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_OffsetIntersection"));
+        setModeIcons();
+        toolWidget->useConstructionGeometryButtons(true);
+
+        syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }
 
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_offset", "Offset length"));

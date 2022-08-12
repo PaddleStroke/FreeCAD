@@ -331,6 +331,12 @@ private:
     Base::Vector2d firstPos;
 };
 
+template <> void DrawSketchHandlerFilletBase::ToolWidgetManager::setModeIcons() {
+    toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFillet"));
+    toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateChamfer"));
+    toolWidget->setCheckboxIcon(WCheckbox::FirstBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePointFillet"));
+}
+
 template <> void DrawSketchHandlerFilletBase::ToolWidgetManager::configureToolWidget() {
 
     if(!init) { // Code to be executed only upon initialisation
@@ -338,10 +344,9 @@ template <> void DrawSketchHandlerFilletBase::ToolWidgetManager::configureToolWi
         QStringList names = { QStringLiteral("Fillet"), QStringLiteral("Chamfer") };
         toolWidget->setModeToolTips(names);
 
-        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFillet"));
-        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateChamfer"));
+        setModeIcons();
 
-        toolWidget->setCheckboxIcon(WCheckbox::FirstBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreatePointFillet"));
+        syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }
 
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_fillet", "Radius"));

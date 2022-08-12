@@ -213,20 +213,27 @@ template <> auto DrawSketchHandlerLineBase::ToolWidgetManager::getState(int para
     }
 }
 
+template <> void DrawSketchHandlerLineBase::ToolWidgetManager::setModeIcons() {
+    if (geometryCreationMode) {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineAngleLength_Constr"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine_Constr"));
+    }
+    else {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineAngleLength"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine"));
+    }
+}
+
 template <> void DrawSketchHandlerLineBase::ToolWidgetManager::configureToolWidget() {
     if (!init) { // Code to be executed only upon initialisation
         toolWidget->initNModes(2);
         QStringList names = { QStringLiteral("Point, length, angle"), QStringLiteral("2 points") };
         toolWidget->setModeToolTips(names);
 
-        if (geometryCreationMode) {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineAngleLength_Constr"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine_Constr"));
-        }
-        else {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineAngleLength"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine"));
-        }
+        setModeIcons();
+        toolWidget->useConstructionGeometryButtons(true);
+
+        syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }
 
     if (handler->constructionMethod() == ConstructionMethod::OnePointLengthAngle) {

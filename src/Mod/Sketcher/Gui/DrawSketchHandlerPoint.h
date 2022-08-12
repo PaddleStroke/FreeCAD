@@ -118,6 +118,8 @@ template <> auto DrawSketchHandlerPointBase::ToolWidgetManager::getState(int par
 }
 
 template <> void DrawSketchHandlerPointBase::ToolWidgetManager::configureToolWidget() {
+    toolWidget->useConstructionGeometryButtons(true);
+
     toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_point", "x of point"));
     toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_point", "y of point"));
 }

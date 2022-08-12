@@ -931,30 +931,35 @@ template <> auto DrawSketchHandlerRectangleBase::ToolWidgetManager::getState(int
     }
 }
 
+template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::setModeIcons() {
+    if (geometryCreationMode) {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle_Constr"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle_Center_Constr"));
+        toolWidget->setModeIcon(2, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle3Points_Constr"));
+        toolWidget->setModeIcon(3, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle3Points_Center_Constr"));
+
+        toolWidget->setCheckboxIcon(WCheckbox::FirstBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateOblong_Constr"));
+        toolWidget->setCheckboxIcon(WCheckbox::SecondBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFrame_Constr"));
+    }
+    else {
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle_Center"));
+        toolWidget->setModeIcon(2, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle3Points"));
+        toolWidget->setModeIcon(3, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle3Points_Center"));
+
+        toolWidget->setCheckboxIcon(WCheckbox::FirstBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateOblong"));
+        toolWidget->setCheckboxIcon(WCheckbox::SecondBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFrame"));
+    }
+}
+
 template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::configureToolWidget() {
     if(!init) { // Code to be executed only upon initialisation
         toolWidget->initNModes(4);
         QStringList names = {QStringLiteral("Diagonal corners"), QStringLiteral("Center and corner"), QStringLiteral("3 corners") , QStringLiteral("Center and 2 corners") };
         toolWidget->setModeToolTips(names);
 
-        if (geometryCreationMode) {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle_Constr"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle_Center_Constr"));
-            toolWidget->setModeIcon(2, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle3Points_Constr"));
-            toolWidget->setModeIcon(3, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle3Points_Center_Constr"));
-
-            toolWidget->setCheckboxIcon(WCheckbox::FirstBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateOblong_Constr"));
-            toolWidget->setCheckboxIcon(WCheckbox::SecondBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFrame_Constr"));
-        }
-        else {
-            toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle"));
-            toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle_Center"));
-            toolWidget->setModeIcon(2, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle3Points"));
-            toolWidget->setModeIcon(3, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateRectangle3Points_Center"));
-
-            toolWidget->setCheckboxIcon(WCheckbox::FirstBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateOblong"));
-            toolWidget->setCheckboxIcon(WCheckbox::SecondBox, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateFrame"));
-        }
+        setModeIcons();
+        toolWidget->useConstructionGeometryButtons(true);
 
         syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }

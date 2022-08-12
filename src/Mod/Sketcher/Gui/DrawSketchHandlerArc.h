@@ -114,10 +114,18 @@ private:
             geometriesToAdd.push_back(circle);
 
             //add line to show the snap at 5 degree.
-            Part::GeomLineSegment* line = new Part::GeomLineSegment();
-            line->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
-                Base::Vector3d(centerPoint.x + cos(startAngle) * 0.8 * radius, centerPoint.y + sin(startAngle) * 0.8 * radius, 0.));
-            geometriesToAdd.push_back(line);
+            if (constructionMethod() == ConstructionMethod::Center) {
+                Part::GeomLineSegment* line = new Part::GeomLineSegment();
+                line->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
+                    Base::Vector3d(centerPoint.x + cos(startAngle) * 0.8 * radius, centerPoint.y + sin(startAngle) * 0.8 * radius, 0.));
+                geometriesToAdd.push_back(line);
+            }
+            else {
+                Part::GeomLineSegment* line = new Part::GeomLineSegment();
+                line->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
+                    Base::Vector3d(centerPoint.x, centerPoint.y, 0.) + (Base::Vector3d(secondPoint.x, secondPoint.y, 0.) - Base::Vector3d(centerPoint.x, centerPoint.y, 0.)) * 0.8);
+                geometriesToAdd.push_back(line);
+            }
 
             drawEdit(geometriesToAdd);
 
@@ -173,7 +181,6 @@ private:
                             arcPos2 = Sketcher::PointPos::end;
                         }
                         else {
-                            swapPoints(firstPoint, secondPoint);
                             arcPos1 = Sketcher::PointPos::end;
                             arcPos2 = Sketcher::PointPos::start;
                         }
@@ -184,7 +191,6 @@ private:
                     // Point 3 is not between Point 1 and 2
                     else {
                         if (angle2 > angle1) {
-                            swapPoints(firstPoint, secondPoint);
                             arcPos1 = Sketcher::PointPos::end;
                             arcPos2 = Sketcher::PointPos::start;
                         }
@@ -205,6 +211,24 @@ private:
                 arc->setRange(startAngleToDraw, endAngle, true);
                 arc->setCenter(Base::Vector3d(centerPoint.x, centerPoint.y, 0.));
                 geometriesToAdd.push_back(arc);
+
+                //add line to show the snap at 5 degree.
+                if (constructionMethod() == ConstructionMethod::Center) {
+                    Part::GeomLineSegment* line = new Part::GeomLineSegment();
+                    line->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
+                        Base::Vector3d(centerPoint.x, centerPoint.y, 0.) + (Base::Vector3d(onSketchPos.x, onSketchPos.y, 0.) - Base::Vector3d(centerPoint.x, centerPoint.y, 0.)) / (onSketchPos - centerPoint).Length() * radius * 0.8);
+                    geometriesToAdd.push_back(line);
+                }
+                else {
+                    Part::GeomLineSegment* line = new Part::GeomLineSegment();
+                    line->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
+                        Base::Vector3d(centerPoint.x, centerPoint.y, 0.) + (Base::Vector3d(firstPoint.x, firstPoint.y, 0.) - Base::Vector3d(centerPoint.x, centerPoint.y, 0.)) * 0.8);
+                    Part::GeomLineSegment* line2 = new Part::GeomLineSegment();
+                    line2->setPoints(Base::Vector3d(centerPoint.x, centerPoint.y, 0.),
+                        Base::Vector3d(centerPoint.x, centerPoint.y, 0.) + (Base::Vector3d(secondPoint.x, secondPoint.y, 0.) - Base::Vector3d(centerPoint.x, centerPoint.y, 0.)) * 0.8);
+                    geometriesToAdd.push_back(line);
+                    geometriesToAdd.push_back(line2);
+                }
                 drawEdit(geometriesToAdd);
 
                 SbString text;
@@ -322,12 +346,6 @@ private:
     Base::Vector2d centerPoint, firstPoint, secondPoint;
     double radius, startAngle, endAngle, arcAngle;
     Sketcher::PointPos arcPos1, arcPos2;
-
-    void swapPoints(Base::Vector2d& p1, Base::Vector2d& p2) {
-        Base::Vector2d p3 = p1;
-        p1 = p2;
-        p2 = p3;
-    }
 };
 
 template <> auto DrawSketchHandlerArcBase::ToolWidgetManager::getState(int parameterindex) const {

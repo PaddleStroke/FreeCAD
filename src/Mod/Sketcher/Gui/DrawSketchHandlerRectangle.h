@@ -1259,8 +1259,7 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::doEnforceWid
             }
             if (toolWidget->isParameterSet(WParameter::Sixth)) {
                 double angle123 = (dHandler->secondCornerInitial - dHandler->firstCorner).Angle() + M_PI - toolWidget->getParameter(WParameter::Sixth) * M_PI / 180;
-
-                if (dHandler->cornersReversed)
+                if (dHandler->side != dHandler->getPointSideOfVector(onSketchPos, dHandler->secondCornerInitial - dHandler->firstCorner, dHandler->firstCorner))
                     angle123 = (dHandler->secondCornerInitial - dHandler->firstCorner).Angle() + M_PI + toolWidget->getParameter(WParameter::Sixth) * M_PI / 180;
                 onSketchPos.x = dHandler->secondCornerInitial.x + cos(angle123) * width;
                 onSketchPos.y = dHandler->secondCornerInitial.y + sin(angle123) * width;
@@ -1274,12 +1273,13 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::doEnforceWid
                 width = toolWidget->getParameter(WParameter::Fifth);
             }
             if (toolWidget->isParameterSet(WParameter::Sixth)) {
-                double angle412 = (dHandler->secondCornerInitial - dHandler->firstCorner).Angle() + M_PI - toolWidget->getParameter(WParameter::Sixth) * M_PI / 180;
-                if (dHandler->cornersReversed)
-                    angle412 = (dHandler->secondCornerInitial - dHandler->firstCorner).Angle() - M_PI - toolWidget->getParameter(WParameter::Sixth) * M_PI / 180;
-
-                onSketchPos.x = dHandler->firstCorner.x + cos(angle412) * width;
-                onSketchPos.y = dHandler->firstCorner.y + sin(angle412) * width;
+                double c = toolWidget->getParameter(WParameter::Sixth) * M_PI / 180;
+                double a = asin(width * sin(M_PI - c) / (dHandler->thirdCorner - dHandler->firstCorner).Length());
+                double angle = (dHandler->center - dHandler->firstCorner).Angle() - (c - a);
+                if (dHandler->side != dHandler->getPointSideOfVector(onSketchPos, dHandler->thirdCorner - dHandler->firstCorner, dHandler->firstCorner))
+                    angle = (dHandler->center - dHandler->firstCorner).Angle() + (c - a) ;
+                onSketchPos.x = dHandler->firstCorner.x + cos(angle) * width;
+                onSketchPos.y = dHandler->firstCorner.y + sin(angle) * width;
             }
         }
     }
@@ -1744,11 +1744,11 @@ template <> void DrawSketchHandlerRectangleBase::ToolWidgetManager::addConstrain
         if (innerAngleSet) {
             if (fabs(innerAngle - M_PI / 2) > Precision::Confusion()) {//if 90° then perpendicular already created.
                 if (dHandler->constructionMethod() == DrawSketchHandlerRectangle::ConstructionMethod::ThreePoints)
-                    Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Angle',%d,%d,%f)) ",
-                        firstCurve, firstCurve + 1, innerAngle);
+                    Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Angle',%d,%d,%d,%d,%f)) ",
+                        firstCurve + 1, 1, firstCurve, 2, innerAngle);
                 else
-                    Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Angle',%d,%d,%f)) ",
-                        firstCurve, firstCurve + 3, innerAngle);
+                    Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Angle',%d,%d,%d,%d,%f)) ",
+                        firstCurve, 1, firstCurve + 3, 2, innerAngle);
             }
         }
     }

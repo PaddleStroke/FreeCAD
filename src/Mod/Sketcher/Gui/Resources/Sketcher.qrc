@@ -140,6 +140,8 @@
         <file>icons/geometry/Sketcher_CreateHyperbolic_Arc_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateLine.svg</file>
         <file>icons/geometry/Sketcher_CreateLine_Constr.svg</file>
+        <file>icons/geometry/Sketcher_CreateLineLengthWidth.svg</file>
+        <file>icons/geometry/Sketcher_CreateLineLengthWidth_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateLineAngleLength.svg</file>
         <file>icons/geometry/Sketcher_CreateLineAngleLength_Constr.svg</file>
         <file>icons/geometry/Sketcher_CreateOblong.svg</file>

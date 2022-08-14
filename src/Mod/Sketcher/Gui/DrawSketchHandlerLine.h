@@ -38,6 +38,7 @@ class DrawSketchHandlerLine;
 namespace ConstructionMethods {
 
 enum class LineConstructionMethod {
+    OnePointLengthWidth,
     OnePointLengthAngle,
     TwoPoints,
     End // Must be the last one
@@ -49,9 +50,9 @@ using DrawSketchHandlerLineBase = DrawSketchDefaultWidgetHandler<   DrawSketchHa
                                                                     /*SelectModeT*/ StateMachines::TwoSeekEnd,
                                                                     /*PEditCurveSize =*/ 2,
                                                                     /*PAutoConstraintSize =*/ 2,
-                                                                    /*WidgetParametersT =*/WidgetParameters<4, 4>,
-                                                                    /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
-                                                                    /*WidgetComboboxesT =*/WidgetComboboxes<0, 0>,
+                                                                    /*WidgetParametersT =*/WidgetParameters<4, 4, 4>,
+                                                                    /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0, 0>,
+                                                                    /*WidgetComboboxesT =*/WidgetComboboxes<0, 0, 0>,
                                                                     ConstructionMethods::LineConstructionMethod,
                                                                     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
 
@@ -59,7 +60,7 @@ class DrawSketchHandlerLine: public DrawSketchHandlerLineBase
 {
     friend DrawSketchHandlerLineBase; // allow DrawSketchHandlerRectangleBase specialisations access DrawSketchHandlerRectangle private members
 public:
-    DrawSketchHandlerLine(ConstructionMethod constrMethod = ConstructionMethod::OnePointLengthAngle): DrawSketchHandlerLineBase(constrMethod){};
+    DrawSketchHandlerLine(ConstructionMethod constrMethod = ConstructionMethod::OnePointLengthWidth): DrawSketchHandlerLineBase(constrMethod){};
     virtual ~DrawSketchHandlerLine() = default;
 
 private:
@@ -156,7 +157,23 @@ private:
 
 // Function responsible for updating the DrawSketchHandler data members when widget parameters change
 template <> void DrawSketchHandlerLineBase::ToolWidgetManager::adaptDrawingToParameterChange(int parameterindex, double value) {
-    if (handler->constructionMethod() == ConstructionMethod::OnePointLengthAngle) {
+    if (handler->constructionMethod() == ConstructionMethod::OnePointLengthWidth) {
+        switch(parameterindex) {
+            case WParameter::First:
+                handler->EditCurve[0].x = value;
+                break;
+            case WParameter::Second:
+                handler->EditCurve[0].y = value;
+                break;
+            case WParameter::Third:
+                handler->EditCurve[1].x = handler->EditCurve[0].x + value;
+                break;
+            case WParameter::Fourth:
+                handler->EditCurve[1].y = handler->EditCurve[0].y + value;
+                break;
+        }
+    }
+    else if (handler->constructionMethod() == ConstructionMethod::OnePointLengthAngle) {
         switch(parameterindex) {
             case WParameter::First:
                 handler->EditCurve[0].x = value;
@@ -215,19 +232,21 @@ template <> auto DrawSketchHandlerLineBase::ToolWidgetManager::getState(int para
 
 template <> void DrawSketchHandlerLineBase::ToolWidgetManager::setModeIcons() {
     if (geometryCreationMode) {
-        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineAngleLength_Constr"));
-        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine_Constr"));
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineLengthWidth_Constr"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineAngleLength_Constr"));
+        toolWidget->setModeIcon(2, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine_Constr"));
     }
     else {
-        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineAngleLength"));
-        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine"));
+        toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineLengthWidth"));
+        toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLineAngleLength"));
+        toolWidget->setModeIcon(2, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine"));
     }
 }
 
 template <> void DrawSketchHandlerLineBase::ToolWidgetManager::configureToolWidget() {
     if (!init) { // Code to be executed only upon initialisation
-        toolWidget->initNModes(2);
-        QStringList names = { QStringLiteral("Point, length, angle"), QStringLiteral("2 points") };
+        toolWidget->initNModes(3);
+        QStringList names = { QStringLiteral("Point, length, width"), QStringLiteral("Point, length, angle"), QStringLiteral("2 points") };
         toolWidget->setModeToolTips(names);
 
         setModeIcons();
@@ -236,7 +255,13 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::configureToolWidg
         syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }
 
-    if (handler->constructionMethod() == ConstructionMethod::OnePointLengthAngle) {
+    if (handler->constructionMethod() == ConstructionMethod::OnePointLengthWidth) {
+        toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_line", "x of 1st point"));
+        toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_line", "y of 1st point"));
+        toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_length_line", "Length"));
+        toolWidget->setParameterLabel(WParameter::Fourth, QApplication::translate("TaskSketcherTool_angle_line", "Width"));
+    }
+    else if (handler->constructionMethod() == ConstructionMethod::OnePointLengthAngle) {
         toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_line", "x of 1st point"));
         toolWidget->setParameterLabel(WParameter::Second, QApplication::translate("TaskSketcherTool_p2_line", "y of 1st point"));
         toolWidget->setParameterLabel(WParameter::Third, QApplication::translate("TaskSketcherTool_length_line", "Length"));
@@ -264,7 +289,14 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::doEnforceWidgetPa
     break;
     case SelectMode::SeekSecond:
     {
-        if (handler->constructionMethod() == ConstructionMethod::OnePointLengthAngle) {
+        if (handler->constructionMethod() == ConstructionMethod::OnePointLengthWidth) {
+            if (toolWidget->isParameterSet(WParameter::Third))
+                onSketchPos.x = dHandler->EditCurve[0].x + toolWidget->getParameter(WParameter::Third);
+
+            if (toolWidget->isParameterSet(WParameter::Fourth))
+                onSketchPos.y = dHandler->EditCurve[0].y + toolWidget->getParameter(WParameter::Fourth);
+        }
+        else if (handler->constructionMethod() == ConstructionMethod::OnePointLengthAngle) {
 
             double length = (onSketchPos - dHandler->EditCurve[0]).Length();
 
@@ -310,7 +342,14 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::adaptWidgetParame
     break;
     case SelectMode::SeekSecond:
     {
-        if (handler->constructionMethod() == ConstructionMethod::OnePointLengthAngle) {
+        if (handler->constructionMethod() == ConstructionMethod::OnePointLengthWidth) {
+            if (!toolWidget->isParameterSet(WParameter::Third))
+                toolWidget->updateVisualValue(WParameter::Third, onSketchPos.x - handler->EditCurve[0].x);
+
+            if (!toolWidget->isParameterSet(WParameter::Fourth))
+                toolWidget->updateVisualValue(WParameter::Fourth, onSketchPos.y - handler->EditCurve[0].y);
+        }
+        else if (handler->constructionMethod() == ConstructionMethod::OnePointLengthAngle) {
             if (!toolWidget->isParameterSet(WParameter::Third))
                 toolWidget->updateVisualValue(WParameter::Third, (onSketchPos - handler->EditCurve[0]).Length());
 
@@ -356,13 +395,31 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::addConstraints() 
         ConstraintToAttachment(GeoElementId(firstCurve,PointPos::start), GeoElementId::HAxis, y0,  handler->sketchgui->getObject());
     };
 
+    auto constraintp3DistanceX = [&]() {
+        if(fabs(p3) < Precision::Confusion())
+            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Vertical',%d)) ",
+                firstCurve);
+        else
+            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceX',%d,%d,%d,%d,%f)) ",
+                firstCurve, 1, firstCurve, 2, fabs(p3));
+    };
+
     auto constraintp3length = [&]() {
         Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Distance',%d,%f)) ",
-                    firstCurve, p3);
+                    firstCurve, fabs(p3));
     };
 
     auto constraintp3x = [&]() {
         ConstraintToAttachment(GeoElementId(firstCurve, PointPos::end), GeoElementId::VAxis, p3, handler->sketchgui->getObject());
+    };
+
+    auto constraintp4DistanceY = [&]() {
+        if (fabs(p4) < Precision::Confusion())
+            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('Horizontal',%d)) ",
+                firstCurve);
+        else
+            Gui::cmdAppObjectArgs(handler->sketchgui->getObject(), "addConstraint(Sketcher.Constraint('DistanceY',%d,%d,%d,%d,%f)) ",
+                firstCurve, 1, firstCurve, 2, fabs(p4));
     };
 
     auto constraintp4angle = [&]() {
@@ -390,7 +447,14 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::addConstraints() 
         if(y0set)
             constrainty0();
 
-        if (handler->constructionMethod() == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
+        if (handler->constructionMethod() == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthWidth) {
+            if (p3set)
+                constraintp3DistanceX();
+
+            if (p4set)
+                constraintp4DistanceY();
+        }
+        else if (handler->constructionMethod() == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
             if (p3set)
                 constraintp3length();
 
@@ -426,7 +490,21 @@ template <> void DrawSketchHandlerLineBase::ToolWidgetManager::addConstraints() 
 
         auto endpointinfo = handler->getPointInfo(GeoElementId(firstCurve, PointPos::end));
 
-        if (handler->constructionMethod() == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
+        if (handler->constructionMethod() == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthWidth) {
+
+            int DoFs = startpointinfo.getDoFs();
+            DoFs += endpointinfo.getDoFs();
+
+            if (p3set && DoFs > 0) {
+                constraintp3DistanceX();
+                DoFs--;
+            }
+
+            if (p4set && DoFs > 0) {
+                constraintp4DistanceY();
+            }
+        }
+        else if (handler->constructionMethod() == DrawSketchHandlerLine::ConstructionMethod::OnePointLengthAngle) {
 
             int DoFs = startpointinfo.getDoFs();
             DoFs += endpointinfo.getDoFs();

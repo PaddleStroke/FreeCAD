@@ -45,7 +45,7 @@ using DrawSketchHandlerEllipseBase = DrawSketchDefaultWidgetHandler<  DrawSketch
     /*PEditCurveSize =*/ 0,
     /*PAutoConstraintSize =*/ 3,
     /*WidgetParametersT =*/WidgetParameters<5, 6>,
-    /*WidgetCheckboxesT =*/WidgetCheckboxes<0, 0>,
+    /*WidgetCheckboxesT =*/WidgetCheckboxes<1, 1>,
     /*WidgetComboboxesT =*/WidgetComboboxes<0, 0>,
     ConstructionMethods::CircleEllipseConstructionMethod,
     /*bool PFirstComboboxIsConstructionMethod =*/ true>;
@@ -56,7 +56,8 @@ class DrawSketchHandlerEllipse : public DrawSketchHandlerEllipseBase
 
 public:
     DrawSketchHandlerEllipse(ConstructionMethod constrMethod = ConstructionMethod::Center) :
-        DrawSketchHandlerEllipseBase(constrMethod) {}
+        DrawSketchHandlerEllipseBase(constrMethod), 
+        showInternal(true) {}
     virtual ~DrawSketchHandlerEllipse() = default;
 
 private:
@@ -139,7 +140,7 @@ private:
             commandAddShapeGeometryAndConstraints();
 
             // in the exceptional event that this may lead to a circle, do not exposeInternalGeometry
-            if(!ShapeGeometry.empty() && ShapeGeometry[0]->getTypeId() == Part::GeomEllipse::getClassTypeId())
+            if(!ShapeGeometry.empty() && ShapeGeometry[0]->getTypeId() == Part::GeomEllipse::getClassTypeId() && showInternal)
                 Gui::cmdAppObjectArgs(sketchgui->getObject(), "exposeInternalGeometry(%d)", ellipseGeoId);
 
             Gui::Command::commitCommand();
@@ -264,6 +265,7 @@ private:
     Base::Vector2d firstAxis, secondAxis;
     double firstRadius, secondRadius, majorRadius, minorRadius;
     int ellipseGeoId;
+    bool showInternal;
 };
 
 template <> auto DrawSketchHandlerEllipseBase::ToolWidgetManager::getState(int parameterindex) const {
@@ -299,6 +301,7 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::setModeIcons()
         toolWidget->setModeIcon(0, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse"));
         toolWidget->setModeIcon(1, Gui::BitmapFactory().iconFromTheme("Sketcher_CreateEllipse_3points"));
     }
+    toolWidget->setCheckboxIcon(WCheckbox::FirstBox, Gui::BitmapFactory().iconFromTheme("Sketcher_Element_Ellipse_All"));
 }
 
 template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::configureToolWidget() {
@@ -313,6 +316,10 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::configureToolW
 
         syncConstructionMethodButtonToHandler(); // in case the DSH was called with a specific construction method
     }
+
+    toolWidget->setCheckboxLabel(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_ellipse", "Show Internal geometries (U)"));
+    toolWidget->setCheckboxToolTip(WCheckbox::FirstBox, QApplication::translate("TaskSketcherTool_c1_ellipse", "Show internal geometries (press U to toggle)."));
+    syncCheckboxToHandler(WCheckbox::FirstBox, dHandler->showInternal);
 
     if (dHandler->constructionMethod() == DrawSketchHandlerEllipse::ConstructionMethod::Center) {
         toolWidget->setParameterLabel(WParameter::First, QApplication::translate("TaskSketcherTool_p1_ellipse", "x of center"));
@@ -405,6 +412,18 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::adaptDrawingTo
     }
 }
 
+template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::adaptDrawingToCheckboxChange(int checkboxindex, bool value) {
+    Q_UNUSED(checkboxindex);
+
+    switch (checkboxindex) {
+    case WCheckbox::FirstBox:
+        dHandler->showInternal = value;
+        break;
+    }
+
+    handler->updateCursor();
+}
+
 template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::doEnforceWidgetParameters(Base::Vector2d& onSketchPos) {
 
     switch (handler->state()) {
@@ -471,6 +490,11 @@ template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::doEnforceWidge
 }
 
 template <> void DrawSketchHandlerEllipseBase::ToolWidgetManager::adaptWidgetParameters(Base::Vector2d onSketchPos) {
+    
+    // If checkboxes need synchronisation (they were changed by the DSH, e.g. by using 'M' to switch construction method), synchronise them and return.
+    if (syncCheckboxToHandler(WCheckbox::FirstBox, dHandler->showInternal))
+        return;
+    
     switch (handler->state()) {
     case SelectMode::SeekFirst:
     {

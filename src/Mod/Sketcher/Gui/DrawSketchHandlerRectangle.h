@@ -854,22 +854,25 @@ private:
         Base::Vector2d u = (secondCorner - firstCorner) / (secondCorner - firstCorner).Length();
         Base::Vector2d v = (fourthCorner - firstCorner) / (fourthCorner - firstCorner).Length();
         Base::Vector2d e = onSketchPos - firstCorner;
+        double obliqueThickness = 0.;
         double du = (v.y * e.x - v.x * e.y) / (u.x * v.y - u.y * v.x);
         double dv = (-u.y * e.x + u.x * e.y) / (u.x * v.y - u.y * v.x);
         if (du > 0 && du < length && !( dv > 0 && dv < width))
-            thickness = std::min(fabs(dv), fabs(width - dv));
+            obliqueThickness = std::min(fabs(dv), fabs(width - dv));
         else if (dv > 0 && dv < width && !(du > 0 && du < length))
-            thickness = std::min(fabs(du), fabs(length - du));
+            obliqueThickness = std::min(fabs(du), fabs(length - du));
         else if (du > 0 && du < length && dv > 0 && dv < width)
-            thickness = -std::min(std::min(fabs(du), fabs(length - du)), std::min(fabs(dv), fabs(width - dv)));
+            obliqueThickness = -std::min(std::min(fabs(du), fabs(length - du)), std::min(fabs(dv), fabs(width - dv)));
         else
-            thickness = std::max(std::min(fabs(du), fabs(length - du)), std::min(fabs(dv), fabs(width - dv)));
+            obliqueThickness = std::max(std::min(fabs(du), fabs(length - du)), std::min(fabs(dv), fabs(width - dv)));
 
 
-        firstCornerFrame = firstCorner - u * thickness - v * thickness;
-        secondCornerFrame = secondCorner + u * thickness - v * thickness;
-        thirdCornerFrame = thirdCorner + u * thickness + v * thickness;
-        fourthCornerFrame = fourthCorner - u * thickness + v * thickness;
+        firstCornerFrame = firstCorner - u * obliqueThickness - v * obliqueThickness;
+        secondCornerFrame = secondCorner + u * obliqueThickness - v * obliqueThickness;
+        thirdCornerFrame = thirdCorner + u * obliqueThickness + v * obliqueThickness;
+        fourthCornerFrame = fourthCorner - u * obliqueThickness + v * obliqueThickness;
+
+        thickness = obliqueThickness * sin(angle412);
 
         SbString text;
         text.sprintf(" (%.1fT)", thickness);

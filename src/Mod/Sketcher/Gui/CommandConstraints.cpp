@@ -57,6 +57,8 @@
 #include "EditDatumDialog.h"
 #include "CommandConstraints.h"
 
+#include "DrawSketchHandlerConstrainContextually.h"
+
 using namespace std;
 using namespace SketcherGui;
 using namespace Sketcher;
@@ -855,6 +857,58 @@ void CmdSketcherConstraint::activated(int /*iMsg*/)
             new DrawSketchHandlerGenConstraint(this));
     getSelection().clearSelection();
 }
+
+
+
+
+
+// Contextual Constraint tool =======================================================
+
+DEF_STD_CMD_AU(CmdSketcherConstrainContextual)
+
+CmdSketcherConstrainContextual::CmdSketcherConstrainContextual()
+    : Command("Sketcher_ConstrainContextual")
+{
+    sAppModule = "Sketcher";
+    sGroup = "Sketcher";
+    sMenuText = QT_TR_NOOP("Constraint contextually");
+    sToolTipText = QT_TR_NOOP("Constraint contextually based on user clicks");
+    sWhatsThis = "Sketcher_ConstrainContextual";
+    sStatusTip = sToolTipText;
+    sPixmap = "Constraint_Contextual";
+    sAccel = "A";
+    eType = ForEdit;
+}
+
+void CmdSketcherConstrainContextual::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    //ActivateHandler(getActiveGuiDocument(), new DrawSketchHandlerConstrainContextual());
+    getSelection().clearSelection();
+}
+
+void CmdSketcherConstrainContextual::updateAction(int mode)
+{
+    switch (mode) {
+    case Reference:
+        if (getAction())
+            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Constraint_Contextual_Driven"));
+        break;
+    case Driving:
+        if (getAction())
+            getAction()->setIcon(Gui::BitmapFactory().iconFromTheme("Constraint_Contextual"));
+        break;
+    }
+}
+
+bool CmdSketcherConstrainContextual::isActive(void)
+{
+    return false;
+    //return isCreateGeoActive(getActiveGuiDocument());
+}
+
+
+
 
 // ============================================================================
 
@@ -7613,6 +7667,7 @@ void CreateSketcherCommandsConstraints(void)
     rcCmdMgr.addCommand(new CmdSketcherConstrainLock());
     rcCmdMgr.addCommand(new CmdSketcherConstrainBlock());
     rcCmdMgr.addCommand(new CmdSketcherConstrainCoincident());
+    rcCmdMgr.addCommand(new CmdSketcherConstrainContextual());
     rcCmdMgr.addCommand(new CmdSketcherConstrainParallel());
     rcCmdMgr.addCommand(new CmdSketcherConstrainPerpendicular());
     rcCmdMgr.addCommand(new CmdSketcherConstrainTangent());

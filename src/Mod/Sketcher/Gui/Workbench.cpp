@@ -299,7 +299,8 @@ inline void SketcherAddWorkbenchConstraints(T& cons);
 template <>
 inline void SketcherAddWorkbenchConstraints<Gui::MenuItem>(Gui::MenuItem& cons)
 {
-    cons    << "Sketcher_ConstrainCoincident"
+    cons << "Sketcher_ConstrainContextual" 
+            << "Sketcher_ConstrainCoincident"
             << "Sketcher_ConstrainPointOnObject"
             << "Sketcher_ConstrainVertical"
             << "Sketcher_ConstrainHorizontal"

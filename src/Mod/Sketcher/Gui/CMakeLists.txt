@@ -67,6 +67,7 @@ SET(SketcherGui_SRCS
     Utils.cpp
     CircleEllipseConstructionMethod.h
     DrawSketchHandlerLine.h
+    DrawSketchHandlerConstrainContextually.h
     DrawSketchHandlerRectangle.h
     DrawSketchHandlerPolygon.h
     DrawSketchHandlerFins.h

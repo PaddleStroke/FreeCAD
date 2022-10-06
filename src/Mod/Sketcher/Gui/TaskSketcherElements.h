@@ -39,6 +39,72 @@ namespace SketcherGui {
 class ViewProviderSketch;
 class Ui_TaskSketcherElements;
 
+class MyDelegate : public QStyledItemDelegate
+{
+    Q_OBJECT
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
+    bool editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index) override;
+
+private Q_SLOTS:
+    //void commitAndCloseEditor();
+};
+
+class ElementData
+{
+public:
+    ElementData() = default;
+    ~ElementData() = default;
+    ElementData(const ElementData&) = default;
+
+    ElementData(int elementnr, int startingVertex, int midVertex, int endVertex,
+        Base::Type geometryType, bool construction, bool external, QIcon ic0,QIcon ic1,QIcon ic2,QIcon ic3, QString lab ) : 
+         ElementNbr(elementnr)
+        , StartingVertex(startingVertex)
+        , MidVertex(midVertex)
+        , EndVertex(endVertex)
+        , isLineSelected(false)
+        , isStartingPointSelected(false)
+        , isEndPointSelected(false)
+        , isMidPointSelected(false)
+        , GeometryType(geometryType)
+        , isConstruction(construction)
+        , isExternal(external)
+        , icon0(ic0)
+        , icon1(ic1)
+        , icon2(ic2)
+        , icon3(ic3)
+        , label(lab)
+        , rightClicked(false)
+    {}
+
+    int ElementNbr;
+    int StartingVertex;
+    int MidVertex;
+    int EndVertex;
+    bool isLineSelected;
+    bool isStartingPointSelected;
+    bool isEndPointSelected;
+    bool isMidPointSelected;
+    Base::Type GeometryType;
+    bool isConstruction;
+    bool isExternal;
+
+    enum ClickedOn{edge, start, end, mid, none};
+    int clickedOn;
+    bool rightClicked;
+
+    QIcon icon0;
+    QIcon icon1;
+    QIcon icon2;
+    QIcon icon3;
+    QString label;
+};
+
+Q_DECLARE_METATYPE(ElementData*);
+
 class ElementView : public QListWidget
 {
     Q_OBJECT
@@ -53,7 +119,9 @@ Q_SIGNALS:
 
 protected:
     void contextMenuEvent (QContextMenuEvent* event);
-    void keyPressEvent(QKeyEvent * event);
+    void keyPressEvent(QKeyEvent * event); 
+    void mousePressEvent(QMouseEvent* event);
+
 
 protected Q_SLOTS:
     // Constraints
@@ -95,6 +163,7 @@ class TaskSketcherElements : public Gui::TaskView::TaskBox, public Gui::Selectio
     class MultIcon {
 
     public:
+        MultIcon() {};
         MultIcon(const char*);
 
         QIcon Normal;
@@ -111,22 +180,23 @@ public:
     /// Observer message from the Selection
     void onSelectionChanged(const Gui::SelectionChanges& msg);
 
+    bool eventFilter(QObject* obj, QEvent* event);
+
 private:
     void slotElementsChanged(void);
-    void updateIcons(int element);
-    void updatePreselection();
-    void updateVisibility(int filterindex);
-    void setItemVisibility(int elementindex,int filterindex);
+    void updateVisibility();
+    void setItemVisibility(QListWidgetItem* item);
     void clearWidget();
+    void createSettingsButtonActions();
 
 public Q_SLOTS:
-    void on_listWidgetElements_itemSelectionChanged(void);
+    void on_listWidgetElements_itemPressed(QListWidgetItem* item);
     void on_listWidgetElements_itemEntered(QListWidgetItem *item);
     void on_listWidgetElements_filterShortcutPressed();
-    void on_listWidgetElements_currentFilterChanged ( int index );
-    void on_listWidgetElements_currentModeFilterChanged ( int index );
-    void on_namingBox_stateChanged(int state);
-    void on_autoSwitchBox_stateChanged(int state);
+    void on_settings_extendedInformation_changed();
+    void on_settingsButton_clicked(bool);
+    void on_filterBox_stateChanged(int val);
+    void on_listMultiFilter_itemChanged(QListWidgetItem* item);
 
 protected:
     void changeEvent(QEvent *e);
@@ -142,9 +212,35 @@ private:
     int previouslySelectedItemIndex;
 
     bool isNamingBoxChecked;
-    bool isautoSwitchBoxChecked;
 
-    bool inhibitSelectionUpdate;
+    MultIcon Sketcher_Element_Arc_Edge;
+    MultIcon Sketcher_Element_Arc_EndPoint;
+    MultIcon Sketcher_Element_Arc_MidPoint;
+    MultIcon Sketcher_Element_Arc_StartingPoint;
+    MultIcon Sketcher_Element_Circle_Edge;
+    MultIcon Sketcher_Element_Circle_MidPoint;
+    MultIcon Sketcher_Element_Line_Edge;
+    MultIcon Sketcher_Element_Line_EndPoint;
+    MultIcon Sketcher_Element_Line_StartingPoint;
+    MultIcon Sketcher_Element_Point_StartingPoint;
+    MultIcon Sketcher_Element_Ellipse_Edge;
+    MultIcon Sketcher_Element_Ellipse_MidPoint;
+    MultIcon Sketcher_Element_ArcOfEllipse_Edge;
+    MultIcon Sketcher_Element_ArcOfEllipse_MidPoint;
+    MultIcon Sketcher_Element_ArcOfEllipse_StartingPoint;
+    MultIcon Sketcher_Element_ArcOfEllipse_EndPoint;
+    MultIcon Sketcher_Element_ArcOfHyperbola_Edge;
+    MultIcon Sketcher_Element_ArcOfHyperbola_MidPoint;
+    MultIcon Sketcher_Element_ArcOfHyperbola_StartingPoint;
+    MultIcon Sketcher_Element_ArcOfHyperbola_EndPoint;
+    MultIcon Sketcher_Element_ArcOfParabola_Edge;
+    MultIcon Sketcher_Element_ArcOfParabola_MidPoint;
+    MultIcon Sketcher_Element_ArcOfParabola_StartingPoint;
+    MultIcon Sketcher_Element_ArcOfParabola_EndPoint;
+    MultIcon Sketcher_Element_BSpline_Edge;
+    MultIcon Sketcher_Element_BSpline_StartingPoint;
+    MultIcon Sketcher_Element_BSpline_EndPoint;
+    MultIcon none;
 };
 
 } //namespace SketcherGui

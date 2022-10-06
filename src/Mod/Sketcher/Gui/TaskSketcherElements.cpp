@@ -213,19 +213,19 @@ void MyDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, co
 
         if (itemData->isLineSelected || itemData->isStartingPointSelected || itemData->isEndPointSelected || itemData->isMidPointSelected) { //option.state & QStyle::State_Selected
             painter->fillRect(option.rect, option.palette.highlight());
-            if (!itemData->isLineSelected) {
+            if (!itemData->isLineSelected && itemData->GeometryType != Part::GeomPoint::getClassTypeId()) {
                 QRect rect0(x0 + border, btny, iconsize, iconsize);
                 painter->fillRect(rect0, option.palette.base());
             }
-            if (!itemData->isStartingPointSelected) {
+            if (!itemData->isStartingPointSelected && itemData->GeometryType != Part::GeomCircle::getClassTypeId() && itemData->GeometryType != Part::GeomEllipse::getClassTypeId()) {
                 QRect rect1(x0 + height + border, btny, iconsize, iconsize);
                 painter->fillRect(rect1, option.palette.base());
             }
-            if (!itemData->isEndPointSelected) {
+            if (!itemData->isEndPointSelected && itemData->GeometryType != Part::GeomCircle::getClassTypeId() && itemData->GeometryType != Part::GeomEllipse::getClassTypeId() && itemData->GeometryType != Part::GeomPoint::getClassTypeId()) {
                 QRect rect2(x0 + height * 2 + border, btny, iconsize, iconsize);
                 painter->fillRect(rect2, option.palette.base());
             }
-            if (!itemData->isMidPointSelected){
+            if (!itemData->isMidPointSelected && itemData->GeometryType != Part::GeomLineSegment::getClassTypeId() && itemData->GeometryType != Part::GeomBSplineCurve::getClassTypeId() && itemData->GeometryType != Part::GeomPoint::getClassTypeId()){
                 QRect rect3(x0 + height * 3 + border, btny, iconsize, iconsize);
                 painter->fillRect(rect3, option.palette.base());
             }

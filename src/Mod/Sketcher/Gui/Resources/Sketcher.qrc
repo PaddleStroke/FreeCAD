@@ -280,6 +280,8 @@
         <file>icons/tools/Sketcher_Symmetry.svg</file>
     </qresource>
     <qresource>
+        <file>icons/dialogs/Sketcher_SelectedConstraints.svg</file>
+        <file>icons/dialogs/Sketcher_AllConstraints.svg</file>
         <file>icons/dialogs/Sketcher_Settings.svg</file>
     </qresource>
     <qresource>

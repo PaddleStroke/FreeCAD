@@ -39,6 +39,8 @@ class Property;
 
 namespace SketcherGui {
 
+using namespace ConstraintFilter;
+
 class ViewProviderSketch;
 class Ui_TaskSketcherConstraints;
 
@@ -82,12 +84,23 @@ class TaskSketcherConstraints : public Gui::TaskView::TaskBox, public Gui::Selec
         Selected
     };
 
+    enum {
+        None,
+        Associated,
+        Selected
+    };
+
 public:
     TaskSketcherConstraints(ViewProviderSketch *sketchView);
     ~TaskSketcherConstraints();
 
     /// Observer message from the Selection
     void onSelectionChanged(const Gui::SelectionChanges& msg);
+
+    bool eventFilter(QObject* obj, QEvent* event);
+
+    FilterValueBitset getMultiFilter();
+    int specialFilterMode;
 
 private:
     void slotConstraintsChanged(void);
@@ -105,30 +118,33 @@ private:
     void getSelectionGeoId(QString expr, int & geoid, Sketcher::PointPos & pos);
 
 public Q_SLOTS:
-    void on_comboBoxFilter_currentIndexChanged(int);
     void on_listWidgetConstraints_itemSelectionChanged(void);
     void on_listWidgetConstraints_itemActivated(QListWidgetItem *item);
     void on_listWidgetConstraints_itemChanged(QListWidgetItem * item);
     void on_listWidgetConstraints_updateDrivingStatus(QListWidgetItem *item, bool status);
     void on_listWidgetConstraints_updateActiveStatus(QListWidgetItem *item, bool status);
     void on_listWidgetConstraints_emitCenterSelectedItems(void);
-    void on_filterInternalAlignment_stateChanged(int state);
-    void on_extendedInformation_stateChanged(int state);
-    void on_visualisationTrackingFilter_stateChanged(int state);
-    void on_visibilityButton_trackingaction_changed();
-    void on_visibilityButton_clicked(bool);
-    void on_showAllButton_clicked(bool);
-    void on_hideAllButton_clicked(bool);
+    void on_settings_restrictVisibility_changed();
+    void on_settings_extendedInformation_changed();
+    void on_settings_hideInternalAligment_changed();
+    void on_settingsButton_clicked(bool);
+    void on_filterBox_stateChanged(int val);
+    void on_showHideBox_stateChanged(int val);
+    void on_showAssociatedButton_clicked(bool);
+    void on_showSelectedButton_clicked(bool val);
+    void on_showAllInListButton_clicked(bool);
     void on_listWidgetConstraints_emitShowSelection3DVisibility();
     void on_listWidgetConstraints_emitHideSelection3DVisibility();
-    void on_multipleFilterButton_clicked(bool);
-    void on_settingsDialogButton_clicked(bool);
+
+    void on_listMultiFilter_itemChanged(QListWidgetItem* item);
 
 protected:
     void changeEvent(QEvent *e);
     ViewProviderSketch *sketchView;
     typedef boost::signals2::connection Connection;
     Connection connectionConstraintsChanged;
+
+    void setCheckStateAll(Qt::CheckState);
 
 private:
     QWidget* proxy;

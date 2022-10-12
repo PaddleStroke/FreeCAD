@@ -504,6 +504,41 @@ void WorkbenchComboBox::onWorkbenchActivated(const QString& name)
     }
 }
 
+// workbench menu
+WorkbenchMenu::WorkbenchMenu(WorkbenchGroup* wb, QWidget* parent) : QMenu(parent), group(wb)
+{
+    connect(this, SIGNAL(triggered(QAction *)), this, SLOT(onTriggered(QAction*)));
+    connect(getMainWindow(), SIGNAL(workbenchActivated(const QString&)),
+            this, SLOT(onWorkbenchActivated(const QString&)));
+}
+
+WorkbenchMenu::~WorkbenchMenu()
+{
+}
+
+void WorkbenchMenu::onTriggered(QAction* action)
+{
+    //auto ev = new WorkbenchActionEvent(action);
+    //QApplication::postEvent(this, ev);
+    //changeMenu(action->text(), action->icon());
+}
+
+void WorkbenchMenu::onWorkbenchActivated(const QString& name)
+{
+    QList<QAction*> a = actions();
+    for (QList<QAction*>::Iterator it = a.begin(); it != a.end(); ++it) {
+        if ((*it)->objectName() == name) {
+            changeMenu((* it)->text(), (*it)->icon());
+            break;
+        }
+    }
+}
+
+void WorkbenchMenu::changeMenu(const QString& name, const QIcon& icon) {
+    //setIcon(icon);
+    setTitle(name);
+}
+
 /* TRANSLATOR Gui::WorkbenchGroup */
 WorkbenchGroup::WorkbenchGroup (  Command* pcCmd, QObject * parent )
   : ActionGroup( pcCmd, parent )
@@ -539,10 +574,37 @@ void WorkbenchGroup::addTo(QWidget *w)
         connect(_group, SIGNAL(triggered(QAction*)), box, SLOT(onActivated (QAction*)));
         bar->addWidget(box);
     }
+    else if (w->inherits("QMenuBar")) {
+        auto menuBar = qobject_cast<QMenuBar*>(w);
+        QComboBox* box = new WorkbenchComboBox(this, w);
+        box->setIconSize(QSize(16, 16));
+        box->setToolTip(_action->toolTip());
+        box->setStatusTip(_action->statusTip());
+        box->setWhatsThis(_action->whatsThis());
+        box->addActions(_group->actions());
+        connect(_group, SIGNAL(triggered(QAction*)), box, SLOT(onActivated (QAction*)));
+
+        ParameterGrp::handle hGrp = WindowParameter::getDefaultParameter()->GetGroup("General");
+        bool rightCorner = hGrp->GetBool("WbSelectorCornerWidgetRight", true);
+        menuBar->setCornerWidget(box, rightCorner ? Qt::TopRightCorner : Qt::TopLeftCorner);
+    }
     else if (w->inherits("QMenu")) {
+        QMenuBar* menuBar = getMainWindow()->menuBar();
+
         auto menu = qobject_cast<QMenu*>(w);
-        menu = menu->addMenu(_action->text());
-        menu->addActions(_group->actions());
+        menuBar->removeAction(menu->menuAction());
+
+        WorkbenchMenu* wbMenu = new WorkbenchMenu(this, menuBar);
+        //wbMenu->setStyleSheet(QString::fromLatin1("QMenu { color: white; background-color: blue; font: bold 18px }"));
+        wbMenu->addActions(_group->actions());
+        wbMenu->setProperty("wbSelector", true);
+        //wbMenu->style()->unpolish(wbMenu);
+        //wbMenu->style()->polish(wbMenu);
+        menuBar->addMenu(wbMenu);
+
+        menuBar->setStyleSheet(QString::fromLatin1("QMenuBar::item [wbSelector = true] { background-color: blue; font: bold 18px }"));
+        menuBar->style()->unpolish(menuBar);
+        menuBar->style()->polish(menuBar);
     }
 }
 

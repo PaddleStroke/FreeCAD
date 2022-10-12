@@ -28,6 +28,7 @@
 #include <QAction>
 #include <QComboBox>
 #include <QKeySequence>
+#include <QWidgetAction>
 
 namespace Gui
 {
@@ -151,6 +152,25 @@ protected Q_SLOTS:
 
 protected:
     void actionEvent (QActionEvent*);
+
+private:
+    WorkbenchGroup* group;
+};
+
+class GuiExport WorkbenchMenu : public QMenu
+{
+    Q_OBJECT
+
+public:
+    WorkbenchMenu(WorkbenchGroup* wb, QWidget* parent = nullptr);
+    virtual ~WorkbenchMenu();
+    void changeMenu(const QString& name, const QIcon& icon);
+
+public Q_SLOTS:
+    void onTriggered(QAction*);
+
+protected Q_SLOTS:
+    void onWorkbenchActivated(const QString&);
 
 private:
     WorkbenchGroup* group;

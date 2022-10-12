@@ -505,6 +505,63 @@ this according to your screen size or personal taste</string>
            </item>
           </layout>
          </item>
+         <item>
+          <layout class="QHBoxLayout">
+           <property name="spacing">
+            <number>6</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="Gui::PrefCheckBox" name="WbSelectorCornerWidget">
+             <property name="toolTip">
+              <string>Show the workbench selector as a menu bar corner widget</string>
+             </property>
+             <property name="text">
+              <string>Wb selector in menu bar</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+             <property name="prefEntry" stdset="0">
+              <cstring>WbSelectorCornerWidget</cstring>
+             </property>
+             <property name="prefPath" stdset="0">
+              <cstring>General</cstring>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="Gui::PrefCheckBox" name="WbSelectorCornerWidgetRight">
+             <property name="toolTip">
+              <string>Show the workbench selector as a menu bar corner widget on the right side</string>
+             </property>
+             <property name="text">
+              <string>Right side</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+             <property name="prefEntry" stdset="0">
+              <cstring>WbSelectorCornerWidgetRight</cstring>
+             </property>
+             <property name="prefPath" stdset="0">
+              <cstring>General</cstring>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
         </layout>
        </widget>
       </item>

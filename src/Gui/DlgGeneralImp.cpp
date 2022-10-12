@@ -179,6 +179,8 @@ void DlgGeneralImp::saveSettings()
     ui->RecentFiles->onSave();
     ui->EnableCursorBlinking->onSave();
     ui->SplashScreen->onSave();
+    ui->WbSelectorCornerWidget->onSave();
+    ui->WbSelectorCornerWidgetRight->onSave();
 
     setRecentFileSize();
     bool force = setLanguage();
@@ -231,6 +233,8 @@ void DlgGeneralImp::loadSettings()
     ui->RecentFiles->onRestore();
     ui->EnableCursorBlinking->onRestore();
     ui->SplashScreen->onRestore();
+    ui->WbSelectorCornerWidget->onRestore();
+    ui->WbSelectorCornerWidgetRight->onRestore();
 
     // search for the language files
     ParameterGrp::handle hGrp = WindowParameter::getDefaultParameter()->GetGroup("General");

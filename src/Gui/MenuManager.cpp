@@ -263,6 +263,15 @@ void MenuManager::setup(MenuItem* menuItems) const
             setup(*it, action->menu());
     }
 
+    //add workbench selector to menubar
+    ParameterGrp::handle hGrp = WindowParameter::getDefaultParameter()->GetGroup("General");
+    if (hGrp->GetBool("WbSelectorCornerWidget", true)) {
+        bool rightCorner = hGrp->GetBool("WbSelectorCornerWidgetRight", true);
+        if (!menuBar->cornerWidget(rightCorner ? Qt::TopRightCorner : Qt::TopLeftCorner)) //avoid adding it multiple time.
+            Application::Instance->commandManager().addTo("Std_Workbench", menuBar);
+    }
+
+
     // hide all menus which we don't need for the moment
     for (QList<QAction*>::Iterator it = actions.begin(); it != actions.end(); ++it) {
         (*it)->setVisible(false);

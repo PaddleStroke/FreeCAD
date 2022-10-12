@@ -692,7 +692,7 @@ MenuItem* StdWorkbench::setupMenuBar() const
           << "Separator" << visu
           << "Std_ToggleVisibility" << "Std_ToggleNavigation"
           << "Std_SetAppearance" << "Std_RandomColor" << "Separator"
-          << "Std_Workbench" << "Std_ToolBarMenu" << "Std_DockViewMenu" << "Separator"
+          << "Std_ToolBarMenu" << "Std_DockViewMenu" << "Separator"
           << "Std_TreeViewActions"
           << "Std_ViewStatusBar";
 
@@ -752,6 +752,11 @@ MenuItem* StdWorkbench::setupMenuBar() const
           << "Std_FreeCADUserHub" << "Std_FreeCADPowerUserHub"
           << "Std_PythonHelp" << "Std_FreeCADForum" << "Std_FreeCADFAQ"
           << "Std_ReportBug" << "Std_About" << "Std_WhatsThis";
+
+    // Workbench selector
+    auto wbSelector = new MenuItem( menuBar );
+    wbSelector->setCommand("&Workbench");
+    *wbSelector << "Std_Workbench";
 
     return menuBar;
 }

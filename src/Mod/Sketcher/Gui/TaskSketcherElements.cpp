@@ -590,7 +590,7 @@ void TaskSketcherElements::connectSignals()
     );
     QObject::connect(
         ui->settingsButton, &QToolButton::clicked,
-        ui->settingsButton, &QToolButton::showMenu,
+        ui->settingsButton, &QToolButton::showMenu
     );
     QObject::connect(
         qAsConst(ui->settingsButton)->actions()[0], &QAction::changed,

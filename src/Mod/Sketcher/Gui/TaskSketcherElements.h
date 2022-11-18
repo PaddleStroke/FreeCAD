@@ -185,6 +185,28 @@ public:
     explicit ElementFilterList(QWidget* parent = nullptr);
     ~ElementFilterList() override;
 
+protected:
+    void changeEvent(QEvent* e) override;
+    virtual void languageChange();
+
+private:
+    inline static const std::vector<char *> filterItems = {
+        QT_TR_NOOP("Normal"),
+        QT_TR_NOOP("Construction"),
+        QT_TR_NOOP("Internal"),
+        QT_TR_NOOP("External"),
+        QT_TR_NOOP("All types"),
+        QT_TR_NOOP(" - Point"),
+        QT_TR_NOOP(" - Line"),
+        QT_TR_NOOP(" - Circle"),
+        QT_TR_NOOP(" - Ellipse"),
+        QT_TR_NOOP(" - Arc of circle"),
+        QT_TR_NOOP(" - Arc of ellipse"),
+        QT_TR_NOOP(" - Arc of hyperbola"),
+        QT_TR_NOOP(" - Arc of parabola"),
+        QT_TR_NOOP(" - B-Spline")
+    };
+
 };
 
 class TaskSketcherElements : public Gui::TaskView::TaskBox, public Gui::SelectionObserver

@@ -492,31 +492,33 @@ ElementItem* ElementItemDelegate::getElementtItem(const QModelIndex& index) cons
 /* Filter element list widget ------------------------------------------------------ */
 ElementFilterList::ElementFilterList(QWidget* parent) : QListWidget(parent)
 {
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", "Normal"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", "Construction"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", "Internal"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", "External"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", "All types"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", " - Point"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", " - Line"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", " - Circle"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", " - Ellipse"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", " - Arc"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", " - Arc of ellipse"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", " - Arc of hyperbola"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", " - Arc of parabola"), this));
-    addItem(new QListWidgetItem(QApplication::translate("ElementFilterList", " - B-Spline"), this));
-
-    for (int i = 0; i < count(); i++) {
-        QListWidgetItem* it = item(i);
-
+    for (auto const &filterItem:filterItems) {
+        auto it = new QListWidgetItem(tr(filterItem));
         it->setFlags(it->flags() | Qt::ItemIsUserCheckable);
         it->setCheckState(Qt::Checked);
+        addItem(it);
     }
 }
 
 ElementFilterList::~ElementFilterList()
 {
+}
+
+void ElementFilterList::changeEvent(QEvent* e)
+{
+    if (e->type() == QEvent::LanguageChange) {
+        languageChange();
+    }
+    QWidget::changeEvent(e);
+}
+
+void ElementFilterList::languageChange()
+{
+    assert((int)filterItems.size() == count());
+    int i=0;
+    for (auto const &filterItem:filterItems) {
+        item(i++)->setText(tr(filterItem));
+    }
 }
 
 

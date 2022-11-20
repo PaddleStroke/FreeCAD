@@ -190,21 +190,22 @@ protected:
     virtual void languageChange();
 
 private:
-    inline static const std::vector<char *> filterItems = {
-        QT_TR_NOOP("Normal"),
-        QT_TR_NOOP("Construction"),
-        QT_TR_NOOP("Internal"),
-        QT_TR_NOOP("External"),
-        QT_TR_NOOP("All types"),
-        QT_TR_NOOP(" - Point"),
-        QT_TR_NOOP(" - Line"),
-        QT_TR_NOOP(" - Circle"),
-        QT_TR_NOOP(" - Ellipse"),
-        QT_TR_NOOP(" - Arc of circle"),
-        QT_TR_NOOP(" - Arc of ellipse"),
-        QT_TR_NOOP(" - Arc of hyperbola"),
-        QT_TR_NOOP(" - Arc of parabola"),
-        QT_TR_NOOP(" - B-Spline")
+    using filterItemRepr =  std::pair<const char *, const int>; // {filter item text, filter item level}
+    inline static const std::vector<filterItemRepr> filterItems = {
+        {QT_TR_NOOP("Normal"),0},
+        {QT_TR_NOOP("Construction"),0},
+        {QT_TR_NOOP("Internal"),0},
+        {QT_TR_NOOP("External"),0},
+        {QT_TR_NOOP("All types"),0},
+        {QT_TR_NOOP("Point"),1},
+        {QT_TR_NOOP("Line"),1},
+        {QT_TR_NOOP("Circle"),1},
+        {QT_TR_NOOP("Ellipse"),1},
+        {QT_TR_NOOP("Arc of circle"),1},
+        {QT_TR_NOOP("Arc of ellipse"),1},
+        {QT_TR_NOOP("Arc of hyperbola"),1},
+        {QT_TR_NOOP("Arc of parabola"),1},
+        {QT_TR_NOOP("B-Spline"),1}
     };
 
 };

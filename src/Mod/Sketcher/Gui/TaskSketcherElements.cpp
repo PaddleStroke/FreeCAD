@@ -493,11 +493,13 @@ ElementItem* ElementItemDelegate::getElementtItem(const QModelIndex& index) cons
 ElementFilterList::ElementFilterList(QWidget* parent) : QListWidget(parent)
 {
     for (auto const &filterItem:filterItems) {
-        auto it = new QListWidgetItem(tr(filterItem));
+        Q_UNUSED(filterItem);
+        auto it = new QListWidgetItem();
         it->setFlags(it->flags() | Qt::ItemIsUserCheckable);
         it->setCheckState(Qt::Checked);
         addItem(it);
     }
+    languageChange();
 }
 
 ElementFilterList::~ElementFilterList()
@@ -517,7 +519,10 @@ void ElementFilterList::languageChange()
     assert(static_cast<int>(filterItems.size()) == count());
     int i=0;
     for (auto const &filterItem:filterItems) {
-        item(i++)->setText(tr(filterItem));
+        auto text = QStringLiteral("  ").repeated(filterItem.second-1) +
+            (filterItem.second > 0 ? QStringLiteral("- ") : QStringLiteral()) +
+            tr(filterItem.first);
+        item(i++)->setText(text);
     }
 }
 

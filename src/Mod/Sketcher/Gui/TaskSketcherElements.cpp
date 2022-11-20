@@ -514,7 +514,7 @@ void ElementFilterList::changeEvent(QEvent* e)
 
 void ElementFilterList::languageChange()
 {
-    assert((int)filterItems.size() == count());
+    assert(static_cast<int>(filterItems.size()) == count());
     int i=0;
     for (auto const &filterItem:filterItems) {
         item(i++)->setText(tr(filterItem));
@@ -644,11 +644,31 @@ void TaskSketcherElements::onListMultiFilterItemChanged(QListWidgetItem* item)
 {
     {
         QSignalBlocker sigblk(filterList);
-        int start = 4; //From 4 to the end, it's the geometry types (line, circle, arc...)
-        if (item == filterList->item(static_cast<int>(GeoFilterType::AllGeosTypes))) {
-            for (int i = start; i < filterList->count(); i++) {
+
+        int index = filterList->row(item);
+        int indexOfAllTypes = static_cast<int>(GeoFilterType::AllGeosTypes);
+
+        if (index == indexOfAllTypes) {
+            for (int i = indexOfAllTypes + 1; i < filterList->count(); i++) {
                 filterList->item(i)->setCheckState(item->checkState());
             }
+        }
+        else if (index > indexOfAllTypes) {
+            bool atLeastOneUnchecked = false;
+            bool atLeastOneChecked = false;
+
+            for (int i = indexOfAllTypes + 1; i < filterList->count(); i++) {
+                if (filterList->item(i)->checkState() == Qt::Checked)
+                    atLeastOneChecked = true;
+                if (filterList->item(i)->checkState() == Qt::Unchecked)
+                    atLeastOneUnchecked = true;
+            }
+            if (atLeastOneChecked && atLeastOneUnchecked)
+                filterList->item(indexOfAllTypes)->setCheckState(Qt::PartiallyChecked);
+            else if(atLeastOneUnchecked)
+                filterList->item(indexOfAllTypes)->setCheckState(Qt::Unchecked);
+            else if(atLeastOneChecked)
+                filterList->item(indexOfAllTypes)->setCheckState(Qt::Checked);
         }
     }
 

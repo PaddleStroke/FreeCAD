@@ -25,6 +25,7 @@
 #define GUI_TASKVIEW_TaskSketcherElements_H
 
 #include <Gui/TaskView/TaskView.h>
+#include <Mod/sketcher/Gui/RenderingOrderWidget.h>
 #include <Gui/Selection.h>
 #include <boost_signals2.hpp>
 #include <QListWidget>
@@ -255,6 +256,7 @@ private:
     SubElementType previouslyHoveredType;
 
     ElementFilterList* filterList;
+    RenderingOrderWidget* renderingOrder;
 
     bool isNamingBoxChecked;
 };

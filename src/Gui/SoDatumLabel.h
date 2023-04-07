@@ -35,7 +35,7 @@
 #include <Inventor/fields/SoMFVec3f.h>
 #include <Inventor/nodes/SoShape.h>
 
-//#include <Mod/Sketcher/SketcherGlobal.h>
+#include <FCGlobal.h>
 
 
 namespace Gui {

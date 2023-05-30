@@ -520,6 +520,8 @@ TreeWidget::TreeWidget(const char* name, QWidget* parent)
         documentPartialPixmap.reset(new QPixmap(icon.pixmap(documentPixmap->size(), QIcon::Disabled)));
     }
     setColumnHidden(1, TreeParams::getHideColumn());
+    if (TreeParams::getHideColumn())
+        header()->hide();
 }
 
 TreeWidget::~TreeWidget()

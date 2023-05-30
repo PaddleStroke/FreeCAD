@@ -142,7 +142,7 @@ public:
         funcs["ItemBackground"] = &TreeParamsP::updateItemBackground;
         ItemBackgroundPadding = handle->GetInt("ItemBackgroundPadding", 10);
         funcs["ItemBackgroundPadding"] = &TreeParamsP::updateItemBackgroundPadding;
-        HideColumn = handle->GetBool("HideColumn", false);
+        HideColumn = handle->GetBool("HideColumn", true);
         funcs["HideColumn"] = &TreeParamsP::updateHideColumn;
         HideScrollBar = handle->GetBool("HideScrollBar", true);
         funcs["HideScrollBar"] = &TreeParamsP::updateHideScrollBar;

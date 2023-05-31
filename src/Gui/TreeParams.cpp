@@ -356,7 +356,7 @@ public:
     }
     // Auto generated code (Tools/params_utils.py:244)
     static void updateHideColumn(TreeParamsP *self) {
-        auto v = self->handle->GetBool("HideColumn", false);
+        auto v = self->handle->GetBool("HideColumn", true);
         if (self->HideColumn != v) {
             self->HideColumn = v;
             TreeParams::onHideColumnChanged();
@@ -1203,7 +1203,7 @@ const bool & TreeParams::getHideColumn() {
 
 // Auto generated code (Tools/params_utils.py:300)
 const bool & TreeParams::defaultHideColumn() {
-    const static bool def = false;
+    const static bool def = true;
     return def;
 }
 

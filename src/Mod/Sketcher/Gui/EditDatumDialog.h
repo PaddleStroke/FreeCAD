@@ -47,7 +47,7 @@ public:
     EditDatumDialog(Sketcher::SketchObject* pcSketch, int ConstrNbr);
     ~EditDatumDialog() override;
 
-    void exec(bool atCursor = true);
+    int exec(bool atCursor = true);
 
 private:
     Sketcher::SketchObject* sketch;

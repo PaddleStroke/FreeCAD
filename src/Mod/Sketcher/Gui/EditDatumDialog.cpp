@@ -70,7 +70,7 @@ EditDatumDialog::EditDatumDialog(Sketcher::SketchObject* pcSketch, int ConstrNbr
 EditDatumDialog::~EditDatumDialog()
 {}
 
-void EditDatumDialog::exec(bool atCursor)
+int EditDatumDialog::exec(bool atCursor)
 {
     // Return if constraint doesn't have editable value
     if (Constr->isDimensional()) {
@@ -80,7 +80,7 @@ void EditDatumDialog::exec(bool atCursor)
                                        QObject::tr("Dimensional constraint"),
                                        QObject::tr("Not allowed to edit the datum because the "
                                                    "sketch contains conflicting constraints"));
-            return;
+            return QDialog::Rejected;
         }
 
         Base::Quantity init_val;
@@ -173,8 +173,10 @@ void EditDatumDialog::exec(bool atCursor)
             dlg.setGeometry(x, y, dlg.geometry().width(), dlg.geometry().height());
         }
 
-        dlg.exec();
+        return dlg.exec();
     }
+
+    return QDialog::Rejected;
 }
 
 void EditDatumDialog::accepted()

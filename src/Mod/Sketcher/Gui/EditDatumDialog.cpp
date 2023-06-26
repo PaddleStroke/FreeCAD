@@ -28,14 +28,17 @@
 #include <Inventor/sensors/SoSensor.h>
 #include <QApplication>
 #include <QDialog>
+#include <QToolButton>
 #endif
 
 #include <Base/Tools.h>
 #include <Gui/Application.h>
+#include <Gui/BitmapFactory.h>
 #include <Gui/CommandT.h>
 #include <Gui/Document.h>
 #include <Gui/MainWindow.h>
 #include <Gui/Notifications.h>
+#include <Gui/QuantitySpinBox.h>
 #include <Gui/View3DInventor.h>
 #include <Gui/View3DInventorViewer.h>
 #include <Mod/Sketcher/App/GeometryFacade.h>
@@ -48,6 +51,7 @@
 
 
 using namespace SketcherGui;
+using namespace Gui;
 
 /* TRANSLATOR SketcherGui::EditDatumDialog */
 
@@ -85,51 +89,51 @@ void EditDatumDialog::exec(bool atCursor)
 
         Base::Quantity init_val;
 
-        QDialog dlg(Gui::getMainWindow());
+        dlg = new QDialog(Gui::getMainWindow());
         if (!ui_ins_datum) {
             ui_ins_datum.reset(new Ui_InsertDatum);
-            ui_ins_datum->setupUi(&dlg);
+            ui_ins_datum->setupUi(dlg);
         }
         double datum = Constr->getValue();
 
         ui_ins_datum->labelEdit->setEntryName(QByteArray("DatumValue"));
         if (Constr->Type == Sketcher::Angle) {
             datum = Base::toDegrees<double>(datum);
-            dlg.setWindowTitle(tr("Insert angle"));
+            dlg->setWindowTitle(tr("Insert angle"));
             init_val.setUnit(Base::Unit::Angle);
             ui_ins_datum->label->setText(tr("Angle:"));
             ui_ins_datum->labelEdit->setParamGrpPath(
                 QByteArray("User parameter:BaseApp/History/SketcherAngle"));
         }
         else if (Constr->Type == Sketcher::Radius) {
-            dlg.setWindowTitle(tr("Insert radius"));
+            dlg->setWindowTitle(tr("Insert radius"));
             init_val.setUnit(Base::Unit::Length);
             ui_ins_datum->label->setText(tr("Radius:"));
             ui_ins_datum->labelEdit->setParamGrpPath(
                 QByteArray("User parameter:BaseApp/History/SketcherLength"));
         }
         else if (Constr->Type == Sketcher::Diameter) {
-            dlg.setWindowTitle(tr("Insert diameter"));
+            dlg->setWindowTitle(tr("Insert diameter"));
             init_val.setUnit(Base::Unit::Length);
             ui_ins_datum->label->setText(tr("Diameter:"));
             ui_ins_datum->labelEdit->setParamGrpPath(
                 QByteArray("User parameter:BaseApp/History/SketcherLength"));
         }
         else if (Constr->Type == Sketcher::Weight) {
-            dlg.setWindowTitle(tr("Insert weight"));
+            dlg->setWindowTitle(tr("Insert weight"));
             ui_ins_datum->label->setText(tr("Weight:"));
             ui_ins_datum->labelEdit->setParamGrpPath(
                 QByteArray("User parameter:BaseApp/History/SketcherWeight"));
         }
         else if (Constr->Type == Sketcher::SnellsLaw) {
-            dlg.setWindowTitle(tr("Refractive index ratio", "Constraint_SnellsLaw"));
+            dlg->setWindowTitle(tr("Refractive index ratio", "Constraint_SnellsLaw"));
             ui_ins_datum->label->setText(tr("Ratio n2/n1:", "Constraint_SnellsLaw"));
             ui_ins_datum->labelEdit->setParamGrpPath(
                 QByteArray("User parameter:BaseApp/History/SketcherRefrIndexRatio"));
             ui_ins_datum->labelEdit->setSingleStep(0.05);
         }
         else {
-            dlg.setWindowTitle(tr("Insert length"));
+            dlg->setWindowTitle(tr("Insert length"));
             init_val.setUnit(Base::Unit::Length);
             ui_ins_datum->label->setText(tr("Length:"));
             ui_ins_datum->labelEdit->setParamGrpPath(
@@ -156,24 +160,30 @@ void EditDatumDialog::exec(bool atCursor)
                 &Gui::QuantitySpinBox::showFormulaDialog,
                 this,
                 &EditDatumDialog::formEditorOpened);
-        connect(&dlg, &QDialog::accepted, this, &EditDatumDialog::accepted);
-        connect(&dlg, &QDialog::rejected, this, &EditDatumDialog::rejected);
+        connect(dlg, &QDialog::accepted, this, &EditDatumDialog::accepted);
+        connect(dlg, &QDialog::rejected, this, &EditDatumDialog::rejected);
+        connect(ui_ins_datum->buttonCollapse, &QToolButton::clicked,
+            this, &EditDatumDialog::collapseButtonClicked);
+        
+        ui_ins_datum->labelEdit->installEventFilter(this);
+
+        setUiVisibility();
 
         if (atCursor) {
-            dlg.show();// Need to show the dialog so geometry is computed
-            QRect pg = dlg.parentWidget()->geometry();
+            dlg->show();// Need to show the dialog so geometry is computed
+            QRect pg = dlg->parentWidget()->geometry();
             int Xmin = pg.x() + 10;
             int Ymin = pg.y() + 10;
-            int Xmax = pg.x() + pg.width() - dlg.geometry().width() - 10;
-            int Ymax = pg.y() + pg.height() - dlg.geometry().height() - 10;
+            int Xmax = pg.x() + pg.width() - dlg->geometry().width() - 10;
+            int Ymax = pg.y() + pg.height() - dlg->geometry().height() - 10;
             int x = Xmax < Xmin ? (Xmin + Xmax) / 2
                                 : std::min(std::max(QCursor::pos().x(), Xmin), Xmax);
             int y = Ymax < Ymin ? (Ymin + Ymax) / 2
                                 : std::min(std::max(QCursor::pos().y(), Ymin), Ymax);
-            dlg.setGeometry(x, y, dlg.geometry().width(), dlg.geometry().height());
+            dlg->setGeometry(x, y, dlg->geometry().width(), dlg->geometry().height());
         }
 
-        dlg.exec();
+        dlg->exec();
     }
 }
 
@@ -275,6 +285,53 @@ void EditDatumDialog::formEditorOpened(bool state)
     if (state) {
         ui_ins_datum->cbDriving->setChecked(false);
     }
+}
+
+void EditDatumDialog::setUiVisibility()
+{
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
+        "User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    bool expanded = hGrp->GetBool("EditDatumExpanded", false);
+
+    ui_ins_datum->label->setVisible(expanded);
+    ui_ins_datum->label_2->setVisible(expanded);
+    ui_ins_datum->name->setVisible(expanded);
+    ui_ins_datum->cbDriving->setVisible(expanded);
+    ui_ins_datum->buttonBox->setVisible(expanded);
+
+    ui_ins_datum->labelEdit->setButtonSymbols(expanded ? QAbstractSpinBox::UpDownArrows : QAbstractSpinBox::NoButtons);
+
+    ui_ins_datum->buttonCollapse->setIcon(Gui::BitmapFactory().iconFromTheme(expanded ? ":/icons/button_collapse.svg" : ":/icons/button_expand.svg"));
+}
+
+void EditDatumDialog::collapseButtonClicked()
+{
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
+        "User parameter:BaseApp/Preferences/Mod/Sketcher/General");
+    bool expanded = hGrp->GetBool("EditDatumExpanded", false);
+    expanded = !expanded;
+    hGrp->SetBool("EditDatumExpanded", expanded);
+
+    setUiVisibility();
+}
+
+bool EditDatumDialog::eventFilter(QObject* object, QEvent* event)
+{
+    if (event->type() == QEvent::KeyRelease) {
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+
+        /* If user press enter in the spinbox, then we validate the tool.*/
+        if ((keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return)
+            && dynamic_cast<QuantitySpinBox*>(object)) {
+            dlg->accept();
+        }
+
+        /* If user press escape, then we cancel the tool.*/
+        if (keyEvent->key() == Qt::Key_Escape) {
+            rejected();
+        }
+    }
+    return false;
 }
 
 #include "moc_EditDatumDialog.cpp"

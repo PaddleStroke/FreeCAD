@@ -26,6 +26,7 @@
 #include <QObject>
 #include <memory>
 
+class QDialog;
 
 namespace Sketcher
 {
@@ -47,9 +48,14 @@ public:
     EditDatumDialog(Sketcher::SketchObject* pcSketch, int ConstrNbr);
     ~EditDatumDialog() override;
 
+    bool eventFilter(QObject* object, QEvent* event);
+
     void exec(bool atCursor = true);
 
 private:
+    void setUiVisibility();
+
+    QDialog* dlg;
     Sketcher::SketchObject* sketch;
     Sketcher::Constraint* Constr;
     int ConstrNbr;
@@ -61,6 +67,7 @@ private Q_SLOTS:
     void drivingToggled(bool);
     void datumChanged();
     void formEditorOpened(bool);
+    void collapseButtonClicked();
 };
 
 }// namespace SketcherGui

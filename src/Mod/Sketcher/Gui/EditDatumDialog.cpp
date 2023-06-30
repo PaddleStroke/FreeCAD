@@ -94,6 +94,10 @@ void EditDatumDialog::exec(bool atCursor)
             ui_ins_datum.reset(new Ui_InsertDatum);
             ui_ins_datum->setupUi(dlg);
         }
+
+        // Reject the dialog if the user clicks outside of it
+        dlg->setWindowFlags(Qt::Popup);
+
         double datum = Constr->getValue();
 
         ui_ins_datum->labelEdit->setEntryName(QByteArray("DatumValue"));
@@ -144,7 +148,6 @@ void EditDatumDialog::exec(bool atCursor)
 
         ui_ins_datum->labelEdit->setValue(init_val);
         ui_ins_datum->labelEdit->pushToHistory();
-        ui_ins_datum->labelEdit->selectNumber();
         ui_ins_datum->labelEdit->bind(sketch->Constraints.createPath(ConstrNbr));
         ui_ins_datum->name->setText(Base::Tools::fromStdString(Constr->Name));
 
@@ -166,25 +169,46 @@ void EditDatumDialog::exec(bool atCursor)
             this, &EditDatumDialog::collapseButtonClicked);
         
         ui_ins_datum->labelEdit->installEventFilter(this);
+        //ui_ins_datum->labelEdit->setMinimumSize(ui_ins_datum->labelEdit->minimumSizeHint());
 
+        originalMargins = ui_ins_datum->gridLayout->contentsMargins();
         setUiVisibility();
 
+        dlg->show();// Need to show the dialog so geometry is computed
         if (atCursor) {
-            dlg->show();// Need to show the dialog so geometry is computed
-            QRect pg = dlg->parentWidget()->geometry();
-            int Xmin = pg.x() + 10;
-            int Ymin = pg.y() + 10;
-            int Xmax = pg.x() + pg.width() - dlg->geometry().width() - 10;
-            int Ymax = pg.y() + pg.height() - dlg->geometry().height() - 10;
-            int x = Xmax < Xmin ? (Xmin + Xmax) / 2
-                                : std::min(std::max(QCursor::pos().x(), Xmin), Xmax);
-            int y = Ymax < Ymin ? (Ymin + Ymax) / 2
-                                : std::min(std::max(QCursor::pos().y(), Ymin), Ymax);
-            dlg->setGeometry(x, y, dlg->geometry().width(), dlg->geometry().height());
+            positionDialog(QCursor::pos());
+        }
+        else {
+            //For now we position at mouse pos, but ideally we need to position at the soDatumLabel text position.
+            //To do that the following snippets will be useful : 
+            /*
+            SbVec3f midPoint = Constr->soDatumLabel->textPosition() //pseudo code
+
+            QSize wSize = dlg->size();
+            QPoint pxCoord = viewer->toQPoint(viewer->getPointOnViewport(midPoint));
+            pxCoord.setX(std::max(pxCoord.x() - wSize.width() / 2, 0));
+            pxCoord.setY(std::max(pxCoord.y() - wSize.height() / 2, 0));
+            positionDialog(pxCoord);*/
+
+            positionDialog(QCursor::pos());
         }
 
         dlg->exec();
     }
+}
+
+void EditDatumDialog::positionDialog(QPoint pos)
+{
+    QRect pg = dlg->parentWidget()->geometry();
+    int Xmin = pg.x() + dlg->geometry().width() / 2 + 10;
+    int Ymin = pg.y() + dlg->geometry().height() / 2 + 10;
+    int Xmax = pg.x() + pg.width() - dlg->geometry().width() / 2 - 10;
+    int Ymax = pg.y() + pg.height() - dlg->geometry().height() / 2 - 10;
+    int x = Xmax < Xmin ? (Xmin + Xmax) / 2
+        : std::min(std::max(pos.x(), Xmin), Xmax);
+    int y = Ymax < Ymin ? (Ymin + Ymax) / 2
+        : std::min(std::max(pos.y(), Ymin), Ymax);
+    dlg->setGeometry(x - dlg->geometry().width() / 2, y - dlg->geometry().height() / 2, dlg->geometry().width(), dlg->geometry().height());
 }
 
 void EditDatumDialog::accepted()
@@ -302,7 +326,16 @@ void EditDatumDialog::setUiVisibility()
     ui_ins_datum->labelEdit->setButtonSymbols(expanded ? QAbstractSpinBox::UpDownArrows : QAbstractSpinBox::NoButtons);
 
     ui_ins_datum->buttonCollapse->setIcon(Gui::BitmapFactory().iconFromTheme(expanded ? ":/icons/button_collapse.svg" : ":/icons/button_expand.svg"));
+
+    QMargins smallMargins(4, 4, 4, 4);
+    ui_ins_datum->gridLayout->setContentsMargins(expanded ? originalMargins : smallMargins);
+
+    dlg->adjustSize();
+
+    ui_ins_datum->labelEdit->selectNumber();
+    ui_ins_datum->labelEdit->setFocus();
 }
+
 
 void EditDatumDialog::collapseButtonClicked()
 {
@@ -320,15 +353,13 @@ bool EditDatumDialog::eventFilter(QObject* object, QEvent* event)
     if (event->type() == QEvent::KeyRelease) {
         QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
 
-        /* If user press enter in the spinbox, then we validate the tool.*/
-        if ((keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return)
-            && dynamic_cast<QuantitySpinBox*>(object)) {
+        // If user press enter in the spinbox, then we validate the tool.
+        if (keyEvent->key() == Qt::Key_Enter) {
             dlg->accept();
         }
 
-        /* If user press escape, then we cancel the tool.*/
         if (keyEvent->key() == Qt::Key_Escape) {
-            rejected();
+            dlg->reject();
         }
     }
     return false;

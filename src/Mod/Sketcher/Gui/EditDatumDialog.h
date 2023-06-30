@@ -27,6 +27,7 @@
 #include <memory>
 
 class QDialog;
+class QMargins;
 
 namespace Sketcher
 {
@@ -50,9 +51,10 @@ public:
 
     bool eventFilter(QObject* object, QEvent* event);
 
-    void exec(bool atCursor = true);
+    void exec(bool atCursor = false);
 
 private:
+    void positionDialog(QPoint pos);
     void setUiVisibility();
 
     QDialog* dlg;
@@ -60,6 +62,7 @@ private:
     Sketcher::Constraint* Constr;
     int ConstrNbr;
     std::unique_ptr<Ui_InsertDatum> ui_ins_datum;
+    QMargins originalMargins;
 
 private Q_SLOTS:
     void accepted();

@@ -35,10 +35,15 @@
 #include <Inventor/fields/SoMFVec3f.h>
 #include <Inventor/nodes/SoShape.h>
 
+#include <Gui/QuantitySpinBox.h>
+
 #include <FCGlobal.h>
 
+class SoNodeSensor;
 
 namespace Gui {
+
+class View3DInventorViewer;
 
 class GuiExport SoDatumLabel : public SoShape {
     using inherited = SoShape;
@@ -77,6 +82,7 @@ public:
     SoSFImage  image;
     SoSFFloat  lineWidth;
     bool       useAntialiasing;
+    SbVec3f textOffset;
 
 protected:
     ~SoDatumLabel() override {}
@@ -98,6 +104,40 @@ private:
     float imgWidth;
     float imgHeight;
     bool glimagevalid;
+
+};
+
+
+
+class EditableDatumLabel
+{
+public:
+    EditableDatumLabel(View3DInventorViewer* view);
+    ~EditableDatumLabel();
+
+    void activate();
+    void deactivate();
+
+    void startEdit(double val, QObject* eventFilteringObj);
+    void stopEdit();
+    double getSpinboxValue();
+    void setSpinboxValue(double val);
+    void setPlacement(Base::Placement plc);
+
+    SoDatumLabel* label;
+
+private:
+    void positionSpinbox();
+    const SbVec3f getTextCenterPoint();
+    void setFocusToSpinbox();
+
+private:
+    SoSeparator* root;
+    SoTransform* transform;
+    View3DInventorViewer* viewer;
+    QuantitySpinBox* spinBox;
+    SoNodeSensor* cameraSensor;
+    SbVec3f midpos;
 };
 
 }

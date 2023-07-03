@@ -44,11 +44,17 @@
 # include <Inventor/elements/SoFocalDistanceElement.h>
 # include <Inventor/elements/SoViewportRegionElement.h>
 # include <Inventor/elements/SoViewVolumeElement.h>
+# include <Inventor/sensors/SoNodeSensor.h>
 # include <Inventor/misc/SoState.h>
+# include <Inventor/nodes/SoAnnotation.h>
+# include <Inventor/nodes/SoTransform.h>
 #endif // _PreComp_
 
+#include <Gui/Application.h>
 #include <Gui/BitmapFactory.h>
 #include <Gui/Tools.h>
+#include <Gui/View3DInventor.h>
+#include <Gui/View3DInventorViewer.h>
 
 #include "SoDatumLabel.h"
 
@@ -97,6 +103,7 @@ SoDatumLabel::SoDatumLabel()
     this->imgWidth = 0;
     this->imgHeight = 0;
     this->glimagevalid = false;
+    this->textOffset = SbVec3f(0.f, 0.f, 0.f);
 }
 
 void SoDatumLabel::drawImage()
@@ -187,7 +194,7 @@ void SoDatumLabel::generateDistancePrimitives(SoAction * action, const SbVec3f& 
     img3 = SbVec3f((img3[0] * c) - (img3[1] * s), (img3[0] * s) + (img3[1] * c), 0.f);
     img4 = SbVec3f((img4[0] * c) - (img4[1] * s), (img4[0] * s) + (img4[1] * c), 0.f);
 
-    SbVec3f textOffset = midpos + normal * length + dir * length2;
+    textOffset = midpos + normal * length + dir * length2;
 
     img1 += textOffset;
     img2 += textOffset;
@@ -241,7 +248,7 @@ void SoDatumLabel::generateDiameterPrimitives(SoAction * action, const SbVec3f& 
     img3 = SbVec3f((img3[0] * c) - (img3[1] * s), (img3[0] * s) + (img3[1] * c), 0.f);
     img4 = SbVec3f((img4[0] * c) - (img4[1] * s), (img4[0] * s) + (img4[1] * c), 0.f);
 
-    SbVec3f textOffset = pos;
+    textOffset = pos;
 
     img1 += textOffset;
     img2 += textOffset;
@@ -287,7 +294,7 @@ void SoDatumLabel::generateAnglePrimitives(SoAction * action, const SbVec3f& p0)
     // p0 - vector for angle intersect
     SbVec3f v0(cos(startangle+range/2),sin(startangle+range/2),0);
 
-    SbVec3f textOffset = p0 + v0 * r;
+    textOffset = p0 + v0 * r;
 
     SbVec3f img1 = SbVec3f(-this->imgWidth / 2, -this->imgHeight / 2, 0.f);
     SbVec3f img2 = SbVec3f(-this->imgWidth / 2,  this->imgHeight / 2, 0.f);
@@ -522,8 +529,6 @@ void SoDatumLabel::GLRender(SoGLRenderAction * action)
 
     // Position for Datum Text Label
     float angle = 0;
-
-    SbVec3f textOffset;
 
     // Get the colour
     const SbColor& t = textColor.getValue();
@@ -1029,4 +1034,191 @@ void SoDatumLabel::setPoints(SbVec3f p1, SbVec3f p2)
     verts[0] = p1;
     verts[1] = p2;
     pnts.finishEditing();
+}
+
+
+struct NodeData {
+    EditableDatumLabel* label;
+};
+
+/*********************** EditableDatumLabel ***************************************/
+
+EditableDatumLabel::EditableDatumLabel(View3DInventorViewer* view)
+    : viewer(view)
+    , spinBox(nullptr)
+    , cameraSensor(nullptr)
+{
+    root = new SoAnnotation;
+    root->ref();
+    root->renderCaching = SoSeparator::OFF;
+
+    transform = new SoTransform();
+    root->addChild(transform);
+
+    label = new SoDatumLabel();
+    label->ref();
+    label->string = "";
+    label->textColor = SbColor(1.0f, 0.149f, 0.0f);
+    label->size.setValue(17);
+    label->lineWidth = 2.0;
+    label->useAntialiasing = false;
+    label->param1 = 0.;
+    label->param2 = 0.;
+    root->addChild(label);
+}
+
+EditableDatumLabel::~EditableDatumLabel()
+{
+    deactivate();
+    transform->unref();
+    root->unref();
+    label->unref();
+}
+
+void EditableDatumLabel::activate()
+{
+    if (viewer) {
+        static_cast<SoSeparator*>(viewer->getSceneGraph())->addChild(root);
+    }
+}
+
+void EditableDatumLabel::deactivate()
+{
+    stopEdit();
+
+    if (viewer) {
+        static_cast<SoSeparator*>(viewer->getSceneGraph())->removeChild(root);
+    }
+}
+
+void EditableDatumLabel::startEdit(double val, QObject* eventFilteringObj)
+{
+    QWidget* mdi = viewer->parentWidget();
+
+    label->string = "";
+
+    spinBox = new QuantitySpinBox(mdi);
+    spinBox->setUnit(Base::Unit::Length);
+    spinBox->setMinimum(0.0);
+    spinBox->setMaximum(INT_MAX);
+    spinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
+    spinBox->setKeyboardTracking(false);
+    spinBox->installEventFilter(eventFilteringObj);
+
+    spinBox->show();
+    spinBox->setValue(val);
+    spinBox->adjustSize();
+    positionSpinbox();
+    setFocusToSpinbox();
+
+    //track camera movements to update spinbox position.
+    NodeData* info = new NodeData{ this };
+    cameraSensor = new SoNodeSensor([](void* data, SoSensor* sensor) {
+        Q_UNUSED(sensor)
+            NodeData* info = static_cast<NodeData*>(data);
+        info->label->positionSpinbox();
+    }, info);
+    cameraSensor->attach(viewer->getCamera());
+}
+
+void EditableDatumLabel::stopEdit()
+{
+    if (cameraSensor)
+        cameraSensor->detach();
+    if (spinBox)
+        spinBox->deleteLater();
+}
+
+double EditableDatumLabel::getSpinboxValue()
+{
+    if (!spinBox) {
+        Base::Console().Warning("Spinbox doesn't exist in EditableDatumLabel::getSpinboxValue.");
+        return 0.;
+    }
+
+    return spinBox->value().getValue();
+}
+
+void EditableDatumLabel::setSpinboxValue(double val)
+{
+    if (!spinBox) {
+        Base::Console().Warning("Spinbox doesn't exist in EditableDatumLabel::setSpinboxValue.");
+        return;
+    }
+
+    QSignalBlocker block(spinBox);
+    spinBox->setValue(val);
+    spinBox->adjustSize();
+    positionSpinbox();
+}
+void EditableDatumLabel::setFocusToSpinbox()
+{
+    if (!spinBox) {
+        Base::Console().Warning("Spinbox doesn't exist in EditableDatumLabel::setFocusToSpinbox.");
+        return;
+    }
+
+    spinBox->selectNumber();
+    spinBox->setFocus();
+}
+
+void EditableDatumLabel::positionSpinbox()
+{
+    if (!spinBox) {
+        Base::Console().Warning("Spinbox doesn't exist in EditableDatumLabel::positionSpinbox.");
+        return;
+    }
+
+    QSize wSize = spinBox->size();
+    QPoint pxCoord = viewer->toQPoint(viewer->getPointOnViewport(getTextCenterPoint()));
+    pxCoord.setX(std::max(pxCoord.x() - wSize.width() / 2, 0));
+    pxCoord.setY(std::max(pxCoord.y() - wSize.height() / 2, 0));
+    spinBox->move(pxCoord);
+}
+
+const SbVec3f EditableDatumLabel::getTextCenterPoint()
+{
+    //Here we need the 3d point and not the 2d point as are the SoLabel points.
+    // First we get the 2D point (on the sketch/image plane) of the middle of the text label.
+    SbVec3f point2D = label->textOffset;
+    // Get the translation and rotation values from the transform
+    SbVec3f translation = transform->translation.getValue();
+    SbRotation rotation = transform->rotation.getValue();
+
+    // Calculate the inverse transformation
+    SbVec3f invTranslation = -translation;
+    SbRotation invRotation = rotation.inverse();
+
+    // Transform the 2D coordinates to 3D
+    // Plane form
+    SbVec3f RX(1, 0, 0), RY(0, 1, 0);
+
+    // move to position of Sketch
+    invRotation.multVec(RX, RX);
+    invRotation.multVec(RY, RY);
+    invRotation.multVec(invTranslation, invTranslation);
+
+    // we use invTranslation as the Base because in setPlacement we set transform->translation using
+    // placement.getPosition() to fix the Zoffset. But this applies the X & Y translation too.
+    Base::Vector3d pos(invTranslation[0], invTranslation[1], invTranslation[2]);
+    Base::Vector3d RXb(RX[0], RX[1], RX[2]);
+    Base::Vector3d RYb(RY[0], RY[1], RY[2]);
+    Base::Vector3d P2D(point2D[0], point2D[1], point2D[2]);
+    P2D.TransformToCoordinateSystem(pos, RXb, RYb);
+
+    return SbVec3f(P2D.x, P2D.y, P2D.z);
+}
+
+void EditableDatumLabel::setPlacement(Base::Placement plc)
+{
+    double x, y, z, w;
+    plc.getRotation().getValue(x, y, z, w);
+    //Base::Console().Warning("x%f, y%f, z%f, w%f\n", x, y, z, w);
+    transform->rotation.setValue(x, y, z, w);
+    Base::Vector3d pos = plc.getPosition();
+    transform->translation.setValue(pos.x, pos.y, pos.z);
+
+    Base::Vector3d RN(0, 0, 1);
+    RN = plc.getRotation().multVec(RN);
+    label->norm.setValue(SbVec3f(RN.x, RN.y, RN.z));
 }

@@ -72,7 +72,7 @@ public:
     /// returns for Close and Help button
     QDialogButtonBox::StandardButtons getStandardButtons() const override
     {
-        return QDialogButtonBox::Close;
+        return QDialogButtonBox::NoButton;
     }
 
     /** @brief Function used to register a slot to be triggered when the tool widget is changed. */

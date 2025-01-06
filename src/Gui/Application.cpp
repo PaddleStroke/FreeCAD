@@ -1038,6 +1038,7 @@ void Application::createStandardOperations()
     Gui::CreateStructureCommands();
     Gui::CreateTestCommands();
     Gui::CreateLinkCommands();
+    Gui::CreateStdGroupCommands();
 }
 
 void Application::slotNewDocument(const App::Document& Doc, bool isMainDoc)

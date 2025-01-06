@@ -50,6 +50,7 @@ SET(SketcherGui_SRCS
     ${SketcherGui_UIC_HDRS}
     AppSketcherGui.cpp
     GeometryCreationMode.h
+    Command.h
     Command.cpp
     AutoConstraint.h
     Utils.h

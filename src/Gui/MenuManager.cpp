@@ -30,6 +30,7 @@
 #include "MenuManager.h"
 #include "Application.h"
 #include "Command.h"
+#include "CustomTitleBar.h"
 #include "MainWindow.h"
 
 
@@ -203,7 +204,17 @@ void MenuManager::setup(MenuItem* menuItems) const
         return; // empty menu bar
     }
 
-    QMenuBar* menuBar = getMainWindow()->menuBar();
+    QMenuBar* menuBar = nullptr;
+    QMenu* mainMenu = nullptr;
+    if (getMainWindow()->isFrameless()) {
+        auto* ctb = dynamic_cast<CustomTitleBar*>(getMainWindow()->menuWidget());
+        if (ctb) {
+            mainMenu = ctb->mainMenu();
+        }
+    }
+    else {
+        menuBar = getMainWindow()->menuBar();
+    }
 
 #if 0
 #if defined(FC_OS_MACOSX) && QT_VERSION >= 0x050900
@@ -242,10 +253,15 @@ void MenuManager::setup(MenuItem* menuItems) const
     //
     // Clearing the menu bar, and recreate it every time when switching
     // workbench with only the active actions can solve this problem.
-    menuBar->clear();
+    if (menuBar) {
+        menuBar->clear();
+    }
+    if (mainMenu) {
+        mainMenu->clear();
+    }
 #endif
 
-    QList<QAction*> actions = menuBar->actions();
+    QList<QAction*> actions = menuBar ? menuBar->actions() : mainMenu->actions();
     for (auto& item : menuItems->getItems())
     {
         // search for the menu action
@@ -254,14 +270,15 @@ void MenuManager::setup(MenuItem* menuItems) const
             // There must be not more than one separator in the menu bar, so
             // we can safely remove it if available and append it at the end
             if (item->command() == "Separator") {
-                action = menuBar->addSeparator();
+                action = menuBar ? menuBar->addSeparator() : mainMenu->addSeparator();
                 action->setObjectName(QLatin1String("Separator"));
             }
             else {
                 // create a new menu
                 std::string menuName = item->command();
-                QMenu* menu = menuBar->addMenu(
-                    QApplication::translate("Workbench", menuName.c_str()));
+                QMenu* menu = menuBar ?
+                    menuBar->addMenu(QApplication::translate("Workbench", menuName.c_str())) :
+                    mainMenu->addMenu(QApplication::translate("Workbench", menuName.c_str()));
                 action = menu->menuAction();
                 menu->setObjectName(QString::fromLatin1(menuName.c_str()));
                 action->setObjectName(QString::fromLatin1(menuName.c_str()));
@@ -272,8 +289,14 @@ void MenuManager::setup(MenuItem* menuItems) const
         }
         else {
             // put the menu at the end
-            menuBar->removeAction(action);
-            menuBar->addAction(action);
+            if (menuBar) {
+                menuBar->removeAction(action);
+                menuBar->addAction(action);
+            }
+            if (mainMenu) {
+                mainMenu->removeAction(action);
+                mainMenu->addAction(action);
+            }
             action->setVisible(true);
             int index = actions.indexOf(action);
             actions.removeAt(index);
@@ -360,8 +383,21 @@ void MenuManager::setup(MenuItem* item, QMenu* menu) const
 
 void MenuManager::retranslate() const
 {
-    QMenuBar* menuBar = getMainWindow()->menuBar();
-    for (auto& action : menuBar->actions()) {
+    QMenuBar* menuBar = nullptr;// getMainWindow()->menuBar();
+    QMenu* mainMenu;
+    if (!menuBar) {
+        auto* ctb = dynamic_cast<CustomTitleBar*>(getMainWindow()->menuWidget());
+        if (ctb) {
+            mainMenu = ctb->mainMenu();
+        }
+    }
+    if (!menuBar && !mainMenu) {
+        Base::Console().Warning("No menu found\n");
+        return;
+    }
+
+    auto actions = menuBar ? menuBar->actions() : mainMenu->actions();
+    for (auto& action : actions) {
         if (action->menu()) {
             retranslate(action->menu());
         }

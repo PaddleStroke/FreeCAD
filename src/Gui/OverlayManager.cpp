@@ -2041,6 +2041,20 @@ void OverlayManager::floatDockWidget(QDockWidget *dock)
     d->floatDockWidget(dock);
 }
 
+void OverlayManager::adjustSizeOfAreaContaining(QWidget* widget)
+{
+    if (!widget) {
+        return;
+    }
+
+    auto tabWidget = findTabWidget(widget);
+    if (!tabWidget) {
+        return;
+    }
+
+    tabWidget->adjustSizeToWidget(widget);
+}
+
 void OverlayManager::registerDockWidget(const QString &name, OverlayTabWidget *widget)
 {
     d->registerDockWidget(name, widget);

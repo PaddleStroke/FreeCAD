@@ -393,7 +393,7 @@ OverlayTabWidget::OverlayTabWidget(QWidget *parent, Qt::DockWidgetArea pos)
     actTransparent.setCheckable(true);
     actTransparent.setData(QStringLiteral("OBTN Transparent"));
     actTransparent.setParent(this);
-    addAction(&actTransparent);
+    //addAction(&actTransparent);
 
     actAutoHide.setData(QStringLiteral("OBTN AutoHide"));
 
@@ -414,11 +414,11 @@ OverlayTabWidget::OverlayTabWidget(QWidget *parent, Qt::DockWidgetArea pos)
     autoModeMenu.addAction(&actEditShow);
     autoModeMenu.addAction(&actEditHide);
     autoModeMenu.addAction(&actTaskShow);
-    addAction(&actAutoMode);
+    //addAction(&actAutoMode);
 
     actOverlay.setData(QStringLiteral("OBTN Overlay"));
     actOverlay.setParent(this);
-    addAction(&actOverlay);
+    //addAction(&actOverlay);
 
     if (cmdHide)
         cmdHide->addTo(this);
@@ -798,7 +798,7 @@ void OverlayTabWidget::restore(ParameterGrp::handle handle)
     else
         setAutoMode(AutoMode::NoAutoMode);
 
-    setTransparent(handle->GetBool("Transparent", false));
+    setTransparent(handle->GetBool("Transparent", true));
 
     _sizemap.clear();
     std::string savedSizes = handle->GetASCII("Sizes","");

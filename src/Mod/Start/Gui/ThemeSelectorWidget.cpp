@@ -97,9 +97,7 @@ ThemeSelectorWidget::ThemeSelectorWidget(QWidget* parent)
     , _buttons {nullptr, nullptr, nullptr}
 {
     setObjectName(QLatin1String("ThemeSelectorWidget"));
-    if (shouldHideClassicTheme()) {
-        preselectThemeFromSystemSettings();
-    }
+    preselectThemeFromSystemSettings();
     setupUi();
     qApp->installEventFilter(this);
 }

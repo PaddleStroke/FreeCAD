@@ -41,6 +41,37 @@
 #include <QWindow>
 #endif
 
+
+#define _STRINGIZE(x) #x
+#define STRINGIZE(x) _STRINGIZE(x)
+#pragma message("_WIN32_WINNT: " _STRINGIZE(_WIN32_WINNT))
+#pragma message("WINVER: " _STRINGIZE(WINVER))
+#pragma message("NTDDI_VERSION: " _STRINGIZE(NTDDI_VERSION))
+
+#ifdef NTDDI_VERSION
+    #if NTDDI_VERSION >= NTDDI_VISTA
+        #define HAS_DWM_API 1
+        #pragma message("HAS_DWM_API")
+    #endif
+#endif
+
+#include <windows.h>
+#include <WinUser.h>
+#include <windowsx.h>
+#include <uxtheme.h>
+#include <dwmapi.h>
+#include <objidl.h> // Fixes error C2504: 'IUnknown' : base class undefined
+namespace Gdiplus
+{
+    using std::min;
+    using std::max;
+};
+#include <gdiplus.h>
+#include <GdiPlusColor.h>
+#pragma comment (lib,"Dwmapi.lib") // Adds missing library, fixes error LNK2019: unresolved external symbol __imp__DwmExtendFrameIntoClientArea
+#pragma comment (lib,"user32.lib")
+#pragma comment (lib,"uxtheme.lib")
+
 #include <QLoggingCategory>
 #include <fmt/format.h>
 
@@ -364,6 +395,9 @@ struct PyMethodDef FreeCADGui_methods[] = {
 // clang-format off
 Application::Application(bool GUIenabled)
 {
+
+    const MARGINS shadow = { 1, 1, 1, 1 };
+
     // App::GetApplication().Attach(this);
     if (GUIenabled) {
         // NOLINTBEGIN

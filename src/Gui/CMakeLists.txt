@@ -76,6 +76,9 @@ if(MSVC)
          FreeCADApp
          ${COIN3D_LIBRARIES}
          ${OPENGL_gl_LIBRARY}
+        dwmapi
+        uxtheme
+        user32
     )
 
     if(FREECAD_USE_3DCONNEXION)

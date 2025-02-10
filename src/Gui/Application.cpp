@@ -42,11 +42,14 @@
 #endif
 
 
+#pragma message("TEST 1")
 #define _STRINGIZE(x) #x
 #define STRINGIZE(x) _STRINGIZE(x)
 #pragma message("_WIN32_WINNT: " _STRINGIZE(_WIN32_WINNT))
 #pragma message("WINVER: " _STRINGIZE(WINVER))
 #pragma message("NTDDI_VERSION: " _STRINGIZE(NTDDI_VERSION))
+
+#pragma message("TEST 4")
 
 #ifdef NTDDI_VERSION
     #if NTDDI_VERSION >= NTDDI_VISTA
@@ -54,23 +57,16 @@
         #pragma message("HAS_DWM_API")
     #endif
 #endif
+#pragma message("TEST 5")
 
 #include <windows.h>
 #include <WinUser.h>
 #include <windowsx.h>
 #include <uxtheme.h>
 #include <dwmapi.h>
+#pragma message("TEST 6")
 #include <objidl.h> // Fixes error C2504: 'IUnknown' : base class undefined
-namespace Gdiplus
-{
-    using std::min;
-    using std::max;
-};
-#include <gdiplus.h>
-#include <GdiPlusColor.h>
-#pragma comment (lib,"Dwmapi.lib") // Adds missing library, fixes error LNK2019: unresolved external symbol __imp__DwmExtendFrameIntoClientArea
-#pragma comment (lib,"user32.lib")
-#pragma comment (lib,"uxtheme.lib")
+#pragma message("TEST 1")
 
 #include <QLoggingCategory>
 #include <fmt/format.h>

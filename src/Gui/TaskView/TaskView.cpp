@@ -42,6 +42,7 @@
 #include <Gui/MainWindow.h>
 #include <Gui/OverlayManager.h>
 
+#include "BitmapFactory.h"
 #include "TaskView.h"
 #include "TaskDialog.h"
 #include "TaskEditControl.h"
@@ -585,6 +586,17 @@ void TaskView::showDialog(TaskDialog *dlg)
     // first create the control element, set it up and wire it:
     ActiveCtrl = new TaskEditControl(this);
     ActiveCtrl->buttonBox->setStandardButtons(dlg->getStandardButtons());
+
+    // Replace text with icons for the OK and Cancel buttons
+    if (QPushButton* okButton = ActiveCtrl->buttonBox->button(QDialogButtonBox::Ok)) {
+        okButton->setIcon(Gui::BitmapFactory().pixmap("edit_OK.svg"));
+        okButton->setText(QString::fromLatin1(""));
+    }
+    if (QPushButton* cancelButton = ActiveCtrl->buttonBox->button(QDialogButtonBox::Cancel)) {
+        cancelButton->setIcon(Gui::BitmapFactory().pixmap("edit_Cancel.svg"));
+        cancelButton->setText(QString::fromLatin1(""));
+    }
+
     TaskDialogAttorney::setButtonBox(dlg, ActiveCtrl->buttonBox);
 
     // clang-format off
@@ -604,16 +616,27 @@ void TaskView::showDialog(TaskDialog *dlg)
     // give to task dialog to customize the button box
     dlg->modifyStandardButtons(ActiveCtrl->buttonBox);
 
+    static int defaultSpacing = taskPanel->layout()->spacing();
+    taskPanel->layout()->setSpacing(0);
+
     if (dlg->buttonPosition() == TaskDialog::North) {
         // Add button box to the top of the main layout
         mainLayout->insertWidget(0, ActiveCtrl);
         for (const auto & it : cont){
             taskPanel->addWidget(it);
+            if (it != cont.back()) {
+                auto* spacer = new QSpacerItem(0, defaultSpacing, QSizePolicy::Minimum, QSizePolicy::Fixed);
+                taskPanel->layout()->addItem(spacer);
+            }
         }
     }
     else {
         for (const auto & it : cont){
             taskPanel->addWidget(it);
+            if (it != cont.back()) {
+                auto* spacer = new QSpacerItem(0, defaultSpacing, QSizePolicy::Minimum, QSizePolicy::Fixed);
+                taskPanel->layout()->addItem(spacer);
+            }
         }
         // Add button box to the bottom of the main layout
         mainLayout->addWidget(ActiveCtrl);
@@ -664,6 +687,21 @@ void TaskView::removeDialog()
     }
 
     taskPanel->removeStretch();
+
+    // remove spacers added.
+    QLayout* layout = taskPanel->layout();
+    QList<QLayoutItem*> itemsToKeep;
+    while (QLayoutItem* item = layout->takeAt(0)) {
+        if (!dynamic_cast<QSpacerItem*>(item)) {
+            itemsToKeep.append(item);
+        }
+        else {
+            delete item;  // Remove only spacers
+        }
+    }
+    for (QLayoutItem* item : itemsToKeep) {
+        layout->addItem(item);
+    }
 
     // put the watcher back in control
     addTaskWatcher();

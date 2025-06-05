@@ -27,6 +27,7 @@
 #include "ViewProviderExtrude.h"
 
 class QComboBox;
+class QCheckBox;
 class QLineEdit;
 class QListWidget;
 class QToolButton;

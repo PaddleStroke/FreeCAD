@@ -362,7 +362,7 @@ Action* StdCmdToggleTitleToolBarLock::createAction()
     Action* action = Command::createAction();
 
     action->setCheckable(true);
-    action->setChecked(ToolBarManager::getInstance()->areTitleToolBarsLocked(), true);
+    action->setBlockedChecked(ToolBarManager::getInstance()->areTitleToolBarsLocked());
 
     return action;
 }

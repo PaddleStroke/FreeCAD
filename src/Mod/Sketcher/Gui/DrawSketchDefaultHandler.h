@@ -1127,6 +1127,24 @@ protected:
             ShapeGeometry.emplace_back(std::move(line)).get());
     }
 
+    /** @Function to add text to the ShapeGeometry vector.*/
+    auto addTextToShapeGeometry(Base::Vector3d p1,
+                                Base::Vector3d p2,
+                                std::string& text,
+                                std::string& font,
+                                bool constructionMode,
+                                bool height)
+    {
+        int sizeBefore = ShapeGeometry.size();
+        Part::textToEdges(ShapeGeometry, p1, p2, text, font, height);
+
+        if (constructionMode) {
+            for (size_t i = sizeBefore; i < ShapeGeometry.size(); ++i) {
+                Sketcher::GeometryFacade::setConstruction(ShapeGeometry[i].get(), constructionMode);
+            }
+        }
+    }
+
     /** @brief Function to add an arc to the ShapeGeometry vector.*/
     auto addArcToShapeGeometry(Base::Vector3d p1,
                                double start,

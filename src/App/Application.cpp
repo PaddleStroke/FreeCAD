@@ -3033,17 +3033,9 @@ void Application::LoadParameters()
         if (_pcUserParamMngr->LoadOrCreateDocument() && mConfig["Verbose"] != "Strict") {
             // The user parameter file doesn't exist. When an alternative parameter file is offered
             // this will be used.
-            auto it = mConfig.find("UserParameterTemplate");
-            if (it != mConfig.end()) {
-                QString path = QString::fromUtf8(it->second.c_str());
-                if (QDir(path).isRelative()) {
-                    QString home = QString::fromUtf8(mConfig["AppHomePath"].c_str());
-                    path = QFileInfo(QDir(home), path).absoluteFilePath();
-                }
-                QFileInfo fi(path);
-                if (fi.exists()) {
-                    _pcUserParamMngr->LoadDocument(path.toUtf8().constData());
-                }
+            const char* userParamPath = getUserParameterTemplatePath();
+            if (userParamPath) {
+                _pcUserParamMngr->LoadDocument(userParamPath);
             }
 
             // Configuration file optional when using as Python module

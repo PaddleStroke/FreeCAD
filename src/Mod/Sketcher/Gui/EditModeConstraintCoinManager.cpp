@@ -24,6 +24,7 @@
 #ifndef _PreComp_
 #include <QPainter>
 #include <QRegularExpression>
+#include <Bnd_Box.hxx>
 #include <limits>
 #include <memory>
 

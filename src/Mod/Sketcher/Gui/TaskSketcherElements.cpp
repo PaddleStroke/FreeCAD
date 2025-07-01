@@ -1370,9 +1370,15 @@ void TaskSketcherElements::onListMultiFilterItemChanged(QListWidgetItem* item)
     updateVisibility();
 }
 
-void TaskSketcherElements::setItemVisibility(QListWidgetItem* it)
+void TaskSketcherElements::setItemVisibility(QListWidgetItem* it, const std::set<int>& groupedGeoIds)
 {
     auto* item = static_cast<ElementItem*>(it);
+
+    // First, check if the item is a member of a group. If so, it must be hidden.
+    if (groupedGeoIds.count(item->ElementNbr)) {
+        item->setHidden(true);
+        return;
+    }
 
     if (ui->filterBox->checkState() == Qt::Unchecked) {
         item->setHidden(false);
@@ -1428,8 +1434,20 @@ void TaskSketcherElements::setItemVisibility(QListWidgetItem* it)
 
 void TaskSketcherElements::updateVisibility()
 {
+    // Calculate the set of grouped geometries that should be hidden.
+    std::set<int> groupedGeoIds;
+    const auto& constraints = sketchView->getSketchObject()->Constraints.getValues();
+    for (const auto* c : constraints) {
+        if (c->Type == Sketcher::Group || c->Type == Sketcher::Text) {
+            // Member geometries start from index 1.
+            for (int j = 1; c->hasElement(j); ++j) {
+                groupedGeoIds.insert(c->getGeoId(j));
+            }
+        }
+    }
+
     for (int i = 0; i < ui->listWidgetElements->count(); i++) {
-        setItemVisibility(ui->listWidgetElements->item(i));
+        setItemVisibility(ui->listWidgetElements->item(i), groupedGeoIds);
     }
 }
 
@@ -1847,6 +1865,23 @@ void TaskSketcherElements::slotElementsChanged()
     assert(sketchView);
     // Build up ListView with the elements
     Sketcher::SketchObject* sketch = sketchView->getSketchObject();
+
+    // Pre-process constraints to identify grouped elements and their handles
+    const auto& constraints = sketch->Constraints.getValues();
+    std::set<int> groupedGeoIds;
+    std::map<int, Sketcher::ConstraintType> handleIdToType;
+    for (const auto* c : constraints) {
+        if (c->Type == Sketcher::Group || c->Type == Sketcher::Text) {
+            if (c->hasElement(0)) {
+                handleIdToType[c->getGeoId(0)] = c->Type;
+            }
+            // Elements from index 1 onwards are the members.
+            for (int j = 1; c->hasElement(j); ++j) {
+                groupedGeoIds.insert(c->getGeoId(j));
+            }
+        }
+    }
+
     const std::vector<Part::Geometry*>& vals = sketch->Geometry.getValues();
 
     ui->listWidgetElements->clear();
@@ -1854,15 +1889,14 @@ void TaskSketcherElements::slotElementsChanged()
     using GeometryState = ElementItem::GeometryState;
 
     int i = 1;
-    for (std::vector<Part::Geometry*>::const_iterator it = vals.begin(); it != vals.end();
-         ++it, ++i) {
-        Base::Type type = (*it)->getTypeId();
+    for (auto* geo : vals) {
+        Base::Type type = geo->getTypeId();
         GeometryState state = GeometryState::Normal;
 
-        bool construction = Sketcher::GeometryFacade::getConstruction(*it);
-        bool internalAligned = Sketcher::GeometryFacade::isInternalAligned(*it);
+        bool construction = Sketcher::GeometryFacade::getConstruction(geo);
+        bool internalAligned = Sketcher::GeometryFacade::isInternalAligned(geo);
 
-        auto layerId = getSafeGeomLayerId(*it);
+        auto layerId = getSafeGeomLayerId(geo);
 
         if (internalAligned)
             state = GeometryState::InternalAlignment;
@@ -1877,6 +1911,67 @@ void TaskSketcherElements::slotElementsChanged()
                 return QStringLiteral("(Edge%1#ID%2)").arg(i).arg(i - 1);
         };
 
+        QString label;
+        // This is a regular geometry. Get its type name.
+        QString baseName;
+        if (type == Part::GeomPoint::getClassTypeId()) {
+            baseName = tr("Point");
+        }
+        else if (type == Part::GeomLineSegment::getClassTypeId()) {
+            int geoId = i - 1;
+            auto handle_it = handleIdToType.find(geoId);
+            if (handle_it != handleIdToType.end()) {
+                // This is a group/text handle
+                if (handle_it->second == Sketcher::Group) {
+                    baseName = tr("Group");
+                }
+                else {
+                    baseName = tr("Text");
+                }
+            }
+            else {
+                baseName = tr("Line");
+            }
+        }
+        else if (type == Part::GeomArcOfCircle::getClassTypeId()) {
+            baseName = tr("Arc");
+        }
+        else if (type == Part::GeomCircle::getClassTypeId()) {
+            baseName = tr("Circle");
+        }
+        else if (type == Part::GeomEllipse::getClassTypeId()) {
+            baseName = tr("Ellipse");
+        }
+        else if (type == Part::GeomArcOfEllipse::getClassTypeId()) {
+            baseName = tr("Elliptical Arc");
+        }
+        else if (type == Part::GeomArcOfHyperbola::getClassTypeId()) {
+            baseName = tr("Hyperbolic Arc");
+        }
+        else if (type == Part::GeomArcOfParabola::getClassTypeId()) {
+            baseName = tr("Parabolic arc");
+        }
+        else if (type == Part::GeomBSplineCurve::getClassTypeId()) {
+            baseName = tr("B-spline");
+        }
+        else {
+            baseName = tr("Other");
+        }
+
+        // Reconstruct the label using the baseName.
+        if (isNamingBoxChecked) {
+                label = baseName + IdInformation();
+                if (state == GeometryState::Construction) {
+                    label += QStringLiteral("-") + tr("Construction");
+                }
+                else if (state == GeometryState::InternalAlignment) {
+                    label += QStringLiteral("-") + tr("Internal");
+                }
+        }
+        else {
+            label = QStringLiteral("%1-").arg(i) + baseName;
+        }
+
         auto* itemN = new ElementItem(
             i - 1,
             sketchView->getSketchObject()->getVertexIndexGeoPos(i - 1, Sketcher::PointPos::start),
@@ -1884,80 +1979,13 @@ void TaskSketcherElements::slotElementsChanged()
             sketchView->getSketchObject()->getVertexIndexGeoPos(i - 1, Sketcher::PointPos::end),
             type,
             state,
-            type == Part::GeomPoint::getClassTypeId()
-                ? (isNamingBoxChecked ? (tr("Point") + IdInformation())
-                           + (construction
-                                  ? (QStringLiteral("-") + tr("Construction"))
-                                  : (internalAligned ? (QStringLiteral("-") + tr("Internal"))
-                                                     : QStringLiteral("")))
-                                      : (QStringLiteral("%1-").arg(i) + tr("Point")))
-                : type == Part::GeomLineSegment::getClassTypeId()
-                ? (isNamingBoxChecked ? (tr("Line") + IdInformation())
-                           + (construction
-                                  ? (QStringLiteral("-") + tr("Construction"))
-                                  : (internalAligned ? (QStringLiteral("-") + tr("Internal"))
-                                                     : QStringLiteral("")))
-                                      : (QStringLiteral("%1-").arg(i) + tr("Line")))
-                : type == Part::GeomArcOfCircle::getClassTypeId()
-                ? (isNamingBoxChecked ? (tr("Arc") + IdInformation())
-                           + (construction
-                                  ? (QStringLiteral("-") + tr("Construction"))
-                                  : (internalAligned ? (QStringLiteral("-") + tr("Internal"))
-                                                     : QStringLiteral("")))
-                                      : (QStringLiteral("%1-").arg(i) + tr("Arc")))
-                : type == Part::GeomCircle::getClassTypeId()
-                ? (isNamingBoxChecked ? (tr("Circle") + IdInformation())
-                           + (construction
-                                  ? (QStringLiteral("-") + tr("Construction"))
-                                  : (internalAligned ? (QStringLiteral("-") + tr("Internal"))
-                                                     : QStringLiteral("")))
-                                      : (QStringLiteral("%1-").arg(i) + tr("Circle")))
-                : type == Part::GeomEllipse::getClassTypeId()
-                ? (isNamingBoxChecked ? (tr("Ellipse") + IdInformation())
-                           + (construction
-                                  ? (QStringLiteral("-") + tr("Construction"))
-                                  : (internalAligned ? (QStringLiteral("-") + tr("Internal"))
-                                                     : QStringLiteral("")))
-                                      : (QStringLiteral("%1-").arg(i) + tr("Ellipse")))
-                : type == Part::GeomArcOfEllipse::getClassTypeId()
-                ? (isNamingBoxChecked ? (tr("Elliptical Arc") + IdInformation())
-                           + (construction
-                                  ? (QStringLiteral("-") + tr("Construction"))
-                                  : (internalAligned ? (QStringLiteral("-") + tr("Internal"))
-                                                     : QStringLiteral("")))
-                                      : (QStringLiteral("%1-").arg(i) + tr("Elliptical arc")))
-                : type == Part::GeomArcOfHyperbola::getClassTypeId()
-                ? (isNamingBoxChecked ? (tr("Hyperbolic Arc") + IdInformation())
-                           + (construction
-                                  ? (QStringLiteral("-") + tr("Construction"))
-                                  : (internalAligned ? (QStringLiteral("-") + tr("Internal"))
-                                                     : QStringLiteral("")))
-                                      : (QStringLiteral("%1-").arg(i) + tr("Hyperbolic arc")))
-                : type == Part::GeomArcOfParabola::getClassTypeId()
-                ? (isNamingBoxChecked ? (tr("Parabolic Arc") + IdInformation())
-                           + (construction
-                                  ? (QStringLiteral("-") + tr("Construction"))
-                                  : (internalAligned ? (QStringLiteral("-") + tr("Internal"))
-                                                     : QStringLiteral("")))
-                                      : (QStringLiteral("%1-").arg(i) + tr("Parabolic arc")))
-                : type == Part::GeomBSplineCurve::getClassTypeId()
-                ? (isNamingBoxChecked ? (tr("B-spline") + IdInformation())
-                           + (construction
-                                  ? (QStringLiteral("-") + tr("Construction"))
-                                  : (internalAligned ? (QStringLiteral("-") + tr("Internal"))
-                                                     : QStringLiteral("")))
-                                      : (QStringLiteral("%1-").arg(i) + tr("B-spline")))
-                : (isNamingBoxChecked ? (tr("Other") + IdInformation())
-                           + (construction
-                                  ? (QStringLiteral("-") + tr("Construction"))
-                                  : (internalAligned ? (QStringLiteral("-") + tr("Internal"))
-                                                     : QStringLiteral("")))
-                                      : (QStringLiteral("%1-").arg(i) + tr("Other"))),
+            label,
             sketchView);
 
         ui->listWidgetElements->addItem(itemN);
 
-        setItemVisibility(itemN);
+        setItemVisibility(itemN, groupedGeoIds);
+        ++i;
     }
 
     const std::vector<Part::Geometry*>& ext_vals =
@@ -2061,7 +2089,7 @@ void TaskSketcherElements::slotElementsChanged()
 
             ui->listWidgetElements->addItem(itemN);
 
-            setItemVisibility(itemN);
+            setItemVisibility(itemN, groupedGeoIds);
         }
     }
 }

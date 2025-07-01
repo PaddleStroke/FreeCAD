@@ -131,7 +131,7 @@ public:
 private:
     void slotElementsChanged();
     void updateVisibility();
-    void setItemVisibility(QListWidgetItem* item);
+    void setItemVisibility(QListWidgetItem* item, const std::set<int>& groupedGeoIds);
     void clearWidget();
     void createFilterButtonActions();
     void createSettingsButtonActions();

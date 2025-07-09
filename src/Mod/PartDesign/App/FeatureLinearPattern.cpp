@@ -363,7 +363,7 @@ void LinearPattern::updateSpacings(bool isSecondDir)
     const App::PropertyIntegerConstraint& occurrencesProp = isSecondDir ? Occurrences2 : Occurrences;
 
     std::vector<double> spacings = spacingsProp.getValues();
-    size_t targetCount = occurrencesProp.getValue() - 1; // 1 less spacing than there are occurences.
+    size_t targetCount = occurrencesProp.getValue() - 1; // 1 less spacing than there are occurrences.
 
     for (auto& spacing : spacings) {
         if (spacing == offsetProp.getValue()) {

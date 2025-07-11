@@ -695,7 +695,7 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
             prisms.push_back(prism1);
 
             // Prism 2 : Make a symmetric of prism1
-            Base::Vector3d base = sketchshape.getPlacement().getPosition();
+            Base::Vector3d base = sketchshape.getBoundBox().GetCenter();
             gp_Ax2 axe(gp_Pnt(base.x, base.y, base.z), dir);
             TopoShape prism2 = prism1.makeElementMirror(axe);
             prisms.push_back(prism2);

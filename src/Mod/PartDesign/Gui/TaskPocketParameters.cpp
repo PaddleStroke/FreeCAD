@@ -39,7 +39,8 @@ using namespace Gui;
 TaskPocketParameters::TaskPocketParameters(ViewProviderPocket *PocketView,QWidget *parent, bool newObj)
     : TaskExtrudeParameters(PocketView, parent, "PartDesign_Pocket", tr("Pocket parameters"))
 {
-    ui->offsetEdit->setToolTip(tr("Offset from face at which pocket will end on side 1"));
+    ui->offsetEdit->setToolTip(tr("Offset from the selected face at which the pocket will end on side 1"));
+
     ui->offsetEdit2->setToolTip(tr("Offset from face at which pocket will end on side 2"));
     ui->checkBoxReversed->setToolTip(tr("Reverses pocket direction"));
 

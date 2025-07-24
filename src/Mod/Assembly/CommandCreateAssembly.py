@@ -166,6 +166,7 @@ class CommandActivateAssembly:
             self.task_panel = ActivateAssemblyTaskPanel(assemblies)
             Gui.Control.showDialog(self.task_panel)
 
+
 if App.GuiUp:
     Gui.addCommand("Assembly_CreateAssembly", CommandCreateAssembly())
     Gui.addCommand("Assembly_ActivateAssembly", CommandActivateAssembly())

@@ -129,6 +129,7 @@ class AssemblyWorkbench(Workbench):
 
     def setWatchers(self):
         import UtilsAssembly
+
         translate = FreeCAD.Qt.translate
 
         class AssemblyCreateWatcher:
@@ -200,7 +201,10 @@ class AssemblyWorkbench(Workbench):
             def shouldShow(self):
                 if not super().shouldShow():
                     return False
-                return UtilsAssembly.assembly_has_at_least_n_parts(1) and not UtilsAssembly.isAssemblyGrounded()
+                return (
+                    UtilsAssembly.assembly_has_at_least_n_parts(1)
+                    and not UtilsAssembly.isAssemblyGrounded()
+                )
 
         class AssemblyJointsWatcher(AssemblyBaseWatcher):
             """Shows Joint, View, and BOM tools when there are enough parts."""
@@ -268,5 +272,6 @@ class AssemblyWorkbench(Workbench):
             AssemblySimulationWatcher(),
         ]
         FreeCADGui.Control.addTaskWatcher(watchers)
+
 
 Gui.addWorkbench(AssemblyWorkbench())

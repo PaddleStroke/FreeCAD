@@ -40,6 +40,7 @@
 #include <Gui/Application.h>
 #include <Gui/Document.h>
 #include <Gui/MainWindow.h>
+#include <Gui/ViewProviderDocumentObject.h>
 
 #include "TaskView.h"
 #include "TaskDialog.h"
@@ -309,6 +310,9 @@ TaskView::TaskView(QWidget *parent)
     connectApplicationRedoDocument =
     App::GetApplication().signalRedoDocument.connect
         (std::bind(&Gui::TaskView::TaskView::slotRedoDocument, this, sp::_1));
+    connectApplicationInEdit =
+    Gui::Application::Instance->signalInEdit.connect(
+        std::bind(&Gui::TaskView::TaskView::slotInEdit, this, sp::_1));
     //NOLINTEND
 
     updateWatcher();
@@ -321,6 +325,7 @@ TaskView::~TaskView()
     connectApplicationClosedView.disconnect();
     connectApplicationUndoDocument.disconnect();
     connectApplicationRedoDocument.disconnect();
+    connectApplicationInEdit.disconnect();
     Gui::Selection().Detach(this);
 }
 
@@ -462,8 +467,20 @@ QSize TaskView::minimumSizeHint() const
 void TaskView::slotActiveDocument(const App::Document& doc)
 {
     Q_UNUSED(doc);
-    if (!ActiveDialog)
+    if (!ActiveDialog) {
+        // at this point, active object of the active view returns None.
+        // which is a problem if shouldShow of a watcher rely on the presence
+        // of an active object (example Assembly).
+        QTimer::singleShot(100, this, &TaskView::updateWatcher);
+    }
+}
+
+void TaskView::slotInEdit(const Gui::ViewProviderDocumentObject& vp)
+{
+    Q_UNUSED(vp);
+    if (!ActiveDialog) {
         updateWatcher();
+    }
 }
 
 void TaskView::slotDeletedDocument(const App::Document& doc)

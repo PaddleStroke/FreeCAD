@@ -39,6 +39,7 @@ class Property;
 namespace Gui {
 class MDIView;
 class ControlSingleton;
+class ViewProviderDocumentObject;
 namespace DockWnd{
 class ComboView;
 }
@@ -183,6 +184,7 @@ private:
     void saveCurrentWidth();
     void tryRestoreWidth();
     void slotActiveDocument(const App::Document&);
+    void slotInEdit(const Gui::ViewProviderDocumentObject&);
     void slotDeletedDocument(const App::Document&);
     void slotViewClosed(const Gui::MDIView*);
     void slotUndoDocument(const App::Document&);
@@ -217,6 +219,7 @@ protected:
     Connection connectApplicationClosedView;
     Connection connectApplicationUndoDocument;
     Connection connectApplicationRedoDocument;
+    Connection connectApplicationInEdit;
 };
 
 } //namespace TaskView

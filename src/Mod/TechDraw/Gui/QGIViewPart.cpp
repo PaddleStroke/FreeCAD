@@ -1563,6 +1563,9 @@ void QGIViewPart::drawBreakLines()
             static_cast<DrawBrokenView::BreakType>(vp->BreakLineType.getValue());
         auto breaks = dbv->Breaks.getValues();
         for (auto& breakObj : breaks) {
+            if (breakObj->isDerivedFrom<TechDraw::DrawViewBreak>()) {
+                continue;
+            }
             QGIBreakLine* breakLine = new QGIBreakLine();
             addToGroupWithoutUpdate(breakLine);
 

@@ -795,6 +795,7 @@ void QGIViewPart::draw()
         return;
 
     drawViewPart();
+    applyPartialSectionClip();
     drawViewDecorations();
 
     prepareGeometryChange();
@@ -1284,11 +1285,8 @@ void QGIViewPart::drawAllEdges()
             (alignedBoundaries.startPartial && onAlignedStart)
             || (alignedBoundaries.endPartial && onAlignedEnd);
         if (isPartialBoundary(edgePath) || alignedPartialBoundary) {
-            QPen boundaryPen = m_dashedLineGenerator->getLinePen(
-                1, vp->LineWidth.getValue());
-            boundaryPen.setStyle(Qt::DashLine);
-            item->setLinePen(boundaryPen);
-            item->setWidth(Rez::guiX(vp->LineWidth.getValue()));
+            item->setLinePen(centerLinePen(
+                vp->LineWidth.getValue() * 2.0));
         }
         else if (alignedOuterBoundary) {
             item->setLinePen(m_dashedLineGenerator->getLinePen(
@@ -1337,7 +1335,6 @@ void QGIViewPart::drawAllEdges()
             PreferencesGui::getAccessibleQColor(
                 PreferencesGui::normalQColor()));
         centerItem->setLinePen(centerLinePen(vp->LineWidth.getValue()));
-        centerItem->setWidth(Rez::guiX(vp->LineWidth.getValue()));
         centerItem->setPos(0.0, 0.0);
         centerItem->setZValue(ZVALUE::EDGE + 1);
         centerItem->setPrettyNormal();
@@ -1721,6 +1718,42 @@ void QGIViewPart::drawComplexSectionLine(TechDraw::DrawViewSection* viewSection,
         wirePath.connectPath(edgePath);
     }
 
+    App::DocumentObject* generatedProfile = dcs->getGeneratedProfile();
+    const auto* halfProperty = generatedProfile
+        ? dynamic_cast<const App::PropertyBool*>(
+              generatedProfile->getPropertyByName("HalfSection"))
+        : nullptr;
+    bool halfSection = halfProperty && halfProperty->getValue();
+    bool halfTowardStart = false;
+    Base::Vector3d leaderEnd;
+    if (halfSection && generatedProfile) {
+        if (const auto* towardStartProperty =
+                dynamic_cast<const App::PropertyBool*>(
+                    generatedProfile->getPropertyByName(
+                        "HalfSectionTowardStart"))) {
+            halfTowardStart = towardStartProperty->getValue();
+        }
+        if (const auto* leaderProperty =
+                dynamic_cast<const App::PropertyVector*>(
+                    generatedProfile->getPropertyByName(
+                        "HalfSectionLeaderEnd"))) {
+            Base::Vector3d leaderModel = leaderProperty->getValue();
+            leaderModel -= viewPart->getCurrentCentroid();
+            leaderEnd = Rez::guiX(
+                viewPart->projectPoint(leaderModel) * viewPart->getScale());
+            const Base::Vector3d center =
+                halfTowardStart ? vEnd : vStart;
+            wirePath.moveTo(center.x, center.y);
+            wirePath.lineTo(leaderEnd.x, leaderEnd.y);
+        }
+        else {
+            // Older or externally authored profiles do not carry the
+            // display-only center leader metadata. Keep their ordinary
+            // section-line rendering intact.
+            halfSection = false;
+        }
+    }
+
 
     QGISectionLine* sectionLine = new QGISectionLine();
     addToGroupWithoutUpdate(sectionLine);
@@ -1729,7 +1762,13 @@ void QGIViewPart::drawComplexSectionLine(TechDraw::DrawViewSection* viewSection,
 
     sectionLine->setPathMode(true);
     sectionLine->setPath(wirePath);
-    sectionLine->setEnds(vStart, vEnd);
+    if (halfSection) {
+        sectionLine->setEnds(
+            leaderEnd, halfTowardStart ? vStart : vEnd);
+    }
+    else {
+        sectionLine->setEnds(vStart, vEnd);
+    }
     if (vp->SectionLineMarks.getValue()) {
         sectionLine->setChangePoints(dcs->getChangePointsFromSectionLine());
     }
@@ -1738,7 +1777,15 @@ void QGIViewPart::drawComplexSectionLine(TechDraw::DrawViewSection* viewSection,
     }
 
     std::pair<Base::Vector3d, Base::Vector3d> dirsDCS = dcs->sectionLineArrowDirsMapped();
-    sectionLine->setArrowDirections(dirsDCS.first, dirsDCS.second);
+    if (halfSection) {
+        const Base::Vector3d retainedDirection =
+            halfTowardStart ? dirsDCS.first : dirsDCS.second;
+        sectionLine->setArrowDirections(
+            retainedDirection, retainedDirection);
+    }
+    else {
+        sectionLine->setArrowDirections(dirsDCS.first, dirsDCS.second);
+    }
 
     //set the general parameters
     sectionLine->setPos(0.0, 0.0);

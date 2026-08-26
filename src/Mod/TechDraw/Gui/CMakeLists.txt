@@ -276,6 +276,7 @@ SET(TechDrawGuiView_SRCS
     QGDisplayArea.h
     QGIView.cpp
     QGIView.h
+    ViewPlacement.h
     QGIArrow.cpp
     QGIArrow.h
     QGIDatumLabel.cpp
@@ -304,6 +305,7 @@ SET(TechDrawGuiView_SRCS
     QGIProjGroup.h
     QGIViewPart.cpp
     QGIViewPart.h
+    QGIViewPartSection.cpp
     QGIViewSection.cpp
     QGIViewSection.h
     QGIViewAnnotation.cpp

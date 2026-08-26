@@ -156,6 +156,8 @@ protected:
     void removeDecorations();
     bool prefFaceEdges();
     Base::Color prefBreaklineColor();
+    QPainterPath partialSectionClipPath() const;
+    void applyPartialSectionClip();
 
     bool formatGeomFromCosmetic(std::string cTag, QGIEdge* item);
     bool formatGeomFromCenterLine(std::string cTag, QGIEdge* item);

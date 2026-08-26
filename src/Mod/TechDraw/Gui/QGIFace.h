@@ -80,6 +80,7 @@ public:
     void setPrettySel() override;
     void setDrawEdges(bool state);
     virtual void setOutline(const QPainterPath& path);
+    void setPaintClip(const QPainterPath& clip);
 
     QColor getDefaultFillColor() override;
     Qt::BrushStyle getDefaultFillStyle() override {
@@ -128,9 +129,9 @@ public:
     void setHatchOffset(Base::Vector3d offset) { m_hatchOffset = offset; }
     Base::Vector3d getHatchOffset() { return m_hatchOffset; }
 
-    void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = nullptr ) override {
-        QGIPrimPath::paint(painter, option, widget);
-    }
+    void paint(QPainter* painter,
+               const QStyleOptionGraphicsItem* option,
+               QWidget* widget = nullptr) override;
 
 protected:
     void makeMark(double x, double y);  // NOLINT readability-identifier-length
@@ -176,6 +177,7 @@ private:
     QSvgRenderer *m_sharedRender;
 
     PATPathMaker* m_patMaker;
+    QPainterPath m_paintClip;
 
 };
 

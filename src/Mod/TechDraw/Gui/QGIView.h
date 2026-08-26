@@ -145,8 +145,8 @@ public:
     bool isSnapping() { return snapping; }
     void snapPosition(QPointF& position);
     void snapSectionView(const TechDraw::DrawViewSection* sectionView,
-                         QPointF& newPosition);
-    void applySectionPlacementConstraint();
+                         QPointF& newPosition, bool initialPlacement = false);
+    void autoPositionSectionView(TechDraw::DrawViewSection* sectionView);
     Base::Vector3d projItemPagePos(TechDraw::DrawViewPart* item);
     void alignTo(QGraphicsItem*, const QString &alignment);
 
@@ -205,12 +205,15 @@ public:
 
 Q_SIGNALS:
     void positionChanged();
+    void positionChangeFinished();
 
 protected:
     QGIView* getQGIVByName(std::string name) const;
 
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
     virtual void dragFinished();
+    bool isPositionSnapped() const { return m_snapped; }
+    void setPositionWithoutSnapping(const QPointF& position);
 
     // Preselection events:
     void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
@@ -228,6 +231,15 @@ protected:
     Base::Reference<ParameterGrp> getParmGroupCol();
 
 private:
+    enum class SectionSnapTarget {
+        None,
+        Center,
+        SectionLine,
+        ViewDirection
+    };
+
+    void clearSectionSnap();
+
     TechDraw::DrawView *viewObj;
     std::string viewName;
 
@@ -255,6 +267,7 @@ private:
     int m_zOrder{0};
 
     bool m_snapped{false};
+    SectionSnapTarget m_sectionSnapTarget{SectionSnapTarget::None};
 
     void layoutDecorations(const QRectF& contentArea,
                        const QRectF& captionRect,

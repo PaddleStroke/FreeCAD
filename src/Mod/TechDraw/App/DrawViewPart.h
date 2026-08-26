@@ -212,6 +212,7 @@ public:
     }
 
     bool hasGeometry() const;
+    virtual bool allowsEmptyGeometry() const { return false; }
     TechDraw::GeometryObjectPtr getGeometryObject() const { return geometryObject; }
 
     TechDraw::VertexPtr getVertex(std::string vertexName) const;

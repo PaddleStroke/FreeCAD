@@ -1073,7 +1073,7 @@ void DrawViewPart::onHlrFinished()
         throw Base::RuntimeError("DrawViewPart has lost its geometry object");
     }
 
-    if (!hasGeometry()) {
+    if (!hasGeometry() && !allowsEmptyGeometry()) {
         Base::Console().error("TechDraw did not retrieve any geometry for %s/%s\n",
                               getNameInDocument(), Label.getValue());
     }

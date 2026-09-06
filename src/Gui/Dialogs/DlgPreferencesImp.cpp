@@ -835,7 +835,7 @@ void DlgPreferencesImp::restoreDefaults()
         const char* templatePath = App::Application::getUserParameterTemplatePath();
         if (templatePath) {
             mgr->LoadDocument(templatePath);
-            restartRequired = true;  // the reloaded are not applied.
+            restartRequired = true;  // the reloaded preferences are not applied until restart.
         }
 
         App::GetApplication()

@@ -85,6 +85,7 @@ set(Part_tests
     parttests/TestTangentMode3-0.21.FCStd
     parttests/TestLinkArrayCircular.py
     parttests/TestLinkArrayLinear.py
+    parttests/TestLinkArrayPoint.py
     parttests/TestPartMirror.py
     parttests/TestFaceMakerUnifiedPlanar.py
     parttests/TestFaceMakerUnifiedNonPlanar.py

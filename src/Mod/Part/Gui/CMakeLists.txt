@@ -57,6 +57,7 @@ set(PartGui_UIC_SRCS
     DlgProjectionOnSurface.ui
     PatternParametersWidget.ui
     PatternCircularParametersWidget.ui
+    PatternPathParametersWidget.ui
     SectionCutting.ui
     ShapeFromMesh.ui
     TaskFaceAppearances.ui
@@ -146,6 +147,9 @@ SET(PartGui_SRCS
     PatternCircularParametersWidget.cpp
     PatternCircularParametersWidget.h
     PatternCircularParametersWidget.ui
+    PatternPathParametersWidget.cpp
+    PatternPathParametersWidget.h
+    PatternPathParametersWidget.ui
     PatternParametersWidget.cpp
     PatternParametersWidget.h
     PatternParametersWidget.ui

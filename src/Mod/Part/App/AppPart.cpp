@@ -100,6 +100,7 @@
 #include "LinkArray.h"
 #include "LinkArrayCircular.h"
 #include "LinkArrayLinear.h"
+#include "LinkArrayPolar.h"
 #include "PolarPatternExtension.h"
 #include "PathPatternExtension.h"
 #include "Geometry.h"
@@ -463,6 +464,7 @@ PyMOD_INIT_FUNC(Part)
     Part::LinkArray             ::init();
     Part::LinkArrayCircular     ::init();
     Part::LinkArrayLinear       ::init();
+    Part::LinkArrayPolar        ::init();
 
     Part::Feature               ::init();
     Part::FeatureExt            ::init();

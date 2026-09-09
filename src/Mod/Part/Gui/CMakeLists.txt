@@ -58,6 +58,7 @@ set(PartGui_UIC_SRCS
     PatternParametersWidget.ui
     PatternCircularParametersWidget.ui
     PatternPathParametersWidget.ui
+    PatternPointParametersWidget.ui
     SectionCutting.ui
     ShapeFromMesh.ui
     TaskFaceAppearances.ui
@@ -150,6 +151,9 @@ SET(PartGui_SRCS
     PatternPathParametersWidget.cpp
     PatternPathParametersWidget.h
     PatternPathParametersWidget.ui
+    PatternPointParametersWidget.cpp
+    PatternPointParametersWidget.h
+    PatternPointParametersWidget.ui
     PatternParametersWidget.cpp
     PatternParametersWidget.h
     PatternParametersWidget.ui

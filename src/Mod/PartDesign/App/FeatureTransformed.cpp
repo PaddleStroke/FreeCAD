@@ -484,7 +484,7 @@ App::DocumentObjectExecReturn* Transformed::execute()
                 Part::TopoShape after = transformToSupport(feature->Shape.getShape());
 
                 Part::TopoShape delta;
-                if (feature->getAddSubType() == FeatureAddSub::Additive) {
+                if (feature->getAddSubType() == FeatureAddSub::Type::Additive) {
                     if (before.isNull()) {
                         delta = after;
                     }
